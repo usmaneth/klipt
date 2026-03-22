@@ -80,9 +80,9 @@ const PlaybackControls = memo(function PlaybackControls({
 
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-	const rippleSize = 80 + scrubSpeed * 120;
-	const rippleOpacity = 0.15 + scrubSpeed * 0.3;
-	const rippleBlur = 20 + scrubSpeed * 40;
+	const rippleSize = 150 + scrubSpeed * 250;
+	const rippleOpacity = 0.4 + scrubSpeed * 0.6;
+	const rippleBlur = 40 + scrubSpeed * 80;
 
 	return (
 		<div className="flex flex-col items-center gap-0 w-full max-w-md mx-auto px-4">
@@ -116,16 +116,16 @@ const PlaybackControls = memo(function PlaybackControls({
 
 				{/* Time-Warp Scrubbing Ripple Effect */}
 				<div
-					className="absolute pointer-events-none transition-[opacity,transform] duration-300 z-0 rounded-full"
+					className="absolute pointer-events-none transition-[opacity,transform] duration-200 z-0 rounded-full"
 					style={{
 						width: rippleSize,
 						height: rippleSize,
 						left: `${progress}%`,
 						top: "50%",
-						transform: `translate(-50%, -50%) scale(${isScrubbing ? 1 : 0})`,
-						opacity: isScrubbing ? 0.8 : 0,
-						background: `radial-gradient(circle, rgba(224,0,15,${rippleOpacity}) 0%, transparent 70%)`,
-						boxShadow: isScrubbing ? `0 0 ${rippleBlur}px rgba(224,0,15,${0.2 + scrubSpeed * 0.4})` : "none",
+						transform: `translate(-50%, -50%) scale(${isScrubbing ? 1 + scrubSpeed * 0.5 : 0})`,
+						opacity: isScrubbing ? 1 : 0,
+						background: `radial-gradient(circle, rgba(224,0,15,${rippleOpacity}) 0%, rgba(255,69,0,${rippleOpacity * 0.6}) 40%, transparent 70%)`,
+						boxShadow: isScrubbing ? `0 0 ${rippleBlur}px rgba(224,0,15,${0.4 + scrubSpeed * 0.6}), 0 0 ${rippleBlur * 2}px rgba(255,69,0,${0.15 + scrubSpeed * 0.3})` : "none",
 					}}
 				/>
 
