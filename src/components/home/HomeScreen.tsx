@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CircleDot, Film } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /* ------------------------------------------------------------------ */
@@ -177,7 +177,7 @@ export function HomeScreen() {
 				className="relative z-10 flex flex-col items-center"
 				style={{
 					width: "100%",
-					maxWidth: 480,
+					maxWidth: 640,
 					WebkitAppRegion: "no-drag",
 				} as React.CSSProperties}
 			>
@@ -280,57 +280,79 @@ export function HomeScreen() {
 
 				{/* ---- ACTION BUTTONS ---- */}
 				<div
-					className="flex gap-2"
-					style={{ marginTop: 28 }}
+					className="flex items-center gap-6 w-full max-w-2xl"
+					style={{ marginTop: 40, marginBottom: 12, WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
-					{/* Start Recording */}
-					<button
+					<div
 						onClick={handleRecordClick}
-						className="cursor-pointer"
+						className="flex-1 flex flex-col items-start p-8 rounded-[24px] cursor-pointer group transition-all duration-500 relative overflow-hidden"
 						style={{
-							background: "#FFFFFF",
-							color: "#000000",
-							fontFamily: "'Inter', system-ui, sans-serif",
-							fontWeight: 600,
-							fontSize: 16,
-							paddingLeft: 40,
-							paddingRight: 40,
-							paddingTop: 16,
-							paddingBottom: 16,
-							borderRadius: 14,
-							border: "none",
-							boxShadow: "0 4px 20px rgba(255,255,255,0.08)",
-							animation: "hs-fadeSlideUp 500ms ease-out 800ms both",
-							WebkitAppRegion: "no-drag",
-						} as React.CSSProperties}
+							background: "rgba(255,255,255,0.02)",
+							border: "1px solid rgba(255,255,255,0.05)",
+							boxShadow: "0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+							backdropFilter: "blur(20px)",
+							WebkitBackdropFilter: "blur(20px)",
+							animation: "hs-fadeSlideUp 600ms ease-out 700ms both",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+							e.currentTarget.style.borderColor = "rgba(224,0,15,0.3)";
+							e.currentTarget.style.transform = "translateY(-4px)";
+							e.currentTarget.style.boxShadow = "0 20px 50px rgba(224,0,15,0.2), inset 0 1px 0 rgba(255,255,255,0.1)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+							e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
+							e.currentTarget.style.transform = "translateY(0px)";
+							e.currentTarget.style.boxShadow = "0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)";
+						}}
 					>
-						Start Recording
-					</button>
-					{/* Open File */}
-					<button
+						<div className="absolute inset-0 bg-gradient-to-br from-[#E0000F]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+						
+						<div className="w-14 h-14 rounded-full bg-[#E0000F]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(224,0,15,0.2)] group-hover:shadow-[0_0_30px_rgba(224,0,15,0.5)] border border-[#E0000F]/30">
+							<CircleDot className="w-6 h-6 text-[#E0000F]" />
+						</div>
+						
+						<h2 className="text-[20px] font-semibold mb-2 text-white font-sans tracking-tight">New Recording</h2>
+						<p className="text-[13px] text-white/40 font-medium leading-relaxed font-sans">Capture your screen with AI-powered editing</p>
+					</div>
+
+					<div
 						onClick={handleEditClick}
-						className="cursor-pointer"
+						className="flex-1 flex flex-col items-start p-8 rounded-[24px] cursor-pointer group transition-all duration-500 relative overflow-hidden"
 						style={{
-							background: "transparent",
-							color: "rgba(255,255,255,0.8)",
-							fontFamily: "'Inter', system-ui, sans-serif",
-							fontWeight: 600,
-							fontSize: 16,
-							paddingLeft: 40,
-							paddingRight: 40,
-							paddingTop: 16,
-							paddingBottom: 16,
-							borderRadius: 14,
-							border: "1px solid rgba(255,255,255,0.06)",
-							animation: "hs-fadeSlideUp 500ms ease-out 900ms both",
-							WebkitAppRegion: "no-drag",
-						} as React.CSSProperties}
+							background: "rgba(255,255,255,0.02)",
+							border: "1px solid rgba(255,255,255,0.05)",
+							boxShadow: "0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+							backdropFilter: "blur(20px)",
+							WebkitBackdropFilter: "blur(20px)",
+							animation: "hs-fadeSlideUp 600ms ease-out 850ms both",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+							e.currentTarget.style.borderColor = "rgba(37,99,235,0.3)";
+							e.currentTarget.style.transform = "translateY(-4px)";
+							e.currentTarget.style.boxShadow = "0 20px 50px rgba(37,99,235,0.2), inset 0 1px 0 rgba(255,255,255,0.1)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+							e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
+							e.currentTarget.style.transform = "translateY(0px)";
+							e.currentTarget.style.boxShadow = "0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)";
+						}}
 					>
-						Open File
-					</button>
+						<div className="absolute inset-0 bg-gradient-to-br from-[#2563EB]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+						
+						<div className="w-14 h-14 rounded-full bg-[#2563EB]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(37,99,235,0.2)] group-hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] border border-[#2563EB]/30">
+							<Film className="w-6 h-6 text-[#2563EB]" />
+						</div>
+						
+						<h2 className="text-[20px] font-semibold mb-2 text-white font-sans tracking-tight">Edit Video</h2>
+						<p className="text-[13px] text-white/40 font-medium leading-relaxed font-sans">Open and edit an existing recording</p>
+					</div>
 				</div>
 
-				{/* ---- KEYBOARD HINTS ---- */}
+				{/* ---- KEYBOARD HINTS ---- */}{/* ---- KEYBOARD HINTS ---- */}
 				<div
 					className="flex items-center gap-3"
 					style={{
