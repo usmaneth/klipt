@@ -1576,7 +1576,7 @@ const TimelineEditor = memo(function TimelineEditor({
 								<DropdownMenuItem
 									key={ratio}
 									onClick={() => onAspectRatioChange(ratio)}
-									className="text-sm font-medium text-slate-300 hover:text-white focus:text-white focus:bg-blue-600/20 cursor-pointer flex items-center justify-between gap-4 py-2 px-3 rounded-lg transition-colors"
+									className="text-sm font-medium text-slate-300 hover:text-white focus:text-white focus:bg-white/[0.08] cursor-pointer flex items-center justify-between gap-4 py-2 px-3 rounded-lg transition-colors"
 								>
 									<span>{getAspectRatioLabel(ratio)}</span>
 									{aspectRatio === ratio && (

@@ -1,8 +1,14 @@
 import type { Span } from "dnd-timeline";
-import { Download, FolderOpen, Languages, Redo2, Share, Undo2 } from "lucide-react";
+import { ChevronDown, Download, FolderOpen, Languages, Redo2, Share, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -192,6 +198,8 @@ export default function VideoEditor() {
 	const [exportedFilePath, setExportedFilePath] = useState<string | undefined>(undefined);
 	const [hasPendingExportSave, setHasPendingExportSave] = useState(false);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
+	const [projectName, setProjectName] = useState("Untitled Project");
+	const [isEditingProjectName, setIsEditingProjectName] = useState(false);
 
 	// Webcam overlay state
 	const [webcamPath, setWebcamPath] = useState<string | null>(null);
@@ -707,10 +715,12 @@ export default function VideoEditor() {
 			});
 
 			const fileNameBase =
-				sourcePath
-					.split(/[\\/]/)
-					.pop()
-					?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
+				projectName && projectName !== "Untitled Project"
+					? projectName
+					: sourcePath
+							.split(/[\\/]/)
+							.pop()
+							?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
 			const projectSnapshot = JSON.stringify(projectData);
 			const result = await window.electronAPI.saveProjectFile(
 				projectData,
@@ -739,6 +749,7 @@ export default function VideoEditor() {
 			videoPath,
 			videoSourcePath,
 			currentProjectPath,
+			projectName,
 			wallpaper,
 			shadowIntensity,
 			backgroundBlur,
@@ -2173,7 +2184,7 @@ export default function VideoEditor() {
 					<button
 						type="button"
 						onClick={handleLoadProject}
-						className="px-3 py-1.5 rounded-md bg-[#2563EB] text-white text-sm hover:bg-[#2563EB]/90"
+						className="px-3 py-1.5 rounded-md bg-white text-black text-sm hover:bg-white/90"
 					>
 						Load Project File
 					</button>
@@ -2187,7 +2198,7 @@ export default function VideoEditor() {
 			<div className="flex flex-col h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans">
 				{/* Ambient orbs (z-0) */}
 				<div className="absolute top-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-[#E0000F] opacity-[0.05] blur-[150px] pointer-events-none mix-blend-screen z-0" />
-				<div className="absolute bottom-[-15%] left-[-10%] w-[35vw] h-[35vw] rounded-full bg-[#0A84FF] opacity-[0.04] blur-[120px] pointer-events-none mix-blend-screen z-0" />
+				<div className="absolute bottom-[-15%] left-[-10%] w-[35vw] h-[35vw] rounded-full bg-[#E0000F] opacity-[0.03] blur-[120px] pointer-events-none mix-blend-screen z-0" />
 				<div className="absolute top-[30%] right-[10%] w-[25vw] h-[25vw] rounded-full bg-[#BF5AF2] opacity-[0.03] blur-[100px] pointer-events-none mix-blend-screen z-0" />
 
 				{/* Ultra-Compact Floating Toolbar Pill (z-50) */}
@@ -2238,9 +2249,33 @@ export default function VideoEditor() {
 						<Separator orientation="vertical" className="h-3 bg-white/[0.08]" />
 
 						<div className="flex items-center gap-1.5">
-							<span className="text-[9px] text-white/40">
-								{currentProjectPath ? currentProjectPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") : "Untitled Project"}
-							</span>
+							{isEditingProjectName ? (
+								<input
+									autoFocus
+									type="text"
+									value={projectName}
+									onChange={(e) => setProjectName(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											setIsEditingProjectName(false);
+										}
+										if (e.key === "Escape") {
+											setIsEditingProjectName(false);
+										}
+									}}
+									onBlur={() => setIsEditingProjectName(false)}
+									className="text-[9px] text-white/80 bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-[#E0000F]/50 w-[120px]"
+								/>
+							) : (
+								<button
+									type="button"
+									onClick={() => setIsEditingProjectName(true)}
+									className="text-[9px] text-white/40 hover:text-white/70 transition-colors cursor-text"
+									title="Click to rename project"
+								>
+									{projectName || "Untitled Project"}
+								</button>
+							)}
 							{hasUnsavedChanges && (
 								<div className="w-[6px] h-[6px] rounded-full bg-[#E0000F] flex-shrink-0" />
 							)}
@@ -2266,19 +2301,66 @@ export default function VideoEditor() {
 							</TooltipContent>
 						</Tooltip>
 
-						<button className="h-6 px-2 rounded-md flex items-center gap-1 text-white/20 hover:text-white/50 transition-colors text-[9px] font-medium">
+						<button
+							type="button"
+							onClick={() => {
+								if (exportedFilePath) {
+									void navigator.clipboard.writeText(exportedFilePath);
+									toast.success("Path copied!");
+								} else {
+									toast.info("Export a video first");
+								}
+							}}
+							className="h-6 px-2 rounded-md flex items-center gap-1 text-white/20 hover:text-white/50 transition-colors text-[9px] font-medium"
+						>
 							<Share className="w-2.5 h-2.5" />
 							Share
 						</button>
 
-						<button
-							onClick={handleOpenExportDialog}
-							disabled={isExporting}
-							className="h-6 px-3 flex items-center gap-1.5 rounded-lg bg-white text-black text-[8px] font-semibold hover:bg-white/90 active:bg-white/80 transition-all disabled:opacity-50 disabled:pointer-events-none"
-						>
-							<Download className="w-2.5 h-2.5" />
-							Export
-						</button>
+						<div className="flex items-center">
+							<button
+								type="button"
+								onClick={handleOpenExportDialog}
+								disabled={isExporting}
+								className="h-6 px-3 flex items-center gap-1.5 rounded-l-lg bg-white text-black text-[8px] font-semibold hover:bg-white/90 active:bg-white/80 transition-all disabled:opacity-50 disabled:pointer-events-none"
+							>
+								<Download className="w-2.5 h-2.5" />
+								Export {exportFormat === "gif" ? "GIF" : "MP4"}
+							</button>
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<button
+										type="button"
+										disabled={isExporting}
+										className="h-6 px-1 flex items-center rounded-r-lg bg-white text-black border-l border-black/10 hover:bg-white/90 active:bg-white/80 transition-all disabled:opacity-50 disabled:pointer-events-none"
+									>
+										<ChevronDown className="w-2.5 h-2.5" />
+									</button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="bg-[#1a1a1e] border-white/10 min-w-[140px]">
+									<DropdownMenuItem
+										className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
+										onSelect={() => {
+											setExportFormat("mp4");
+											handleOpenExportDialog();
+										}}
+									>
+										<Download className="w-3 h-3 mr-2" />
+										Export as MP4
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
+										onSelect={() => {
+											setExportFormat("gif");
+											handleOpenExportDialog();
+										}}
+									>
+										<Download className="w-3 h-3 mr-2" />
+										Export as GIF
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
 					</div>
 				</div>
 

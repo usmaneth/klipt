@@ -71,28 +71,28 @@ export const WebcamBackgroundPanel = memo(function WebcamBackgroundPanel({
 						>
 							<ToggleGroupItem
 								value="none"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<EyeOff className="w-3 h-3" />
 								None
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="remove"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<Scan className="w-3 h-3" />
 								Remove
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="blur"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<Eye className="w-3 h-3" />
 								Blur
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="color"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<Paintbrush className="w-3 h-3" />
 								Color

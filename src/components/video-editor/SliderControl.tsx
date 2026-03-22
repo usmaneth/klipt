@@ -105,7 +105,7 @@ export const SliderControl = memo(function SliderControl({
 							? "w-full [&_[role=slider]]:bg-orange-500 [&_[role=slider]]:border-orange-500 [&_[role=slider]]:shadow-[0_0_10px_rgba(249,115,22,0.6)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-orange-600 [&_.bg-primary]:to-orange-400 [&_.bg-secondary]:bg-white/10"
 							: accentColor === "green"
 								? "w-full [&_[role=slider]]:bg-green-400 [&_[role=slider]]:border-green-400 [&_[role=slider]]:shadow-[0_0_10px_rgba(74,222,128,0.6)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-green-600 [&_.bg-primary]:to-green-400 [&_.bg-secondary]:bg-white/10"
-								: "w-full [&_[role=slider]]:bg-cyan-400 [&_[role=slider]]:border-cyan-400 [&_[role=slider]]:shadow-[0_0_10px_rgba(34,211,238,0.6)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-blue-600 [&_.bg-primary]:to-cyan-400 [&_.bg-secondary]:bg-white/10"
+								: "w-full [&_[role=slider]]:bg-white/60 [&_[role=slider]]:border-white/60 [&_[role=slider]]:shadow-[0_0_10px_rgba(255,255,255,0.15)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-white/30 [&_.bg-primary]:to-white/50 [&_.bg-secondary]:bg-white/10"
 				}
 			/>
 		</>

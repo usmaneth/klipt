@@ -222,7 +222,7 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 			{status === "processing" && (
 				<div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
 					<div
-						className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+						className="h-full rounded-full bg-gradient-to-r from-[#E0000F] to-[#FF4500] transition-all duration-300 ease-out shadow-[0_0_10px_rgba(224,0,15,0.4)]"
 						style={{ width: `${progress}%` }}
 					/>
 				</div>
@@ -234,7 +234,7 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 					type="button"
 					onClick={handleEnhance}
 					disabled={!videoUrl}
-					className="w-full gap-2 h-8 text-xs font-semibold tracking-wide bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 border-none disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+					className="w-full gap-2 h-8 text-xs font-semibold tracking-wide bg-gradient-to-r from-[#E0000F] to-[#FF4500] text-white rounded-lg shadow-[0_0_15px_rgba(224,0,15,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 border-none disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
 				>
 					<Sparkles className="w-3.5 h-3.5" />
 					Enhance Audio

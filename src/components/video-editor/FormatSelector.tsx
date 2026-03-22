@@ -50,9 +50,9 @@ export function FormatSelector({
 						onClick={() => onFormatChange(option.value)}
 						className={cn(
 							"relative flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200",
-							"focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 focus:ring-offset-2 focus:ring-offset-[#09090b]",
+							"focus:outline-none focus:ring-2 focus:ring-[#E0000F]/50 focus:ring-offset-2 focus:ring-offset-[#09090b]",
 							isSelected
-								? "bg-[#2563EB]/10 border-[#2563EB]/50 text-white"
+								? "bg-[#E0000F]/10 border-[#E0000F]/50 text-white"
 								: "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20 hover:text-slate-200",
 							disabled && "opacity-50 cursor-not-allowed",
 						)}
@@ -60,7 +60,7 @@ export function FormatSelector({
 						<div
 							className={cn(
 								"w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-								isSelected ? "bg-[#2563EB]/20 text-[#2563EB]" : "bg-white/5",
+								isSelected ? "bg-[#E0000F]/20 text-[#E0000F]" : "bg-white/5",
 							)}
 						>
 							{option.icon}
@@ -70,7 +70,7 @@ export function FormatSelector({
 							<div className="text-xs text-slate-500 mt-0.5">{option.description}</div>
 						</div>
 						{isSelected && (
-							<div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#2563EB]" />
+							<div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#E0000F]" />
 						)}
 					</button>
 				);

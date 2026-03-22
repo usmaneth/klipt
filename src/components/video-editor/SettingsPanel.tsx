@@ -56,7 +56,8 @@ import {
 	SPEED_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
-import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
+// AI Background Removal — shelved, will re-enable in AI features phase
+// import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
 import { WebcamPanel, type WebcamPanelProps } from "./WebcamPanel";
 
 const GRADIENTS = [
@@ -338,12 +339,13 @@ export function SettingsPanel({
 	onWebcamBorderWidthChange,
 	webcamShadow = 0,
 	onWebcamShadowChange,
-	webcamBgMode = "none",
-	onWebcamBgModeChange,
-	webcamBgBlur = 10,
-	onWebcamBgBlurChange,
-	webcamBgColor = "#00FF00",
-	onWebcamBgColorChange,
+	// AI Background Removal — shelved, will re-enable in AI features phase
+	webcamBgMode: _webcamBgMode = "none",
+	onWebcamBgModeChange: _onWebcamBgModeChange,
+	webcamBgBlur: _webcamBgBlur = 10,
+	onWebcamBgBlurChange: _onWebcamBgBlurChange,
+	webcamBgColor: _webcamBgColor = "#00FF00",
+	onWebcamBgColorChange: _onWebcamBgColorChange,
 	isExporting: _isExporting = false,
 	videoUrl,
 	audioEnhanced = false,
@@ -395,6 +397,7 @@ export function SettingsPanel({
 	const [showCropModal, setShowCropModal] = useState(false);
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
 	const [activeTab, setActiveTab] = useState<SettingsTab>("style");
+	const [showExportFormatMenu, setShowExportFormatMenu] = useState(false);
 
 	useEffect(() => {
 		const nextTab = getBackgroundTabForWallpaper(selected);
@@ -941,7 +944,7 @@ export function SettingsPanel({
 
 								{/* Webcam panels (inside Accordion wrapper for compatibility) */}
 								{webcamPath && onWebcamVisibleChange && (
-									<Accordion type="multiple" defaultValue={["camera", "webcam-background"]}>
+									<Accordion type="multiple" defaultValue={["camera"]}>
 										<WebcamPanel
 											webcamVisible={webcamVisible}
 											onWebcamVisibleChange={onWebcamVisibleChange}
@@ -958,6 +961,7 @@ export function SettingsPanel({
 											webcamShadow={webcamShadow}
 											onWebcamShadowChange={onWebcamShadowChange}
 										/>
+										{/* AI Background Removal — shelved, will re-enable in AI features phase
 										{onWebcamBgModeChange && (
 											<WebcamBackgroundPanel
 												webcamBgMode={webcamBgMode}
@@ -968,6 +972,7 @@ export function SettingsPanel({
 												onWebcamBgColorChange={onWebcamBgColorChange ?? (() => undefined)}
 											/>
 										)}
+										*/}
 									</Accordion>
 								)}
 
@@ -1463,29 +1468,62 @@ export function SettingsPanel({
 			{activeTab === "export" && (
 				<div className="flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "12px 14px" }}>
 					{/* Split export button */}
-					<div className="flex mb-2" style={{ gap: "1px" }}>
-						<button
-							onClick={_onExport}
-							className="flex-1 text-white font-semibold text-[13px] active:scale-[0.98] transition-all duration-150"
-							style={{
-								padding: "10px",
-								borderRadius: "10px 0 0 10px",
-								background: "linear-gradient(135deg, #E0000F, #FF4500)",
-								boxShadow: "0 4px 16px rgba(224,0,15,0.25)",
-							}}
-						>
-							Export
-						</button>
-						<button
-							className="flex items-center justify-center text-white/80"
-							style={{
-								width: "38px",
-								borderRadius: "0 10px 10px 0",
-								background: "linear-gradient(135deg, #C0000D, #E03D00)",
-							}}
-						>
-							&#9662;
-						</button>
+					<div className="relative">
+						<div className="flex mb-2" style={{ gap: "1px" }}>
+							<button
+								onClick={_onExport}
+								className="flex-1 text-white font-semibold text-[13px] active:scale-[0.98] transition-all duration-150"
+								style={{
+									padding: "10px",
+									borderRadius: "10px 0 0 10px",
+									background: "linear-gradient(135deg, #E0000F, #FF4500)",
+									boxShadow: "0 4px 16px rgba(224,0,15,0.25)",
+								}}
+							>
+								Export {exportFormat === "gif" ? "GIF" : "MP4"}
+							</button>
+							<button
+								onClick={() => setShowExportFormatMenu((prev) => !prev)}
+								className="flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all duration-150"
+								style={{
+									width: "38px",
+									borderRadius: "0 10px 10px 0",
+									background: "linear-gradient(135deg, #C0000D, #E03D00)",
+								}}
+							>
+								&#9662;
+							</button>
+						</div>
+						{showExportFormatMenu && (
+							<div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg overflow-hidden border border-white/10 bg-[#18181b] shadow-xl z-50">
+								<button
+									onClick={() => {
+										onExportFormatChange?.("mp4");
+										setShowExportFormatMenu(false);
+									}}
+									className={cn(
+										"w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors",
+										exportFormat === "mp4" ? "bg-white/[0.08] text-white" : "text-white/50 hover:bg-white/[0.05] hover:text-white/80",
+									)}
+								>
+									<Film className="w-3.5 h-3.5" />
+									Export as MP4
+								</button>
+								<button
+									onClick={() => {
+										onExportFormatChange?.("gif");
+										setShowExportFormatMenu(false);
+									}}
+									className={cn(
+										"w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors",
+										exportFormat === "gif" ? "bg-white/[0.08] text-white" : "text-white/50 hover:bg-white/[0.05] hover:text-white/80",
+									)}
+								>
+									<Image className="w-3.5 h-3.5" />
+									Export as GIF
+								</button>
+							</div>
+						)}
 					</div>
 
 					{/* Load / Save secondary buttons */}
@@ -1542,7 +1580,7 @@ export function SettingsPanel({
 							<Button
 								onClick={() => setShowCropModal(false)}
 								size="lg"
-								className="bg-[#2563EB] hover:bg-[#2563EB]/90 text-white"
+								className="bg-[#E0000F] hover:bg-[#E0000F]/90 text-white"
 							>
 								{t("common.actions.done")}
 							</Button>

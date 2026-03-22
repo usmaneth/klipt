@@ -145,19 +145,19 @@ export const ThumbnailPanel = memo(function ThumbnailPanel({
 						>
 							<ToggleGroupItem
 								value="16:9"
-								className="text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								16:9
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="1:1"
-								className="text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								1:1
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="4:3"
-								className="text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								4:3
 							</ToggleGroupItem>
@@ -193,7 +193,7 @@ export const ThumbnailPanel = memo(function ThumbnailPanel({
 									onClick={() => setSelectedIndex(index)}
 									className={`relative rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
 										selectedIndex === index
-											? "border-[#2563EB] shadow-[0_0_12px_rgba(37,99,235,0.5)]"
+											? "border-[#E0000F] shadow-[0_0_12px_rgba(224,0,15,0.5)]"
 											: "border-white/10 hover:border-white/30"
 									}`}
 								>
@@ -221,7 +221,7 @@ export const ThumbnailPanel = memo(function ThumbnailPanel({
 					{selectedIndex !== null && candidates.length > 0 && (
 						<Button
 							onClick={handleSave}
-							className="w-full gap-2 bg-[#2563EB] hover:bg-[#2563EB]/90 text-white h-8 text-xs font-semibold rounded-lg transition-all hover:shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+							className="w-full gap-2 bg-[#E0000F] hover:bg-[#E0000F]/90 text-white h-8 text-xs font-semibold rounded-lg transition-all hover:shadow-[0_0_15px_rgba(224,0,15,0.4)]"
 						>
 							<Download className="w-3.5 h-3.5" />
 							Save Thumbnail

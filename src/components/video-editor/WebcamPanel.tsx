@@ -62,7 +62,7 @@ export function WebcamPanel({
 		<AccordionItem value="camera" className="border-white/5 rounded-xl bg-white/[0.02] px-3">
 			<AccordionTrigger className="py-2.5 hover:no-underline">
 				<div className="flex items-center gap-2">
-					<Camera className="w-4 h-4 text-[#2563EB]" />
+					<Camera className="w-4 h-4 text-[#E0000F]" />
 					<span className="text-xs font-medium">{t("editor.camera.title")}</span>
 				</div>
 			</AccordionTrigger>
@@ -76,7 +76,7 @@ export function WebcamPanel({
 						<Switch
 							checked={webcamVisible}
 							onCheckedChange={onWebcamVisibleChange}
-							className="data-[state=checked]:bg-[#2563EB] scale-90"
+							className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
 						/>
 					</div>
 
@@ -97,21 +97,21 @@ export function WebcamPanel({
 						>
 							<ToggleGroupItem
 								value="circle"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<Circle className="w-3 h-3" />
 								{t("editor.camera.shapeCircle")}
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="rounded-rect"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<RectangleHorizontal className="w-3 h-3" />
 								{t("editor.camera.shapeRoundedRect")}
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="square"
-								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-[#2563EB] data-[state=on]:text-white rounded-md h-7"
+								className="flex items-center gap-1 text-[10px] data-[state=on]:bg-white/[0.12] data-[state=on]:text-white rounded-md h-7"
 							>
 								<Square className="w-3 h-3" />
 								{t("editor.camera.shapeSquare")}
