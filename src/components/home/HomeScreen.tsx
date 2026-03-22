@@ -1,51 +1,7 @@
-import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CircleDot, Film, FileVideo } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  CSS keyframes injected once into <head>                            */
-/* ------------------------------------------------------------------ */
-const KEYFRAMES = `
-@keyframes hs-breathe {
-	0%, 100% { transform: scale(1); }
-	50%      { transform: scale(1.02); }
-}
-@keyframes hs-fadeSlideUp {
-	from { opacity: 0; transform: translateY(10px); }
-	to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes hs-fadeIn {
-	from { opacity: 0; }
-	to   { opacity: 1; }
-}
-@keyframes hs-scaleIn {
-	from { opacity: 0; transform: scale(0.8); }
-	to   { opacity: 1; transform: scale(1); }
-}
-@keyframes hs-typewriter {
-	0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
-	30%  { opacity: 1; clip-path: inset(0 100% 0 0); }
-	100% { opacity: 1; clip-path: inset(0 0% 0 0); }
-}
-@keyframes hs-drift {
-	0%, 100% { transform: translateX(-20px); }
-	50%      { transform: translateX(20px); }
-}
-`;
-
-let stylesInjected = false;
-function injectStyles() {
-	if (stylesInjected) return;
-	stylesInjected = true;
-	const style = document.createElement("style");
-	style.textContent = KEYFRAMES;
-	document.head.appendChild(style);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-/** Simple relative time formatter -- avoids pulling in date-fns. */
+/** Simple relative time formatter — avoids pulling in date-fns. */
 function relativeTime(timestampMs: number): string {
 	const seconds = Math.floor((Date.now() - timestampMs) / 1000);
 	if (seconds < 60) return "just now";
@@ -59,17 +15,10 @@ function relativeTime(timestampMs: number): string {
 	return `${months}mo ago`;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
 export function HomeScreen() {
-	const [recentProjects, setRecentProjects] = useState<
-		{ name: string; path: string; mtime: number }[]
-	>([]);
+	const [recentProjects, setRecentProjects] = useState<{ name: string; path: string; mtime: number }[]>([]);
 
 	useEffect(() => {
-		injectStyles();
 		async function fetchProjects() {
 			try {
 				const res = await window.electronAPI?.getRecentProjects();
@@ -83,31 +32,12 @@ export function HomeScreen() {
 		fetchProjects();
 	}, []);
 
-	/* ---- keyboard shortcuts ---- */
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			if (e.metaKey && e.key === "n") {
-				e.preventDefault();
-				handleRecordClick();
-			}
-			if (e.metaKey && e.key === "o") {
-				e.preventDefault();
-				handleEditClick();
-			}
-		}
-		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, []);
-
-	/* ---- handlers ---- */
-
 	const handleRecordClick = () => {
 		window.electronAPI?.openHudOverlay().catch((err: unknown) => {
+			// The home window may be destroyed before the IPC response arrives;
+			// this is expected and safe to ignore.
 			console.warn("openHudOverlay IPC interrupted:", err);
 		});
-		// Close this home window as a fallback in case the main process wrapper
-		// doesn't tear it down quickly enough.
-		setTimeout(() => window.close(), 120);
 	};
 
 	const handleEditClick = async () => {
@@ -115,8 +45,10 @@ export function HomeScreen() {
 			const res = await window.electronAPI?.openVideoFilePicker();
 			if (res && res.success && res.path) {
 				await window.electronAPI?.setCurrentVideoPath(res.path);
-				window.electronAPI?.switchToEditor().catch(() => {});
-				setTimeout(() => window.close(), 120);
+				// switchToEditor will destroy this window; catch the expected rejection.
+				window.electronAPI?.switchToEditor().catch(() => {
+					// Window destroyed before IPC response — expected.
+				});
 			}
 		} catch (err) {
 			console.error("Failed to open video for editing:", err);
@@ -126,406 +58,85 @@ export function HomeScreen() {
 	const handleProjectClick = async (projectPath: string) => {
 		try {
 			await window.electronAPI?.openSpecificProject(projectPath);
-			setTimeout(() => window.close(), 120);
 		} catch {
-			// Window destroyed on editor open -- expected.
+			// The home window is destroyed when the editor opens, so the IPC
+			// response may fail to deliver.  This is expected and safe to ignore.
 		}
 	};
 
-	/* ---- render ---- */
-
 	return (
-		<div
-			className="relative flex flex-col items-center justify-center h-screen w-full overflow-hidden font-sans selection:bg-[#E0000F]/30"
-			style={{
-				background: "#0a0a0a",
-				WebkitAppRegion: "drag",
-			} as React.CSSProperties}
-		>
-			{/* ============ BACKGROUND ORBS ============ */}
-			{/* Red ambient orb -- top center with drift */}
-			<div
-				className="pointer-events-none absolute"
-				style={{
-					top: "-100px",
-					left: "50%",
-					marginLeft: -200,
-					width: 400,
-					height: 400,
-					borderRadius: "50%",
-					background: "rgba(224,0,15,0.035)",
-					filter: "blur(100px)",
-					animation: "hs-drift 20s ease-in-out infinite",
-				}}
-			/>
-			{/* Purple ambient orb -- bottom right */}
-			<div
-				className="pointer-events-none absolute"
-				style={{
-					bottom: "-60px",
-					right: "-60px",
-					width: 250,
-					height: 250,
-					borderRadius: "50%",
-					background: "rgba(191,90,242,0.02)",
-					filter: "blur(70px)",
-				}}
-			/>
+		<div className="flex flex-col h-screen w-full bg-[#050505] text-[#F2F0ED] overflow-hidden items-center justify-center p-8 selection:bg-[#E0000F]/30 relative font-sans" style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+			{/* Ambient spatial lighting */}
+			<div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vw] rounded-full bg-[#E0000F]/10 blur-[150px] pointer-events-none mix-blend-screen opacity-60 animate-pulse-slow" />
+			<div className="absolute bottom-1/4 right-1/4 w-[50vw] h-[50vw] rounded-full bg-[#2563EB]/10 blur-[180px] pointer-events-none mix-blend-screen opacity-60" />
+			<div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
 
-			{/* ============ CENTERED CONTENT ============ */}
-			<div
-				className="relative z-10 flex flex-col items-center"
-				style={{
-					width: "100%",
-					maxWidth: 480,
-					WebkitAppRegion: "no-drag",
-				} as React.CSSProperties}
-			>
-				{/* ---- LOGO ---- */}
-				<div
-					style={{
-						width: 72,
-						height: 72,
-						position: "relative",
-						animation: "hs-scaleIn 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both",
-					}}
-				>
-					<div
-						style={{
-							width: "100%",
-							height: "100%",
-							position: "relative",
-							animation: "hs-breathe 4s ease-in-out infinite",
-						}}
-					>
-						{/* Outer rectangle */}
-						<div
-							style={{
-								position: "absolute",
-								inset: 0,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<div
-								style={{
-									width: 36,
-									height: 36,
-									border: "2.5px solid rgba(255,255,255,0.06)",
-									borderRadius: 6,
-									transform: "rotate(5deg)",
-									position: "absolute",
-								}}
-							/>
-							{/* Middle rectangle */}
-							<div
-								style={{
-									width: 36,
-									height: 36,
-									border: "2.5px solid rgba(255,255,255,0.12)",
-									borderRadius: 6,
-									transform: "rotate(-5deg)",
-									position: "absolute",
-								}}
-							/>
-							{/* Inner solid rectangle */}
-							<div
-								style={{
-									width: 36,
-									height: 36,
-									borderRadius: 6,
-									transform: "rotate(20deg)",
-									background: "#E0000F",
-									boxShadow: "0 0 32px rgba(224,0,15,0.35)",
-									position: "absolute",
-								}}
-							/>
-						</div>
-					</div>
+			<div className="flex flex-col items-center mb-16" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+				<div className="w-16 h-16 relative flex items-center justify-center mb-4">
+					{/* klipt logo shape simulation - three rotating rectangles */}
+					<div className="absolute w-8 h-8 bg-transparent border-4 border-[#2E2E2E] rounded transform rotate-12" />
+					<div className="absolute w-8 h-8 bg-transparent border-4 border-[#555] rounded transform -rotate-12" />
+					<div className="absolute w-8 h-8 bg-gradient-to-tr from-[#E0000F] to-[#FF4500] rounded transform rotate-45 shadow-[0_0_30px_rgba(224,0,15,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]" />
 				</div>
-
-				{/* ---- WORDMARK ---- */}
-				<h1
-					style={{
-						fontFamily: "'Inter', system-ui, sans-serif",
-						fontSize: 40,
-						fontWeight: 500,
-						letterSpacing: "-0.05em",
-						color: "#FFFFFF",
-						margin: 0,
-						marginTop: 18,
-						lineHeight: 1,
-						animation: "hs-fadeSlideUp 500ms ease-out 400ms both",
-					}}
-				>
-					klipt
-				</h1>
-
-				{/* ---- TAGLINE ---- */}
-				<p
-					style={{
-						fontFamily: "'Inter', system-ui, sans-serif",
-						fontSize: 11,
-						textTransform: "uppercase",
-						letterSpacing: "0.08em",
-						color: "rgba(255,255,255,0.15)",
-						marginTop: 8,
-						fontWeight: 400,
-						animation: "hs-typewriter 1200ms ease-out 600ms both",
-					}}
-				>
-					EDIT AT THE SPEED OF THOUGHT
-				</p>
-
-				{/* ---- ACTION BUTTONS ---- */}
-				<div
-					className="flex gap-2"
-					style={{ marginTop: 28 }}
-				>
-					{/* Start Recording */}
-					<button
-						onClick={handleRecordClick}
-						className="cursor-pointer"
-						style={{
-							background: "#FFFFFF",
-							color: "#000000",
-							fontFamily: "'Inter', system-ui, sans-serif",
-							fontWeight: 600,
-							fontSize: 14,
-							paddingLeft: 32,
-							paddingRight: 32,
-							paddingTop: 12,
-							paddingBottom: 12,
-							borderRadius: 14,
-							border: "none",
-							boxShadow: "0 4px 20px rgba(255,255,255,0.08)",
-							animation: "hs-fadeSlideUp 500ms ease-out 800ms both",
-							WebkitAppRegion: "no-drag",
-						} as React.CSSProperties}
-					>
-						Start Recording
-					</button>
-					{/* Open File */}
-					<button
-						onClick={handleEditClick}
-						className="cursor-pointer"
-						style={{
-							background: "transparent",
-							color: "rgba(255,255,255,0.35)",
-							fontFamily: "'Inter', system-ui, sans-serif",
-							fontWeight: 600,
-							fontSize: 14,
-							paddingLeft: 32,
-							paddingRight: 32,
-							paddingTop: 12,
-							paddingBottom: 12,
-							borderRadius: 14,
-							border: "1px solid rgba(255,255,255,0.06)",
-							animation: "hs-fadeSlideUp 500ms ease-out 900ms both",
-							WebkitAppRegion: "no-drag",
-						} as React.CSSProperties}
-					>
-						Open File
-					</button>
-				</div>
-
-				{/* ---- KEYBOARD HINTS ---- */}
-				<div
-					className="flex items-center gap-3"
-					style={{
-						marginTop: 10,
-						animation: "hs-fadeIn 500ms ease-out 1000ms both",
-					}}
-				>
-					<span className="flex items-center gap-1">
-						<kbd
-							style={{
-								background: "rgba(255,255,255,0.03)",
-								border: "1px solid rgba(255,255,255,0.06)",
-								borderRadius: 3,
-								paddingLeft: 6,
-								paddingRight: 6,
-								paddingTop: 2,
-								paddingBottom: 2,
-								fontFamily: "'SF Mono', 'Fira Code', monospace",
-								fontSize: 9,
-								color: "rgba(255,255,255,0.15)",
-							}}
-						>
-							⌘N
-						</kbd>
-						<span
-							style={{
-								fontSize: 9,
-								color: "rgba(255,255,255,0.10)",
-							}}
-						>
-							record
-						</span>
-					</span>
-					<span className="flex items-center gap-1">
-						<kbd
-							style={{
-								background: "rgba(255,255,255,0.03)",
-								border: "1px solid rgba(255,255,255,0.06)",
-								borderRadius: 3,
-								paddingLeft: 6,
-								paddingRight: 6,
-								paddingTop: 2,
-								paddingBottom: 2,
-								fontFamily: "'SF Mono', 'Fira Code', monospace",
-								fontSize: 9,
-								color: "rgba(255,255,255,0.15)",
-							}}
-						>
-							⌘O
-						</kbd>
-						<span
-							style={{
-								fontSize: 9,
-								color: "rgba(255,255,255,0.10)",
-							}}
-						>
-							open
-						</span>
-					</span>
-				</div>
-
-				{/* ---- RECENT PROJECTS ---- */}
-				{recentProjects.length > 0 && (
-					<div
-						className="w-full flex flex-col"
-						style={{ marginTop: 48 }}
-					>
-						<h3
-							style={{
-								fontFamily: "'Inter', system-ui, sans-serif",
-								fontSize: 8,
-								fontWeight: 700,
-								textTransform: "uppercase",
-								letterSpacing: "0.12em",
-								color: "rgba(255,255,255,0.10)",
-								marginBottom: 6,
-								marginTop: 0,
-							}}
-						>
-							RECENT
-						</h3>
-						<div className="flex flex-col">
-							{recentProjects.map((project, i) => (
-								<div
-									key={project.path}
-									onClick={() => handleProjectClick(project.path)}
-									className="group flex items-center justify-between cursor-pointer transition-colors duration-200"
-									style={{
-										padding: "7px 10px",
-										borderRadius: 8,
-										animation: `hs-fadeIn 400ms ease-out ${1000 + i * 80}ms both`,
-									}}
-									onMouseEnter={(e) => {
-										e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-									}}
-									onMouseLeave={(e) => {
-										e.currentTarget.style.background = "transparent";
-									}}
-								>
-									<div className="flex items-center gap-2">
-										{/* Dot */}
-										<div
-											style={{
-												width: 6,
-												height: 6,
-												borderRadius: 1,
-												background: "rgba(255,255,255,0.06)",
-												flexShrink: 0,
-											}}
-										/>
-										<span
-											className="transition-colors duration-200"
-											style={{
-												fontFamily: "'Inter', system-ui, sans-serif",
-												fontSize: 11,
-												fontWeight: 400,
-												color: "rgba(255,255,255,0.35)",
-											}}
-											ref={(el) => {
-												if (!el) return;
-												const parent = el.closest(".group");
-												if (!parent) return;
-												parent.addEventListener("mouseenter", () => {
-													el.style.color = "rgba(255,255,255,0.50)";
-												});
-												parent.addEventListener("mouseleave", () => {
-													el.style.color = "rgba(255,255,255,0.35)";
-												});
-											}}
-										>
-											{project.name.replace(".klipt", "")}
-										</span>
-									</div>
-									<div className="flex items-center gap-2">
-										<span
-											style={{
-												fontFamily: "'SF Mono', 'Fira Code', monospace",
-												fontSize: 9,
-												color: "rgba(255,255,255,0.10)",
-											}}
-										>
-											{relativeTime(project.mtime)}
-										</span>
-										<ChevronRight
-											className="transition-transform duration-200 group-hover:translate-x-[2px]"
-											style={{
-												width: 10,
-												height: 10,
-												color: "rgba(255,255,255,0.08)",
-											}}
-										/>
-									</div>
-								</div>
-							))}
-						</div>
-					</div>
-				)}
+				<h1 className="text-5xl font-semibold tracking-[-0.04em] text-white drop-shadow-lg">klipt</h1>
+				<p className="text-[13px] font-medium text-white/40 mt-3 tracking-[0.2em] uppercase backdrop-blur-sm">edit at the speed of thought</p>
 			</div>
 
-			{/* ============ FOOTER ============ */}
-			<div
-				className="absolute flex items-center justify-center gap-1.5 pointer-events-none"
-				style={{
-					bottom: 12,
-					left: 0,
-					right: 0,
-				}}
-			>
-				<span
-					style={{
-						fontFamily: "'SF Mono', 'Fira Code', monospace",
-						fontSize: 9,
-						color: "rgba(255,255,255,0.08)",
-					}}
+			<div className="flex items-center gap-6 w-full max-w-2xl mb-12" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+				<div
+					onClick={handleRecordClick}
+					className="flex-1 flex flex-col items-start p-8 rounded-[32px] bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] cursor-pointer group hover:bg-white/[0.04] hover:border-white/[0.15] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(224,0,15,0.25)] relative overflow-hidden"
 				>
-					klipt
-				</span>
-				<span
-					style={{
-						width: 2,
-						height: 2,
-						borderRadius: "50%",
-						background: "rgba(255,255,255,0.08)",
-						display: "inline-block",
-					}}
-				/>
-				<span
-					style={{
-						fontFamily: "'SF Mono', 'Fira Code', monospace",
-						fontSize: 9,
-						color: "rgba(255,255,255,0.08)",
-					}}
+					<div className="absolute inset-0 bg-gradient-to-br from-[#E0000F]/20 via-[#FF4500]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none mix-blend-screen" />
+					<div className="w-12 h-12 rounded-full bg-[#E0000F]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(224,0,15,0.2)] group-hover:shadow-[0_0_25px_rgba(224,0,15,0.4)] ring-1 ring-[#E0000F]/30">
+						<CircleDot className="w-6 h-6 text-[#E0000F]" />
+					</div>
+					<h2 className="text-xl font-semibold mb-2 text-white">New Recording</h2>
+					<p className="text-sm text-[#888] font-medium leading-relaxed">Capture your screen with AI-powered editing</p>
+				</div>
+
+				<div
+					onClick={handleEditClick}
+					className="flex-1 flex flex-col items-start p-8 rounded-[32px] bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] cursor-pointer group hover:bg-white/[0.04] hover:border-white/[0.15] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(37,99,235,0.25)] relative overflow-hidden"
 				>
-					v1.0
-				</span>
+					<div className="absolute inset-0 bg-gradient-to-br from-[#2563EB]/20 via-[#4F46E5]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none mix-blend-screen" />
+					<div className="w-12 h-12 rounded-full bg-[#2563EB]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(37,99,235,0.2)] group-hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] ring-1 ring-[#2563EB]/30">
+						<Film className="w-6 h-6 text-[#2563EB]" />
+					</div>
+					<h2 className="text-xl font-semibold mb-2 text-white">Edit Video</h2>
+					<p className="text-sm text-[#888] font-medium leading-relaxed">Open and edit an existing recording</p>
+				</div>
+			</div>
+
+			{recentProjects.length > 0 && (
+				<div className="w-full max-w-2xl flex flex-col" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+					<h3 className="text-xs font-bold uppercase tracking-widest text-[#555] mb-4">Recent Projects</h3>
+					<div className="flex flex-col gap-2">
+						{recentProjects.map((project) => (
+							<div
+								key={project.path}
+								onClick={() => handleProjectClick(project.path)}
+								className="flex items-center justify-between p-3 rounded-xl bg-[#1C1C1C]/30 border border-transparent hover:border-[#2E2E2E] hover:bg-[#1C1C1C] cursor-pointer transition-all duration-200 group"
+							>
+								<div className="flex items-center gap-3">
+									<div className="w-10 h-10 rounded bg-[#0D0D0D] flex items-center justify-center border border-[#2E2E2E] group-hover:border-white/10 transition-colors">
+										<FileVideo className="w-4 h-4 text-[#555] group-hover:text-white/80 transition-colors" />
+									</div>
+									<div className="flex flex-col">
+										<span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">{project.name.replace('.klipt', '')}</span>
+										<span className="text-xs text-[#555] mt-0.5">{relativeTime(project.mtime)}</span>
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+
+			<div className="absolute bottom-6 flex items-center gap-4 text-[#555] font-mono text-[10px] tracking-wider pointer-events-none">
+				<span>Made with klipt</span>
+				<span className="w-1 h-1 rounded-full bg-[#2E2E2E]" />
+				<span>v1.0.0</span>
 			</div>
 		</div>
 	);

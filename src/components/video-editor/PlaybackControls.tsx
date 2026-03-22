@@ -1,6 +1,8 @@
-import { ChevronsLeft, ChevronsRight, Pause, Play } from "lucide-react";
-import { memo, useCallback } from "react";
+import { Pause, Play } from "lucide-react";
+import { memo } from "react";
 import { useScopedT } from "@/contexts/I18nContext";
+import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 interface PlaybackControlsProps {
 	isPlaying: boolean;
@@ -18,7 +20,6 @@ const PlaybackControls = memo(function PlaybackControls({
 	onSeek,
 }: PlaybackControlsProps) {
 	const t = useScopedT("editor");
-
 	function formatTime(seconds: number) {
 		if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return "0:00";
 		const mins = Math.floor(seconds / 60);
@@ -26,38 +27,45 @@ const PlaybackControls = memo(function PlaybackControls({
 		return `${mins}:${secs.toString().padStart(2, "0")}`;
 	}
 
-	function formatRemaining(current: number, total: number) {
-		const remaining = Math.max(0, total - current);
-		return `-${formatTime(remaining)}`;
-	}
-
 	function handleSeekChange(e: React.ChangeEvent<HTMLInputElement>) {
 		onSeek(parseFloat(e.target.value));
 	}
 
-	const handleSkipBack = useCallback(() => {
-		onSeek(Math.max(0, currentTime - 5));
-	}, [onSeek, currentTime]);
-
-	const handleSkipForward = useCallback(() => {
-		onSeek(Math.min(duration, currentTime + 5));
-	}, [onSeek, currentTime, duration]);
-
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
 	return (
-		<div className="flex flex-col items-center gap-0 w-full max-w-md mx-auto px-4">
-			{/* Scrubber */}
-			<div className="relative w-full h-6 flex items-center group cursor-pointer">
-				{/* Track */}
-				<div className="absolute left-0 right-0 h-1 bg-white/[0.06] rounded-full overflow-hidden">
-					<div
-						className="h-full rounded-full"
-						style={{
-							width: `${progress}%`,
-							background: "linear-gradient(90deg, #E0000F, #FF4500)",
-						}}
-					/>
+		<div className="flex items-center gap-5 px-6 py-3 rounded-full bg-white/[0.03] backdrop-blur-[100px] border border-white/[0.08] shadow-[0_20px_80px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-500 hover:bg-white/[0.05] hover:border-white/[0.15] w-full max-w-2xl mx-auto hover:shadow-[0_30px_100px_rgba(0,0,0,0.9),inset_0_2px_4px_rgba(255,255,255,0.2)] z-50">
+			<Button
+				onClick={onTogglePlayPause}
+				size="icon"
+				className={cn(
+					"w-12 h-12 rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] border border-white/10 flex-shrink-0",
+					isPlaying
+						? "bg-white/10 text-white hover:bg-white/20 shadow-[0_0_20px_rgba(59,130,246,0.6)] backdrop-blur-md hover:scale-105"
+						: "bg-gradient-to-tr from-blue-600 to-cyan-400 text-white hover:scale-110 shadow-[0_0_30px_rgba(34,211,238,0.8),inset_0_2px_4px_rgba(255,255,255,0.5)] border border-white/20 backdrop-blur-md border-none",
+				)}
+				aria-label={isPlaying ? t("playback.pause") : t("playback.play")}
+			>
+				{isPlaying ? (
+					<Pause className="w-5 h-5 fill-current" />
+				) : (
+					<Play className="w-5 h-5 fill-current ml-1" />
+				)}
+			</Button>
+
+			<span className="text-[13px] font-mono font-bold text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] tabular-nums w-[40px] text-right tracking-wide">
+				{formatTime(currentTime)}
+			</span>
+
+			<div className="flex-1 relative h-8 flex items-center group cursor-pointer">
+				{/* Custom Track Background */}
+				<div className="absolute left-0 right-0 h-1.5 bg-black/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] rounded-full overflow-hidden border border-white/5">
+					<div 
+						className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 relative" 
+						style={{ width: `${progress}%` }} 
+					>
+						<div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/50 blur-[2px]" />
+					</div>
 				</div>
 
 				{/* Interactive Input */}
@@ -71,79 +79,21 @@ const PlaybackControls = memo(function PlaybackControls({
 					className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
 				/>
 
-				{/* Thumb */}
+				{/* Custom Thumb (visual only, follows progress) */}
 				<div
-					className="absolute pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+					className="absolute w-4 h-4 bg-white rounded-full shadow-[0_0_12px_rgba(34,211,238,0.8),inset_0_-1px_2px_rgba(0,0,0,0.2)] pointer-events-none transition-transform duration-200 ease-out flex items-center justify-center scale-90 group-hover:scale-110"
 					style={{
-						width: 14,
-						height: 14,
-						borderRadius: "50%",
-						backgroundColor: "#fff",
-						boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-						border: "1px solid rgba(0,0,0,0.1)",
 						left: `${progress}%`,
 						transform: "translate(-50%, 0)",
 					}}
-				/>
-			</div>
-
-			{/* Controls row */}
-			<div className="flex items-center justify-between w-full mt-2">
-				{/* Elapsed time */}
-				<span className="font-mono text-white/35 text-[11px] tabular-nums w-[40px]">
-					{formatTime(currentTime)}
-				</span>
-
-				{/* Center controls */}
-				<div className="flex items-center gap-4">
-					<button
-						type="button"
-						onClick={handleSkipBack}
-						className="text-white/35 hover:text-white/60 transition-colors cursor-pointer"
-						aria-label="Skip back"
-					>
-						<ChevronsLeft className="w-4 h-4" />
-					</button>
-
-					<button
-						type="button"
-						onClick={onTogglePlayPause}
-						className="flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer"
-						style={{
-							width: 44,
-							height: 44,
-							background: "rgba(224,0,15,0.08)",
-							border: isPlaying
-								? "2px solid rgba(224,0,15,0.4)"
-								: "2px solid rgba(224,0,15,0.25)",
-							boxShadow: isPlaying
-								? "0 0 32px rgba(224,0,15,0.2)"
-								: "0 0 24px rgba(224,0,15,0.12)",
-						}}
-						aria-label={isPlaying ? t("playback.pause") : t("playback.play")}
-					>
-						{isPlaying ? (
-							<Pause className="w-4 h-4 text-white fill-current" />
-						) : (
-							<Play className="w-4 h-4 text-white fill-current ml-0.5" />
-						)}
-					</button>
-
-					<button
-						type="button"
-						onClick={handleSkipForward}
-						className="text-white/35 hover:text-white/60 transition-colors cursor-pointer"
-						aria-label="Skip forward"
-					>
-						<ChevronsRight className="w-4 h-4" />
-					</button>
+				>
+					<div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
 				</div>
-
-				{/* Remaining time */}
-				<span className="font-mono text-white/15 text-[11px] tabular-nums w-[40px] text-right">
-					{formatRemaining(currentTime, duration)}
-				</span>
 			</div>
+
+			<span className="text-[13px] font-mono font-medium text-white/50 tabular-nums w-[40px] tracking-wide">
+				{formatTime(duration)}
+			</span>
 		</div>
 	);
 });

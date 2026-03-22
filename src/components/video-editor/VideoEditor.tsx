@@ -2203,14 +2203,14 @@ export default function VideoEditor() {
 
 				{/* Ultra-Compact Floating Toolbar Pill (z-50) */}
 				<div
-					className="relative mx-3 mt-2 inline-flex h-10 flex-shrink-0 items-center backdrop-blur-xl rounded-2xl px-3 z-50"
+					className="relative mx-4 mt-4 h-14 flex-shrink-0 bg-white/[0.03] backdrop-blur-[60px] border border-white/[0.08] rounded-2xl flex items-center justify-between px-6 z-50 pl-[80px]"
 					style={{ WebkitAppRegion: "drag", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" } as React.CSSProperties}
 				>
 					{/* Left: Logo + Undo/Redo + Project Name */}
 					<div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
 						<div className="flex items-center gap-1.5 select-none">
-							<div className="w-[6px] h-[6px] rounded-[1px] bg-[#E0000F]" />
-							<span className="text-[9px] font-medium tracking-[-0.03em] text-white/80">klipt</span>
+							<div className="w-2.5 h-2.5 rounded-[2px] bg-[#E0000F] shadow-[0_0_8px_rgba(224,0,15,0.4)]" />
+							<span className="text-[15px] font-semibold tracking-tight text-white/90">Klipt</span>
 						</div>
 
 						<Separator orientation="vertical" className="h-3 bg-white/[0.08]" />
@@ -2221,7 +2221,7 @@ export default function VideoEditor() {
 									<button
 										onClick={handleUndo}
 										disabled={historyPastRef.current.length === 0}
-										className="h-6 w-6 flex items-center justify-center rounded-md text-white/20 hover:text-white/50 disabled:opacity-20 disabled:hover:text-white/20 transition-colors"
+										className="h-8 w-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors cursor-pointer"
 									>
 										<Undo2 className="w-3 h-3" />
 									</button>
@@ -2235,7 +2235,7 @@ export default function VideoEditor() {
 									<button
 										onClick={handleRedo}
 										disabled={historyFutureRef.current.length === 0}
-										className="h-6 w-6 flex items-center justify-center rounded-md text-white/20 hover:text-white/50 disabled:opacity-20 disabled:hover:text-white/20 transition-colors"
+										className="h-8 w-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors cursor-pointer"
 									>
 										<Redo2 className="w-3 h-3" />
 									</button>
@@ -2313,7 +2313,7 @@ export default function VideoEditor() {
 							}}
 							className="h-6 px-2 rounded-md flex items-center gap-1 text-white/20 hover:text-white/50 transition-colors text-[9px] font-medium"
 						>
-							<Share className="w-2.5 h-2.5" />
+							<Share className="w-4 h-4" />
 							Share
 						</button>
 
@@ -2322,9 +2322,9 @@ export default function VideoEditor() {
 								type="button"
 								onClick={handleOpenExportDialog}
 								disabled={isExporting}
-								className="h-6 px-3 flex items-center gap-1.5 rounded-l-lg bg-white text-black text-[8px] font-semibold hover:bg-white/90 active:bg-white/80 transition-all disabled:opacity-50 disabled:pointer-events-none"
+								className="h-9 px-5 flex items-center gap-2 rounded-l-lg bg-white text-black text-[13px] font-bold hover:bg-white/90 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
 							>
-								<Download className="w-2.5 h-2.5" />
+								<Download className="w-4 h-4" />
 								Export {exportFormat === "gif" ? "GIF" : "MP4"}
 							</button>
 							<DropdownMenu>
@@ -2332,9 +2332,9 @@ export default function VideoEditor() {
 									<button
 										type="button"
 										disabled={isExporting}
-										className="h-6 px-1 flex items-center rounded-r-lg bg-white text-black border-l border-black/10 hover:bg-white/90 active:bg-white/80 transition-all disabled:opacity-50 disabled:pointer-events-none"
+										className="h-9 px-2 flex items-center rounded-r-lg bg-white text-black border-l border-black/10 hover:bg-white/90 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
 									>
-										<ChevronDown className="w-2.5 h-2.5" />
+										<ChevronDown className="w-4 h-4" />
 									</button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end" className="bg-[#1a1a1e] border-white/10 min-w-[140px]">
@@ -2365,12 +2365,14 @@ export default function VideoEditor() {
 				</div>
 
 				{/* Main content area (z-10) */}
-				<PanelGroup direction="vertical" className="flex-1 min-h-0 relative z-10">
-					{/* Top panel: video preview + settings */}
-					<Panel defaultSize={85} minSize={40}>
-						<PanelGroup direction="horizontal" className="h-full">
-							{/* Video preview panel */}
-							<Panel defaultSize={70} minSize={30}>
+				<PanelGroup direction="horizontal" className="flex-1 min-h-0 relative z-10 px-6 pb-6 pt-[80px] gap-6">
+					
+					{/* Left panel: Video + Timeline */}
+					<Panel defaultSize={75} minSize={50} className="flex flex-col">
+						<PanelGroup direction="vertical" className="h-full gap-4">
+							
+							{/* Video Panel */}
+							<Panel defaultSize={75} minSize={30}>
 								<div className="w-full h-full flex flex-col items-center justify-center relative p-4">
 									{/* Video preview */}
 									<div
@@ -2468,24 +2470,71 @@ export default function VideoEditor() {
 								</div>
 							</Panel>
 
-							{/* Panel resize handle (vertical divider) */}
-							<PanelResizeHandle className="w-2 flex items-center justify-center cursor-col-resize group">
-								<div className="w-[3px] h-8 rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all duration-200" />
+							{/* Horizontal resize handle */}
+							<PanelResizeHandle className="h-4 flex items-center justify-center cursor-row-resize group my-1">
+								<div className="w-12 h-1.5 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
 							</PanelResizeHandle>
 
-							{/* Settings panel (glassmorphic) */}
-							<Panel defaultSize={30} minSize={15}>
+							{/* Timeline Panel */}
+							<Panel defaultSize={25} minSize={15}>
 								<div
-									className="h-full rounded-2xl overflow-hidden my-2 mr-2"
-									style={{
-										background: "rgba(17,17,19,0.85)",
-										backdropFilter: "blur(40px)",
-										WebkitBackdropFilter: "blur(40px)",
-										border: "1px solid rgba(255,255,255,0.06)",
-										boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-									}}
-								>
-									<SettingsPanel
+							className="h-full min-h-0 rounded-[24px] overflow-hidden flex flex-col relative transition-all"
+							style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 -4px 20px rgba(0,0,0,0.3)" }}
+						>
+							<TimelineEditor
+								videoDuration={duration}
+								currentTime={currentTime}
+								onSeek={handleSeek}
+								cursorTelemetry={effectiveCursorTelemetry}
+								zoomRegions={effectiveZoomRegions}
+								onZoomAdded={handleZoomAdded}
+								onZoomSuggested={handleZoomSuggested}
+								onZoomSpanChange={handleZoomSpanChange}
+								onZoomDelete={handleZoomDelete}
+								selectedZoomId={selectedZoomId}
+								onSelectZoom={handleSelectZoom}
+								trimRegions={trimRegions}
+								onTrimAdded={handleTrimAdded}
+								onTrimSpanChange={handleTrimSpanChange}
+								onTrimDelete={handleTrimDelete}
+								selectedTrimId={selectedTrimId}
+								onSelectTrim={handleSelectTrim}
+								speedRegions={speedRegions}
+								onSpeedAdded={handleSpeedAdded}
+								onSpeedSpanChange={handleSpeedSpanChange}
+								onSpeedDelete={handleSpeedDelete}
+								selectedSpeedId={selectedSpeedId}
+								onSelectSpeed={handleSelectSpeed}
+								audioRegions={audioRegions}
+								onAudioAdded={handleAudioAdded}
+								onAudioSpanChange={handleAudioSpanChange}
+								onAudioDelete={handleAudioDelete}
+								selectedAudioId={selectedAudioId}
+								onSelectAudio={handleSelectAudio}
+								annotationRegions={annotationRegions}
+								onAnnotationAdded={handleAnnotationAdded}
+								onAnnotationSpanChange={handleAnnotationSpanChange}
+								onAnnotationDelete={handleAnnotationDelete}
+								selectedAnnotationId={selectedAnnotationId}
+								onSelectAnnotation={handleSelectAnnotation}
+								aspectRatio={aspectRatio}
+								onAspectRatioChange={setAspectRatio}
+							/>
+						</div>
+							</Panel>
+
+						</PanelGroup>
+					</Panel>
+
+					<PanelResizeHandle className="w-4 flex items-center justify-center cursor-col-resize group mx-1">
+						<div className="w-1.5 h-12 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
+					</PanelResizeHandle>
+
+					{/* Right panel: Settings */}
+					<Panel defaultSize={25} minSize={20}>
+						<div className="h-full bg-white/[0.02] backdrop-blur-[60px] border border-white/[0.05] rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden flex flex-col relative transition-all hover:border-white/[0.1] hover:shadow-[0_20px_50px_rgba(0,0,0,0.6)] duration-500">
+							<div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
+							<SettingsPanel
 										selected={wallpaper}
 										onWallpaperChange={setWallpaper}
 										selectedZoomDepth={selectedZoomDepth}
@@ -2578,63 +2627,9 @@ export default function VideoEditor() {
 										onEnhanceAudio={handleEnhanceAudio}
 										onUndoEnhanceAudio={handleUndoEnhanceAudio}
 									/>
-								</div>
-							</Panel>
-						</PanelGroup>
-					</Panel>
-
-					{/* Horizontal resize handle */}
-					<PanelResizeHandle className="h-2 flex items-center justify-center cursor-row-resize group">
-						<div className="w-8 h-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all duration-200" />
-					</PanelResizeHandle>
-
-					{/* Timeline panel (docked bottom) */}
-					<Panel defaultSize={15} minSize={15}>
-						<div
-							className="h-full min-h-0 mx-3 mb-2 rounded-2xl overflow-hidden flex flex-col relative transition-all"
-							style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 -4px 20px rgba(0,0,0,0.3)" }}
-						>
-							<TimelineEditor
-								videoDuration={duration}
-								currentTime={currentTime}
-								onSeek={handleSeek}
-								cursorTelemetry={effectiveCursorTelemetry}
-								zoomRegions={effectiveZoomRegions}
-								onZoomAdded={handleZoomAdded}
-								onZoomSuggested={handleZoomSuggested}
-								onZoomSpanChange={handleZoomSpanChange}
-								onZoomDelete={handleZoomDelete}
-								selectedZoomId={selectedZoomId}
-								onSelectZoom={handleSelectZoom}
-								trimRegions={trimRegions}
-								onTrimAdded={handleTrimAdded}
-								onTrimSpanChange={handleTrimSpanChange}
-								onTrimDelete={handleTrimDelete}
-								selectedTrimId={selectedTrimId}
-								onSelectTrim={handleSelectTrim}
-								speedRegions={speedRegions}
-								onSpeedAdded={handleSpeedAdded}
-								onSpeedSpanChange={handleSpeedSpanChange}
-								onSpeedDelete={handleSpeedDelete}
-								selectedSpeedId={selectedSpeedId}
-								onSelectSpeed={handleSelectSpeed}
-								audioRegions={audioRegions}
-								onAudioAdded={handleAudioAdded}
-								onAudioSpanChange={handleAudioSpanChange}
-								onAudioDelete={handleAudioDelete}
-								selectedAudioId={selectedAudioId}
-								onSelectAudio={handleSelectAudio}
-								annotationRegions={annotationRegions}
-								onAnnotationAdded={handleAnnotationAdded}
-								onAnnotationSpanChange={handleAnnotationSpanChange}
-								onAnnotationDelete={handleAnnotationDelete}
-								selectedAnnotationId={selectedAnnotationId}
-								onSelectAnnotation={handleSelectAnnotation}
-								aspectRatio={aspectRatio}
-								onAspectRatioChange={setAspectRatio}
-							/>
 						</div>
 					</Panel>
+
 				</PanelGroup>
 
 				{/* Overlays */}
