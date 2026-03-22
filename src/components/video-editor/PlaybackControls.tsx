@@ -1,5 +1,5 @@
 import { ChevronsLeft, ChevronsRight, Pause, Play } from "lucide-react";
-import { memo, useCallback, useState, useEffect } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { useScopedT } from "@/contexts/I18nContext";
 
 interface PlaybackControlsProps {
@@ -20,22 +20,7 @@ const PlaybackControls = memo(function PlaybackControls({
 	const t = useScopedT("editor");
 	const [isScrubbing, setIsScrubbing] = useState(false);
 	const [scrubSpeed, setScrubSpeed] = useState(0);
-
-	// Calculate scrub speed for dynamic warp intensity
-	useEffect(() => {
-		if (!isScrubbing) {
-			setScrubSpeed(0);
-			return;
-		}
-		let lastTime = currentTime;
-		const interval = setInterval(() => {
-			const diff = Math.abs(currentTime - lastTime);
-			setScrubSpeed(Math.min(diff * 10, 1)); // Cap at 1
-			lastTime = currentTime;
-		}, 50);
-		return () => clearInterval(interval);
-	}, [currentTime, isScrubbing]);
-
+	const lastClientXRef = useRef<number | null>(null);
 
 	function formatTime(seconds: number) {
 		if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return "0:00";
@@ -49,8 +34,32 @@ const PlaybackControls = memo(function PlaybackControls({
 		return `-${formatTime(remaining)}`;
 	}
 
-	function handleSeekChange(e: React.ChangeEvent<HTMLInputElement>) {
-		onSeek(parseFloat(e.target.value));
+	function handleScrubInput(e: React.FormEvent<HTMLInputElement>) {
+		const target = e.target as HTMLInputElement;
+		onSeek(parseFloat(target.value));
+
+		// Calculate scrub speed from mouse movement
+		const nativeEvent = e.nativeEvent as InputEvent;
+		const mouseEvent = nativeEvent as unknown as { clientX?: number };
+		if (mouseEvent.clientX != null) {
+			if (lastClientXRef.current !== null) {
+				const delta = Math.abs(mouseEvent.clientX - lastClientXRef.current);
+				const speed = Math.min(delta / 30, 1); // Normalize: 30px movement = max speed
+				setScrubSpeed(speed);
+			}
+			lastClientXRef.current = mouseEvent.clientX;
+		}
+	}
+
+	function handleScrubStart() {
+		setIsScrubbing(true);
+		lastClientXRef.current = null;
+	}
+
+	function handleScrubEnd() {
+		setIsScrubbing(false);
+		setScrubSpeed(0);
+		lastClientXRef.current = null;
 	}
 
 	const handleSkipBack = useCallback(() => {
@@ -62,6 +71,10 @@ const PlaybackControls = memo(function PlaybackControls({
 	}, [onSeek, currentTime, duration]);
 
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+	const rippleSize = 80 + scrubSpeed * 120;
+	const rippleOpacity = 0.15 + scrubSpeed * 0.3;
+	const rippleBlur = 20 + scrubSpeed * 40;
 
 	return (
 		<div className="flex flex-col items-center gap-0 w-full max-w-md mx-auto px-4">
@@ -81,33 +94,30 @@ const PlaybackControls = memo(function PlaybackControls({
 				{/* Interactive Input */}
 				<input
 					type="range"
-					onMouseDown={() => setIsScrubbing(true)}
-					onMouseUp={() => setIsScrubbing(false)}
-					onTouchStart={() => setIsScrubbing(true)}
-					onTouchEnd={() => setIsScrubbing(false)}
-
+					onMouseDown={handleScrubStart}
+					onMouseUp={handleScrubEnd}
+					onTouchStart={handleScrubStart}
+					onTouchEnd={handleScrubEnd}
 					min="0"
 					max={duration || 100}
 					value={currentTime}
-					onChange={handleSeekChange}
+					onInput={handleScrubInput}
 					step="0.01"
 					className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
 				/>
 
 				{/* Time-Warp Scrubbing Ripple Effect */}
 				<div
-					className="absolute pointer-events-none transition-all duration-300 z-0 rounded-full"
+					className="absolute pointer-events-none transition-[opacity,transform] duration-300 z-0 rounded-full"
 					style={{
-						width: 120,
-						height: 120,
+						width: rippleSize,
+						height: rippleSize,
 						left: `${progress}%`,
 						top: "50%",
-						transform: `translate(-50%, -50%) scale(${isScrubbing ? 1 + scrubSpeed * 2 : 0})`,
+						transform: `translate(-50%, -50%) scale(${isScrubbing ? 1 : 0})`,
 						opacity: isScrubbing ? 0.8 : 0,
-						background: "rgba(255,255,255,0.02)",
-						backdropFilter: `blur(${10 + scrubSpeed * 30}px) hue-rotate(${scrubSpeed * 90}deg) contrast(${1 + scrubSpeed})`,
-						WebkitBackdropFilter: `blur(${10 + scrubSpeed * 30}px) hue-rotate(${scrubSpeed * 90}deg) contrast(${1 + scrubSpeed})`,
-						boxShadow: isScrubbing ? `0 0 ${30 + scrubSpeed * 50}px rgba(224,0,15,${0.2 + scrubSpeed * 0.5})` : "none",
+						background: `radial-gradient(circle, rgba(224,0,15,${rippleOpacity}) 0%, transparent 70%)`,
+						boxShadow: isScrubbing ? `0 0 ${rippleBlur}px rgba(224,0,15,${0.2 + scrubSpeed * 0.4})` : "none",
 					}}
 				/>
 

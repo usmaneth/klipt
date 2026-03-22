@@ -2313,7 +2313,7 @@ export default function VideoEditor() {
 
 				{/* Ultra-Compact Floating Toolbar Pill (z-50) */}
 				<div
-					className="relative mx-4 mt-4 h-14 flex-shrink-0 bg-white/[0.03] backdrop-blur-[60px] border border-white/[0.08] rounded-2xl flex items-center justify-between px-6 z-50 pl-[80px]"
+					className={`relative mx-4 mt-4 h-14 flex-shrink-0 bg-white/[0.03] backdrop-blur-[60px] border border-white/[0.08] rounded-2xl flex items-center justify-between px-6 z-50 pl-[80px] transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none -translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
 					style={{ WebkitAppRegion: "drag", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" } as React.CSSProperties}
 				>
 					{/* Left: Logo + Undo/Redo + Project Name */}
@@ -2481,7 +2481,7 @@ export default function VideoEditor() {
 				</div>
 
 				{/* Main content area (z-10) */}
-				<PanelGroup direction="horizontal" className={`flex-1 min-h-0 relative z-10 px-6 pb-6 pt-[80px] gap-6 transition-all duration-1000 ${isFocusVoid ? "scale-[1.02]" : "scale-100"}`}>
+				<PanelGroup direction="horizontal" className={`flex-1 min-h-0 relative z-10 px-6 pb-6 pt-[80px] gap-6 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "scale-[1.02]" : "scale-100"}`}>
 					
 					{/* Left panel: Video + Timeline */}
 					<Panel defaultSize={75} minSize={50} className="flex flex-col">
@@ -2586,7 +2586,7 @@ export default function VideoEditor() {
 									</div>
 									{/* Playback controls */}
 									<div
-										className={`w-full flex justify-center items-center relative z-10 transition-all duration-1000 ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
+										className={`w-full flex justify-center items-center relative z-10 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
 										style={STYLE_PLAYBACK_CONTROLS_WRAPPER}
 									>
 										<div style={STYLE_PLAYBACK_CONTROLS_INNER}>
@@ -2603,12 +2603,12 @@ export default function VideoEditor() {
 							</Panel>
 
 							{/* Horizontal resize handle */}
-							<PanelResizeHandle className={`h-4 flex items-center justify-center cursor-row-resize group my-1 transition-all duration-1000 ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+							<PanelResizeHandle className={`h-4 flex items-center justify-center cursor-row-resize group my-1 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
 								<div className="w-12 h-1.5 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
 							</PanelResizeHandle>
 
 							{/* Timeline Panel */}
-							<Panel defaultSize={25} minSize={15} className={`transition-all duration-1000 ${isFocusVoid ? "opacity-0 translate-y-8 blur-md pointer-events-none" : "opacity-100 translate-y-0 blur-0"}`}>
+							<Panel defaultSize={25} minSize={15} className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-y-8 blur-md pointer-events-none" : "opacity-100 translate-y-0 blur-0"}`}>
 								<div
 							className="h-full min-h-0 rounded-[24px] overflow-hidden flex flex-col relative transition-all"
 							style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 -4px 20px rgba(0,0,0,0.3)" }}
@@ -2658,12 +2658,12 @@ export default function VideoEditor() {
 						</PanelGroup>
 					</Panel>
 
-					<PanelResizeHandle className={`w-4 flex items-center justify-center cursor-col-resize group mx-1 transition-all duration-1000 ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+					<PanelResizeHandle className={`w-4 flex items-center justify-center cursor-col-resize group mx-1 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
 						<div className="w-1.5 h-12 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
 					</PanelResizeHandle>
 
 					{/* Right panel: Settings */}
-					<Panel defaultSize={25} minSize={20} className={`transition-all duration-1000 ${isFocusVoid ? "opacity-0 translate-x-8 blur-md pointer-events-none" : "opacity-100 translate-x-0 blur-0"}`}>
+					<Panel defaultSize={25} minSize={20} className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-x-8 blur-md pointer-events-none" : "opacity-100 translate-x-0 blur-0"}`}>
 						<div className="h-full bg-white/[0.02] backdrop-blur-[60px] border border-white/[0.05] rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden flex flex-col relative transition-all hover:border-white/[0.1] hover:shadow-[0_20px_50px_rgba(0,0,0,0.6)] duration-500">
 							<div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
 							<SettingsPanel
