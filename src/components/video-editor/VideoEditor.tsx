@@ -177,6 +177,7 @@ export default function VideoEditor() {
 	const [audioEnhanced, setAudioEnhanced] = useState(false);
 	const [enhancedAudioUrl, setEnhancedAudioUrl] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
+	const [ambilightEnabled, setAmbilightEnabled] = useState(true);
 	const ambilightCanvasRef = useRef<HTMLCanvasElement>(null);
 	const analyserRef = useRef<AnalyserNode | null>(null);
 
@@ -256,8 +257,8 @@ export default function VideoEditor() {
 
 			// Direct DOM mutation for 60fps performance without React renders
 			if (canvas) {
-				canvas.style.opacity = (0.3 + currentVolume * 0.7).toString();
-				canvas.style.transform = `scale(${1.05 + currentVolume * 0.1})`;
+				canvas.style.opacity = (0.5 + currentVolume * 1.5).toString();
+				canvas.style.transform = `scale(${1.1 + currentVolume * 0.3})`;
 			}
 
 			rafId = requestAnimationFrame(updateAmbilight);
@@ -2300,7 +2301,11 @@ export default function VideoEditor() {
 					{/* Left: Logo + Undo/Redo + Project Name */}
 					<div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
 						<div className="flex items-center gap-1.5 select-none">
-							<div className="w-2.5 h-2.5 rounded-[2px] bg-[#E0000F] shadow-[0_0_8px_rgba(224,0,15,0.4)]" />
+							<div className="relative w-4 h-4">
+								<div className="absolute inset-0 rounded-[3px] border border-white/[0.06]" style={{ transform: "rotate(5deg)" }} />
+								<div className="absolute inset-[2px] rounded-[2.5px] border border-white/[0.12]" style={{ transform: "rotate(-5deg)" }} />
+								<div className="absolute inset-[4px] rounded-[2px] bg-[#E0000F]" style={{ transform: "rotate(20deg)" }} />
+							</div>
 							<span className="text-[15px] font-semibold tracking-tight text-white/90">Klipt</span>
 						</div>
 
@@ -2337,40 +2342,40 @@ export default function VideoEditor() {
 							</Tooltip>
 						</div>
 
-						<Separator orientation="vertical" className="h-3 bg-white/[0.08]" />
+					</div>
 
-						<div className="flex items-center gap-1.5">
-							{isEditingProjectName ? (
-								<input
-									autoFocus
-									type="text"
-									value={projectName}
-									onChange={(e) => setProjectName(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											setIsEditingProjectName(false);
-										}
-										if (e.key === "Escape") {
-											setIsEditingProjectName(false);
-										}
-									}}
-									onBlur={() => setIsEditingProjectName(false)}
-									className="text-[9px] text-white/80 bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-[#E0000F]/50 w-[120px]"
-								/>
-							) : (
-								<button
-									type="button"
-									onClick={() => setIsEditingProjectName(true)}
-									className="text-[9px] text-white/40 hover:text-white/70 transition-colors cursor-text"
-									title="Click to rename project"
-								>
-									{projectName || "Untitled Project"}
-								</button>
-							)}
-							{hasUnsavedChanges && (
-								<div className="w-[6px] h-[6px] rounded-full bg-[#E0000F] flex-shrink-0" />
-							)}
-						</div>
+					{/* Center: Project Name */}
+					<div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+						{isEditingProjectName ? (
+							<input
+								autoFocus
+								type="text"
+								value={projectName}
+								onChange={(e) => setProjectName(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										setIsEditingProjectName(false);
+									}
+									if (e.key === "Escape") {
+										setIsEditingProjectName(false);
+									}
+								}}
+								onBlur={() => setIsEditingProjectName(false)}
+								className="text-[9px] text-white/80 bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-[#E0000F]/50 w-[120px]"
+							/>
+						) : (
+							<button
+								type="button"
+								onClick={() => setIsEditingProjectName(true)}
+								className="text-[9px] text-white/40 hover:text-white/70 transition-colors cursor-text"
+								title="Click to rename project"
+							>
+								{projectName || "Untitled Project"}
+							</button>
+						)}
+						{hasUnsavedChanges && (
+							<div className="w-[6px] h-[6px] rounded-full bg-[#E0000F] flex-shrink-0" />
+						)}
 					</div>
 
 					{/* Right: Actions + Export */}
@@ -2413,7 +2418,8 @@ export default function VideoEditor() {
 								type="button"
 								onClick={handleOpenExportDialog}
 								disabled={isExporting}
-								className="h-9 px-5 flex items-center gap-2 rounded-l-lg bg-white text-black text-[13px] font-bold hover:bg-white/90 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+								className="h-9 px-5 flex items-center gap-2 rounded-l-lg text-white text-[13px] font-bold hover:brightness-110 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+								style={{ background: "linear-gradient(135deg, #E0000F, #FF4500)" }}
 							>
 								<Download className="w-4 h-4" />
 								Export {exportFormat === "gif" ? "GIF" : "MP4"}
@@ -2423,7 +2429,8 @@ export default function VideoEditor() {
 									<button
 										type="button"
 										disabled={isExporting}
-										className="h-9 px-2 flex items-center rounded-r-lg bg-white text-black border-l border-black/10 hover:bg-white/90 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+										className="h-9 px-2 flex items-center rounded-r-lg text-white border-l border-white/20 hover:brightness-110 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+										style={{ background: "linear-gradient(135deg, #C0000D, #E03D00)" }}
 									>
 										<ChevronDown className="w-4 h-4" />
 									</button>
@@ -2475,12 +2482,15 @@ export default function VideoEditor() {
 											ref={ambilightCanvasRef}
 											className="absolute pointer-events-none transition-all duration-75"
 											style={{
-												width: "100%",
-												height: "100%",
+												width: "120%",
+												height: "120%",
+												top: "-10%",
+												left: "-10%",
 												filter: "blur(100px) saturate(1.5)",
-												opacity: 0.3,
-												transform: "scale(1.05)",
-												zIndex: -1,
+												opacity: 0.5,
+												transform: "scale(1.1)",
+												zIndex: 0,
+												display: ambilightEnabled ? "block" : "none",
 											}}
 										/>
 										<div
@@ -2724,6 +2734,8 @@ export default function VideoEditor() {
 										onWebcamBgBlurChange={setWebcamBgBlur}
 										webcamBgColor={webcamBgColor}
 										onWebcamBgColorChange={setWebcamBgColor}
+										ambilightEnabled={ambilightEnabled}
+										onAmbilightEnabledChange={setAmbilightEnabled}
 										isExporting={isExporting}
 										videoUrl={videoPath}
 										audioEnhanced={audioEnhanced}

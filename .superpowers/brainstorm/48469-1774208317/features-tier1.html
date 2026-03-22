@@ -1,0 +1,194 @@
+<h2>Next-Gen Features — What Do We Build?</h2>
+<p class="subtitle">These are the ideas from fronty. Some are buildable today, some are moonshots. Multi-select the ones that make you feel something.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="ambilight" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">1</div>
+    <div class="content">
+      <h3>Audio-Reactive Ambilight ("Living Canvas")</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;position:relative;overflow:hidden;">
+        <!-- Simulated ambilight glow -->
+        <div style="position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;background:radial-gradient(ellipse at 30% 40%, rgba(255,140,0,0.15), transparent 60%), radial-gradient(ellipse at 70% 60%, rgba(100,149,237,0.12), transparent 60%);filter:blur(30px);"></div>
+        <div style="position:relative;z-index:1;width:70%;margin:0 auto;aspect-ratio:16/9;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+          <span style="color:rgba(255,255,255,0.1);font-size:9px;">Video glows outward</span>
+        </div>
+        <div style="position:relative;z-index:1;text-align:center;margin-top:8px;">
+          <span style="color:rgba(255,255,255,0.2);font-size:9px;">🔊 Audio pulses the glow intensity</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Buildable today.</strong> Hidden canvas samples video edges → drives CSS blur glows. Audio analyzer pulses intensity. The app literally breathes with your content.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(22,163,74,0.1);color:#16a34a;font-size:8px;padding:2px 6px;border-radius:4px;">2-3 hours</span>
+        <span style="background:rgba(224,0,15,0.1);color:#E0000F;font-size:8px;padding:2px 6px;border-radius:4px;">high impact</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="focus-void" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">2</div>
+    <div class="content">
+      <h3>Focus Void (Cinema Mode)</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="flex:1;text-align:center;">
+            <div style="font-size:8px;color:rgba(255,255,255,0.2);margin-bottom:4px;">EDITING</div>
+            <div style="display:flex;gap:4px;">
+              <div style="flex:2;height:40px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:4px;"></div>
+              <div style="flex:1;height:40px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:4px;"></div>
+            </div>
+          </div>
+          <span style="color:rgba(255,255,255,0.1);font-size:10px;">→ ▶ →</span>
+          <div style="flex:1;text-align:center;">
+            <div style="font-size:8px;color:rgba(255,255,255,0.2);margin-bottom:4px;">PLAYING</div>
+            <div style="height:40px;background:#111;border-radius:6px;border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,0.6);">
+              <span style="color:rgba(255,255,255,0.1);font-size:7px;">Only video</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Buildable today.</strong> Press Space → panels blur + fade + translateZ. Mouse move or pause → snap back. Clean cinema mode for reviewing your edit.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(22,163,74,0.1);color:#16a34a;font-size:8px;padding:2px 6px;border-radius:4px;">1-2 hours</span>
+        <span style="background:rgba(224,0,15,0.1);color:#E0000F;font-size:8px;padding:2px 6px;border-radius:4px;">high impact</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="phantom-prompt" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">3</div>
+    <div class="content">
+      <h3>Phantom Prompt (AI Command Palette 2.0)</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;display:flex;justify-content:center;">
+        <div style="max-width:240px;width:100%;">
+          <div style="background:rgba(0,0,0,0.8);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;">
+            <div style="font-size:16px;font-weight:500;background:linear-gradient(135deg,#E0000F,#FF4500,#FF8C00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.02em;">Remove all silences</div>
+            <div style="margin-top:8px;font-size:8px;color:rgba(255,255,255,0.15);">Press Enter to execute</div>
+          </div>
+          <div style="text-align:center;margin-top:6px;font-size:8px;color:rgba(255,255,255,0.1);">Light pulse on execute →</div>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Enhancement of existing ⌘K.</strong> Full-screen blur overlay, giant centered input, gradient text mask, execution pulse animation. Replaces the current command palette.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(22,163,74,0.1);color:#16a34a;font-size:8px;padding:2px 6px;border-radius:4px;">2-3 hours</span>
+        <span style="background:rgba(249,115,22,0.1);color:#f97316;font-size:8px;padding:2px 6px;border-radius:4px;">medium impact</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="ai-skin" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">4</div>
+    <div class="content">
+      <h3>AI-Contextual UI Morphs</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;">
+        <div style="display:flex;gap:6px;justify-content:center;">
+          <div style="width:60px;height:40px;border-radius:6px;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(255,255,255,0.3);">gaming</span>
+          </div>
+          <div style="width:60px;height:40px;border-radius:6px;background:linear-gradient(135deg,#2c1810,#4a2f1a,#3d2714);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(255,255,255,0.3);">podcast</span>
+          </div>
+          <div style="width:60px;height:40px;border-radius:6px;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(255,255,255,0.3);">tech</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Needs AI vision API.</strong> Analyze first frame, extract color palette, tint CSS variables. Cool but requires external API or local model.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(249,115,22,0.1);color:#f97316;font-size:8px;padding:2px 6px;border-radius:4px;">4-6 hours</span>
+        <span style="background:rgba(249,115,22,0.1);color:#f97316;font-size:8px;padding:2px 6px;border-radius:4px;">medium impact</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="semantic-timeline" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">5</div>
+    <div class="content">
+      <h3>Semantic Magnetic Timeline</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;">
+        <div style="height:24px;background:rgba(255,255,255,0.02);border-radius:4px;position:relative;">
+          <!-- Bulges where action happens -->
+          <div style="position:absolute;left:20%;width:15%;height:100%;background:rgba(224,0,15,0.08);border-radius:4px;transform:scaleY(1.5);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(224,0,15,0.4);">action</span>
+          </div>
+          <div style="position:absolute;left:55%;width:8%;height:100%;background:rgba(224,0,15,0.05);border-radius:4px;transform:scaleY(1.2);"></div>
+          <div style="position:absolute;left:80%;width:12%;height:100%;background:rgba(224,0,15,0.1);border-radius:4px;transform:scaleY(1.8);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(224,0,15,0.4);">climax</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Needs Whisper + audio analysis.</strong> Timeline physically bulges where interesting stuff happens. Playhead magnetically snaps to action spikes. Depends on AI transcription being functional.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(239,68,68,0.1);color:#ef4444;font-size:8px;padding:2px 6px;border-radius:4px;">1-2 weeks</span>
+        <span style="background:rgba(224,0,15,0.1);color:#E0000F;font-size:8px;padding:2px 6px;border-radius:4px;">very high impact</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="3d-cutting-room" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">6</div>
+    <div class="content">
+      <h3>3D Cutting Room Floor</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;text-align:center;">
+        <div style="font-size:9px;color:rgba(255,255,255,0.15);margin-bottom:8px;">react-three-fiber infinite canvas</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:80%;height:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:7px;color:rgba(255,255,255,0.15);">active timeline</span>
+          </div>
+          <span style="font-size:7px;color:rgba(255,255,255,0.08);">↓ cut clips fall ↓</span>
+          <div style="width:80%;height:12px;background:rgba(255,255,255,0.01);border:1px dashed rgba(255,255,255,0.03);border-radius:4px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(255,255,255,0.06);">spatial floor</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Moonshot.</strong> Replaces timeline with 3D canvas. Cut clips fall below. Grab them back. Incredible but massive engineering effort (react-three-fiber).</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(239,68,68,0.1);color:#ef4444;font-size:8px;padding:2px 6px;border-radius:4px;">2-4 weeks</span>
+        <span style="background:rgba(224,0,15,0.1);color:#E0000F;font-size:8px;padding:2px 6px;border-radius:4px;">moonshot</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="veo-splice" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">7</div>
+    <div class="content">
+      <h3>Veo Splice (AI B-Roll Transitions)</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:4px;">
+        <div style="width:40px;height:28px;background:#1a1a1a;border-radius:4px;border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:6px;color:rgba(255,255,255,0.15);">Clip A</span>
+        </div>
+        <div style="width:20px;height:28px;border-radius:4px;background:linear-gradient(90deg,rgba(224,0,15,0.15),rgba(255,69,0,0.15));border:1px solid rgba(224,0,15,0.2);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:5px;color:rgba(224,0,15,0.5);">AI</span>
+        </div>
+        <div style="width:40px;height:28px;background:#1a1a1a;border-radius:4px;border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:6px;color:rgba(255,255,255,0.15);">Clip B</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Needs Veo API.</strong> AI generates 1-second morphing transition between clips instead of crossfade. Wild but depends on Google Veo API access.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(239,68,68,0.1);color:#ef4444;font-size:8px;padding:2px 6px;border-radius:4px;">API dependent</span>
+        <span style="background:rgba(224,0,15,0.1);color:#E0000F;font-size:8px;padding:2px 6px;border-radius:4px;">revolutionary</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="lens-flare-export" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">8</div>
+    <div class="content">
+      <h3>Lens Flare Export Animation</h3>
+      <div style="background:#050508;border-radius:12px;padding:20px;margin-top:8px;display:flex;justify-content:center;">
+        <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#E0000F,#FF4500);box-shadow:0 0 40px rgba(224,0,15,0.3),0 0 80px rgba(255,69,0,0.15);display:flex;align-items:center;justify-content:center;">
+          <span style="color:#fff;font-size:8px;font-weight:600;">67%</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;"><strong>Buildable today.</strong> Video shrinks to glowing jewel, metrics cascade around it, lens flares on fast renders. Turns export wait into a visual show.</p>
+      <div style="margin-top:4px;display:flex;gap:4px;">
+        <span style="background:rgba(22,163,74,0.1);color:#16a34a;font-size:8px;padding:2px 6px;border-radius:4px;">3-4 hours</span>
+        <span style="background:rgba(249,115,22,0.1);color:#f97316;font-size:8px;padding:2px 6px;border-radius:4px;">fun</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Select everything that excites you. We'll prioritize by buildability.</p>

@@ -194,6 +194,8 @@ interface SettingsPanelProps {
 	onWebcamBgBlurChange?: (amount: number) => void;
 	webcamBgColor?: string;
 	onWebcamBgColorChange?: (color: string) => void;
+	ambilightEnabled?: boolean;
+	onAmbilightEnabledChange?: (enabled: boolean) => void;
 	isExporting?: boolean;
 	// Studio Sound
 	videoUrl?: string | null;
@@ -346,6 +348,8 @@ export function SettingsPanel({
 	onWebcamBgBlurChange: _onWebcamBgBlurChange,
 	webcamBgColor: _webcamBgColor = "#00FF00",
 	onWebcamBgColorChange: _onWebcamBgColorChange,
+	ambilightEnabled = true,
+	onAmbilightEnabledChange,
 	isExporting: _isExporting = false,
 	videoUrl,
 	audioEnhanced = false,
@@ -904,6 +908,18 @@ export function SettingsPanel({
 											</div>
 										</div>
 									</div>
+								</div>
+
+								{/* Ambilight toggle */}
+								<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+									<span className="text-[10px] text-white/40">
+										Ambilight
+									</span>
+									<Switch
+										checked={ambilightEnabled}
+										onCheckedChange={onAmbilightEnabledChange}
+										className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
+									/>
 								</div>
 
 								{/* Remove Background toggle */}
