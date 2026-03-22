@@ -80,6 +80,8 @@ interface TimelineEditorProps {
 	selectedZoomId: string | null;
 	onSelectZoom: (id: string | null) => void;
 	trimRegions?: TrimRegion[];
+	cuttingRoomFloor?: TrimRegion[];
+	onRestoreFromFloor?: (id: string) => void;
 	onTrimAdded?: (span: Span) => void;
 	onTrimSpanChange?: (id: string, span: Span) => void;
 	onTrimDelete?: (id: string) => void;
@@ -660,6 +662,36 @@ function Timeline({
 	);
 }
 
+
+function CuttingRoomFloor({ clips, onRestore }: { clips: TrimRegion[]; onRestore: (id: string) => void }) {
+	const { range, valueToPixels } = useTimelineContext();
+	
+	return (
+		<div className="absolute inset-x-0 bottom-0 pointer-events-none z-0 h-0" style={{ transformStyle: "preserve-3d" }}>
+			<div className="relative w-full h-full" style={{ transformStyle: "preserve-3d", transform: "translateZ(-50px) translateY(120px)" }}>
+				<div className="absolute inset-x-0 -bottom-32 h-64 bg-gradient-to-t from-[#E0000F]/20 to-transparent blur-2xl" style={{ transform: "rotateX(60deg) scale(2)" }} />
+				{clips.map((clip) => {
+					const offset = valueToPixels(clip.startMs - range.start);
+					const width = valueToPixels(clip.endMs - range.start) - offset;
+					if (offset + width < -1000 || offset > 3000) return null;
+
+					return (
+						<div
+							key={clip.id}
+							onClick={() => onRestore(clip.id)}
+							className="absolute bottom-10 h-12 bg-[#E0000F]/20 border border-[#E0000F]/40 rounded-xl cursor-pointer hover:bg-[#E0000F]/40 pointer-events-auto backdrop-blur-md transition-all hover:-translate-y-4 hover:scale-105 hover:shadow-[0_0_30px_rgba(224,0,15,0.4)] flex items-center justify-center overflow-hidden group/floor"
+							style={{ left: `${offset}px`, width: `${Math.max(40, width)}px` }}
+						>
+							<div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+							<span className="text-[10px] font-bold text-white/50 group-hover/floor:text-white/90 tracking-widest uppercase truncate px-2">Discarded</span>
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
 const TimelineEditor = memo(function TimelineEditor({
 	videoDuration,
 	currentTime,
@@ -673,6 +705,8 @@ const TimelineEditor = memo(function TimelineEditor({
 	selectedZoomId,
 	onSelectZoom,
 	trimRegions = [],
+	cuttingRoomFloor = [],
+	onRestoreFromFloor,
 	onTrimAdded,
 	onTrimSpanChange,
 	onTrimDelete,
@@ -712,6 +746,7 @@ const TimelineEditor = memo(function TimelineEditor({
 	);
 
 	const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
+	const [isFloorRevealed, setIsFloorRevealed] = useState(false);
 	const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
 	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
 	const [customAspectWidth, setCustomAspectWidth] = useState(
@@ -1281,7 +1316,16 @@ const TimelineEditor = memo(function TimelineEditor({
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
+
+		const handleKeyUp = (e: KeyboardEvent) => {
+			if (e.key === "Alt") {
+				setIsFloorRevealed(false);
+			}
+		};
+		window.addEventListener("keyup", handleKeyUp);
+
 		return () => window.removeEventListener("keydown", handleKeyDown);
+			window.removeEventListener("keyup", handleKeyUp);
 	}, [
 		addKeyframe,
 		handleAddZoom,
@@ -1496,8 +1540,15 @@ const TimelineEditor = memo(function TimelineEditor({
 	}
 
 	return (
-		<div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden w-full h-full p-1.5">
-			<div className="flex items-center gap-1 px-2 h-8 border-b border-white/[0.03] bg-transparent relative z-10">
+		<div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden w-full h-full p-1.5" style={{ perspective: "1500px" }}>
+
+			<div 
+				className={`flex items-center gap-1 px-2 h-8 border-b border-white/[0.03] bg-transparent relative z-20 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isFloorRevealed ? "opacity-50" : "opacity-100"}`}
+				style={{
+					transformOrigin: "top",
+					transform: isFloorRevealed ? "translateZ(-20px) translateY(-10px)" : "none"
+				}}
+			>
 				<div className="flex items-center gap-1">
 					<Button
 						onClick={handleAddZoom}
@@ -1661,6 +1712,8 @@ const TimelineEditor = memo(function TimelineEditor({
 					onItemSpanChange={handleItemSpanChange}
 					allRegionSpans={allRegionSpans}
 				>
+					{isFloorRevealed && <CuttingRoomFloor clips={cuttingRoomFloor} onRestore={onRestoreFromFloor as any} />}
+
 					<KeyframeMarkers
 						keyframes={keyframes}
 						selectedKeyframeId={selectedKeyframeId}

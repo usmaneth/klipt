@@ -167,6 +167,7 @@ export default function VideoEditor() {
 	const [cursorTelemetry, setCursorTelemetry] = useState<CursorTelemetryPoint[]>([]);
 	const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
 	const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
+	const [cuttingRoomFloor, setCuttingRoomFloor] = useState<TrimRegion[]>([]);
 	const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
 	const [speedRegions, setSpeedRegions] = useState<SpeedRegion[]>([]);
 	const [selectedSpeedId, setSelectedSpeedId] = useState<string | null>(null);
@@ -1321,12 +1322,31 @@ export default function VideoEditor() {
 
 	const handleTrimDelete = useCallback(
 		(id: string) => {
-			setTrimRegions((prev) => prev.filter((region) => region.id !== id));
+			setTrimRegions((prev) => {
+				const region = prev.find((r) => r.id === id);
+				if (region) {
+					setCuttingRoomFloor((floor) => [...floor, region]);
+				}
+				return prev.filter((r) => r.id !== id);
+			});
 			if (selectedTrimId === id) {
 				setSelectedTrimId(null);
 			}
 		},
 		[selectedTrimId],
+	);
+
+	const handleRestoreFromFloor = useCallback(
+		(id: string) => {
+			setCuttingRoomFloor((prev) => {
+				const region = prev.find((r) => r.id === id);
+				if (region) {
+					setTrimRegions((trims) => [...trims, region]);
+				}
+				return prev.filter((r) => r.id !== id);
+			});
+		},
+		[],
 	);
 
 	const handleSelectSpeed = useCallback((id: string | null) => {
@@ -2631,6 +2651,8 @@ export default function VideoEditor() {
 								onTrimDelete={handleTrimDelete}
 								selectedTrimId={selectedTrimId}
 								onSelectTrim={handleSelectTrim}
+								cuttingRoomFloor={cuttingRoomFloor}
+								onRestoreFromFloor={handleRestoreFromFloor}
 								speedRegions={speedRegions}
 								onSpeedAdded={handleSpeedAdded}
 								onSpeedSpanChange={handleSpeedSpanChange}
