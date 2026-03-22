@@ -2845,6 +2845,23 @@ export function registerIpcHandlers(
 		}
 	});
 
+	ipcMain.handle("get-video-asset-path", (_, filename: string) => {
+		try {
+			let videoPath: string
+			if (app.isPackaged) {
+				// In packaged app, unpacked files live in app.asar.unpacked/dist/
+				videoPath = path.join(process.resourcesPath, "app.asar.unpacked", "dist", filename)
+			} else {
+				// In dev, public/ files are served by Vite
+				videoPath = path.join(app.getAppPath(), "public", filename)
+			}
+			return pathToFileURL(videoPath).toString()
+		} catch (err) {
+			console.error("Failed to resolve video asset path:", err)
+			return null
+		}
+	})
+
 	ipcMain.handle("read-local-file", async (_, filePath: string) => {
 		try {
 			const resolved = path.resolve(filePath);

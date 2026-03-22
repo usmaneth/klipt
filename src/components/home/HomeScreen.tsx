@@ -1,6 +1,5 @@
 import { ChevronRight, CircleDot, Film } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getAssetPath } from "@/lib/assetPath";
 
 /* ------------------------------------------------------------------ */
 /*  CSS keyframes injected once into <head>                            */
@@ -71,7 +70,9 @@ export function HomeScreen() {
 	>([]);
 
 	useEffect(() => {
-		getAssetPath("veo-bg.mp4").then(setVideoPath);
+		window.electronAPI?.getVideoAssetPath("veo-bg.mp4").then((p) => {
+			if (p) setVideoPath(p);
+		});
 	}, []);
 
 	useEffect(() => {

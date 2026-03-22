@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getAssetBasePath: async () => {
 		return await ipcRenderer.invoke("get-asset-base-path");
 	},
+	getVideoAssetPath: async (filename: string) => {
+		return await ipcRenderer.invoke("get-video-asset-path", filename);
+	},
 	readLocalFile: (filePath: string) => {
 		return ipcRenderer.invoke("read-local-file", filePath);
 	},

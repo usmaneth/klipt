@@ -25,6 +25,7 @@ declare namespace NodeJS {
 interface Window {
 	electronAPI: {
 		getAssetBasePath: () => Promise<string>;
+		getVideoAssetPath: (filename: string) => Promise<string | null>;
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
 		setCursorScale: (scale: number) => Promise<{ success: boolean }>;
 		switchToEditor: () => Promise<void>;
