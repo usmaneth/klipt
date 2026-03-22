@@ -1324,8 +1324,10 @@ const TimelineEditor = memo(function TimelineEditor({
 		};
 		window.addEventListener("keyup", handleKeyUp);
 
-		return () => window.removeEventListener("keydown", handleKeyDown);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
 			window.removeEventListener("keyup", handleKeyUp);
+		};
 	}, [
 		addKeyframe,
 		handleAddZoom,
