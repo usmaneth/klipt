@@ -6,7 +6,7 @@
 	-webkit-app-region: no-drag;
 }
 
-/* 1. Aurora Border — premium animated gradient */
+/* Aurora Border — animated gradient wrapper */
 @keyframes aurora-border {
 	0% {
 		background-position: 0% 50%;
@@ -22,10 +22,10 @@
 @keyframes aurora-glow {
 	0%,
 	100% {
-		box-shadow: 0 0 30px rgba(255, 69, 0, 0.2);
+		box-shadow: 0 0 24px rgba(224, 0, 15, 0.15);
 	}
 	50% {
-		box-shadow: 0 0 40px rgba(255, 69, 0, 0.35);
+		box-shadow: 0 0 32px rgba(255, 69, 0, 0.25);
 	}
 }
 
@@ -39,8 +39,6 @@
 		#ff4500,
 		#ff6b35,
 		#ff8c00,
-		#2563eb,
-		#ff8c00,
 		#ff6b35,
 		#ff4500,
 		#e0000f
@@ -48,31 +46,29 @@
 	background-size: 300% 300%;
 	animation:
 		aurora-border 8s linear infinite,
-		aurora-glow 3s ease-in-out infinite;
+		aurora-glow 4s ease-in-out infinite;
 }
 
-/* 2. Inner Bar — ultra clean frosted glass */
+/* Inner Bar — frosted glass */
 .hudBar {
 	isolation: isolate;
 	border-radius: 20px;
-	background: rgba(12, 12, 14, 0.92);
+	background: rgba(12, 12, 14, 0.94);
 	backdrop-filter: blur(40px);
 	-webkit-backdrop-filter: blur(40px);
 }
 
-/* 7. Mic Bar — same glass, thinner aurora border */
+/* Mic Bar — thinner aurora wrapper */
 .micBarWrapper {
 	position: relative;
 	padding: 1px;
-	border-radius: 18px;
+	border-radius: 16px;
 	background: linear-gradient(
 		90deg,
 		#e0000f,
 		#ff4500,
 		#ff6b35,
 		#ff8c00,
-		#2563eb,
-		#ff8c00,
 		#ff6b35,
 		#ff4500,
 		#e0000f
@@ -80,104 +76,299 @@
 	background-size: 300% 300%;
 	animation:
 		aurora-border 8s linear infinite,
-		aurora-glow 3s ease-in-out infinite;
+		aurora-glow 4s ease-in-out infinite;
 }
 
 .micBar {
 	isolation: isolate;
-	border-radius: 17px;
-	background: rgba(12, 12, 14, 0.92);
+	border-radius: 15px;
+	background: rgba(12, 12, 14, 0.94);
 	backdrop-filter: blur(40px);
 	-webkit-backdrop-filter: blur(40px);
 }
 
-/* 3. Buttons — clean and minimal */
-.hudBtn {
+/* Gradient Separators */
+.separator {
+	width: 1px;
+	height: 20px;
+	margin: 0 4px;
+	background: linear-gradient(
+		to bottom,
+		rgba(255, 255, 255, 0),
+		rgba(255, 255, 255, 0.12),
+		rgba(255, 255, 255, 0)
+	);
+	flex-shrink: 0;
+}
+
+/* Toggle buttons — 26px squares */
+.toggleBtn {
+	width: 26px;
+	height: 26px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid transparent;
+	cursor: pointer;
 	transition:
 		background 200ms ease,
-		opacity 200ms ease !important;
+		border-color 200ms ease,
+		opacity 200ms ease;
+	padding: 0;
+	flex-shrink: 0;
 }
 
-.hudBtn:hover:not(:disabled) {
-	background: rgba(255, 255, 255, 0.06) !important;
+.toggleBtn:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.06);
 }
 
-.hudBtn:active:not(:disabled) {
-	opacity: 0.7;
+.toggleBtn:disabled {
+	opacity: 0.4;
+	cursor: default;
 }
 
-/* 5. Toggle active states — subtle colored bg */
-.toggleBtnActive {
-	background: rgba(59, 130, 246, 0.12) !important;
-	color: #fff !important;
+/* Toggle active color variants */
+.toggleBtnActiveRed {
+	background: rgba(224, 0, 15, 0.08) !important;
+	border-color: rgba(224, 0, 15, 0.15) !important;
 }
-.toggleBtnActive:hover:not(:disabled) {
-	background: rgba(59, 130, 246, 0.18) !important;
+.toggleBtnActiveRed:hover:not(:disabled) {
+	background: rgba(224, 0, 15, 0.12) !important;
 }
 
 .toggleBtnActiveGreen {
-	background: rgba(22, 163, 74, 0.12) !important;
-	color: #fff !important;
+	background: rgba(34, 197, 94, 0.08) !important;
+	border-color: rgba(34, 197, 94, 0.15) !important;
 }
 .toggleBtnActiveGreen:hover:not(:disabled) {
-	background: rgba(22, 163, 74, 0.18) !important;
+	background: rgba(34, 197, 94, 0.12) !important;
 }
 
-/* 4. Record button — the star of the show */
-@keyframes pulse-ring {
-	0% {
-		border-color: rgba(239, 68, 68, 0.5);
-	}
-	50% {
-		border-color: rgba(239, 68, 68, 0.15);
-	}
-	100% {
-		border-color: rgba(239, 68, 68, 0.5);
-	}
-}
-
+/* Record button — solid red pill (not recording) */
 .recordBtnIdle {
-	background: rgba(239, 68, 68, 0.1) !important;
-	border: 1px solid rgba(239, 68, 68, 0.25);
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: #e0000f;
+	border-radius: 10px;
+	padding: 6px 12px;
+	cursor: pointer;
+	border: none;
+	box-shadow: 0 0 16px rgba(224, 0, 15, 0.2);
+	transition:
+		background 200ms ease,
+		box-shadow 200ms ease;
 }
+
 .recordBtnIdle:hover:not(:disabled) {
-	background: rgba(239, 68, 68, 0.18) !important;
+	background: #c9000d;
+	box-shadow: 0 0 24px rgba(224, 0, 15, 0.35);
 }
 
+.recordBtnIdle:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+/* Record dot */
+.recordDot {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: #fff;
+	flex-shrink: 0;
+}
+
+/* Recording state — timer display */
 .recordBtnRecording {
-	background: rgba(239, 68, 68, 0.15) !important;
-	border: 1.5px solid rgba(239, 68, 68, 0.5);
-	animation: pulse-ring 1.5s ease-in-out infinite;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	padding: 4px 0;
 }
 
-@keyframes pulse-record-dot {
+/* Pulsing red dot during recording */
+@keyframes pulse-dot {
 	0%,
 	100% {
 		opacity: 1;
 		transform: scale(1);
 	}
 	50% {
-		opacity: 0.6;
-		transform: scale(0.85);
+		opacity: 0.5;
+		transform: scale(0.8);
 	}
 }
 
-.pulseRecord {
-	animation: pulse-record-dot 1.5s ease-in-out infinite;
+.pulsingDot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: #e0000f;
+	animation: pulse-dot 1.5s ease-in-out infinite;
+	flex-shrink: 0;
 }
 
-/* Gradient Separators */
-.separator {
-	width: 1.5px;
+/* Stop square button */
+.stopBtn {
+	width: 24px;
 	height: 24px;
-	margin: 0 6px;
-	background: linear-gradient(
-		to bottom,
-		rgba(255, 255, 255, 0),
-		rgba(255, 255, 255, 0.4),
-		rgba(255, 255, 255, 0)
-	);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	background: rgba(224, 0, 15, 0.1);
+	border: none;
+	cursor: pointer;
+	transition: background 200ms ease;
+	padding: 0;
 	flex-shrink: 0;
+}
+
+.stopBtn:hover {
+	background: rgba(224, 0, 15, 0.18);
+}
+
+.stopBtnInner {
+	width: 8px;
+	height: 8px;
+	border-radius: 1px;
+	background: #e0000f;
+}
+
+/* File path button */
+.filePathBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	padding: 2px 4px;
+	transition: opacity 200ms ease;
+}
+
+.filePathBtn:hover:not(:disabled) {
+	opacity: 0.7;
+}
+
+.filePathBtn:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+/* Timer delay inline pills */
+.delayPill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3px 6px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid transparent;
+	font-size: 8px;
+	line-height: 1;
+	color: rgba(255, 255, 255, 0.3);
+	cursor: pointer;
+	transition:
+		background 200ms ease,
+		color 200ms ease,
+		border-color 200ms ease;
+	flex-shrink: 0;
+}
+
+.delayPill:hover:not(:disabled):not(.delayPillActive) {
+	background: rgba(255, 255, 255, 0.1);
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.delayPill:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.delayPillActive {
+	background: rgba(224, 0, 15, 0.1);
+	border-color: rgba(224, 0, 15, 0.2);
+	color: #e0000f;
+	font-weight: 600;
+}
+
+/* Quick action buttons — 22px squares */
+.quickActionBtn {
+	width: 22px;
+	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.03);
+	border: none;
+	cursor: pointer;
+	transition: background 200ms ease;
+	padding: 0;
+	flex-shrink: 0;
+}
+
+.quickActionBtn:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.quickActionBtn:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+/* Minimize + Close — small icons */
+.windowControlBtn {
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	transition:
+		color 200ms ease,
+		background 200ms ease;
+	padding: 0;
+}
+
+.windowControlBtn:hover {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+/* Mic inline level bars */
+@keyframes mic-bar-bounce {
+	0%,
+	100% {
+		transform: scaleY(0.4);
+	}
+	50% {
+		transform: scaleY(1);
+	}
+}
+
+.micLevelBars {
+	display: flex;
+	align-items: flex-end;
+	gap: 1px;
+	height: 16px;
+}
+
+.micLevelBar {
+	width: 2px;
+	border-radius: 1px;
+	background: #e0000f;
+	transform-origin: bottom;
+	transition: height 150ms ease-out;
 }
 
 /* Dropdown menus */
@@ -194,7 +385,7 @@
 
 .dropdownGlass {
 	animation: dropdown-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-	background: rgba(12, 12, 14, 0.92) !important;
+	background: rgba(12, 12, 14, 0.94) !important;
 	border: 1px solid rgba(255, 255, 255, 0.1) !important;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
 	backdrop-filter: blur(40px) !important;

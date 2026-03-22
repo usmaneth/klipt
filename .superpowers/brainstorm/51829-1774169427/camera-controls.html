@@ -1,0 +1,138 @@
+<h2>Camera Bubble — Controls & Adjustability</h2>
+<p class="subtitle">The camera is a separate floating window. What controls should it have? Multi-select.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="cam-size-slider" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Size Slider on Hover</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;justify-content:center;">
+        <div style="position:relative;">
+          <div style="width:80px;height:80px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.1);"></div>
+          <!-- Slider below bubble on hover -->
+          <div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);border-radius:8px;padding:3px 8px;white-space:nowrap;">
+            <span style="color:rgba(255,255,255,0.2);font-size:7px;">S</span>
+            <div style="width:50px;height:2px;background:rgba(255,255,255,0.1);border-radius:1px;position:relative;">
+              <div style="width:40%;height:100%;background:#E0000F;border-radius:1px;"></div>
+              <div style="position:absolute;top:-3px;left:40%;width:8px;height:8px;border-radius:50%;background:#fff;transform:translateX(-50%);box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>
+            </div>
+            <span style="color:rgba(255,255,255,0.2);font-size:7px;">L</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Hover the camera bubble → a tiny size slider appears below. Drag to resize from small to large. Disappears when not hovering.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="cam-shape-toggle" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Shape Toggle on Hover</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;justify-content:center;">
+        <div style="position:relative;">
+          <div style="width:80px;height:80px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.1);"></div>
+          <!-- Shape buttons on hover -->
+          <div style="position:absolute;top:50%;right:-40px;transform:translateY(-50%);display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);border-radius:8px;padding:4px;">
+            <div style="width:20px;height:20px;border-radius:50%;background:rgba(224,0,15,0.15);border:1px solid rgba(224,0,15,0.3);display:flex;align-items:center;justify-content:center;">
+              <div style="width:8px;height:8px;border-radius:50%;background:#E0000F;"></div>
+            </div>
+            <div style="width:20px;height:20px;border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">
+              <div style="width:8px;height:8px;border-radius:2px;background:rgba(255,255,255,0.2);"></div>
+            </div>
+            <div style="width:20px;height:20px;border-radius:2px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">
+              <div style="width:8px;height:8px;border-radius:1px;background:rgba(255,255,255,0.2);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Hover the bubble → shape buttons appear on the side. Circle (active, red), rounded square, square. Click to switch shape instantly.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="cam-drag-anywhere" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Drag Anywhere + Corner Snap</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;position:relative;height:100px;">
+        <div style="position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.1);box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
+        <!-- Corner indicators -->
+        <div style="position:absolute;top:6px;left:6px;width:12px;height:12px;border-top:1px dashed rgba(255,255,255,0.06);border-left:1px dashed rgba(255,255,255,0.06);border-radius:2px 0 0 0;"></div>
+        <div style="position:absolute;bottom:6px;left:6px;width:12px;height:12px;border-bottom:1px dashed rgba(255,255,255,0.06);border-left:1px dashed rgba(255,255,255,0.06);border-radius:0 0 0 2px;"></div>
+        <div style="position:absolute;bottom:6px;right:6px;width:12px;height:12px;border-bottom:1px dashed rgba(255,255,255,0.06);border-right:1px dashed rgba(255,255,255,0.06);border-radius:0 0 2px 0;"></div>
+      </div>
+      <p style="margin-top:8px;">Camera is its own window — drag it anywhere on screen. When released, optionally snaps to nearest corner with smooth animation. Already built (separate BrowserWindow).</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="cam-border-style" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Border Style: Gradient Ring</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;gap:12px;justify-content:center;">
+        <!-- Plain -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:50px;height:50px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.15);"></div>
+          <span style="color:rgba(255,255,255,0.15);font-size:7px;">Plain</span>
+        </div>
+        <!-- Red ring -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#E0000F,#FF4500);padding:2px;">
+            <div style="width:100%;height:100%;border-radius:50%;background:#222;"></div>
+          </div>
+          <span style="color:#E0000F;font-size:7px;font-weight:600;">klipt red</span>
+        </div>
+        <!-- Glow -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:50px;height:50px;border-radius:50%;background:#222;border:2px solid rgba(224,0,15,0.3);box-shadow:0 0 16px rgba(224,0,15,0.15);"></div>
+          <span style="color:rgba(255,255,255,0.15);font-size:7px;">Glow</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Camera bubble border options: plain white, klipt red gradient ring, or subtle red glow. Applied during recording to brand the camera feed.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="cam-flip" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>Mirror / Flip Toggle</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <div style="width:50px;height:50px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
+          <span style="color:rgba(255,255,255,0.2);font-size:8px;">You</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg>
+        <div style="width:50px;height:50px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;transform:scaleX(-1);">
+          <span style="color:rgba(255,255,255,0.2);font-size:8px;transform:scaleX(-1);">You</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Toggle to mirror/flip the camera horizontally. Default is mirrored (like FaceTime). Option to show un-mirrored for the recording output.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="cam-close-btn" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content">
+      <h3>Close/Hide Button on Hover</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;justify-content:center;">
+        <div style="position:relative;">
+          <div style="width:70px;height:70px;border-radius:50%;background:#222;border:2px solid rgba(255,255,255,0.1);"></div>
+          <div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Small X button appears top-right of the bubble on hover. Click to close the camera window. Already exists — just restyle to match.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top:20px;">
+  <div class="option" data-choice="ship-all" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">✓</div>
+    <div class="content">
+      <h3>All selections locked. Build everything.</h3>
+      <p>HUD glass bar + camera controls + all extras. Ship it.</p>
+    </div>
+  </div>
+</div>

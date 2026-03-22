@@ -1,0 +1,110 @@
+<h2>HUD — Where Does the File Path Go?</h2>
+<p class="subtitle">The glass bar with aurora border is locked. Where should the recordings folder path live?</p>
+
+<div class="cards">
+  <div class="card" data-choice="path-inline" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:30px;display:flex;justify-content:center;align-items:flex-end;min-height:180px;">
+      <div style="position:relative;">
+        <div style="position:absolute;inset:-1.5px;border-radius:22px;background:linear-gradient(90deg,#E0000F,#FF4500,#FF6B35,#FF8C00,#E0000F);background-size:300% 300%;"></div>
+        <div style="position:relative;display:inline-flex;align-items:center;gap:8px;background:rgba(12,12,14,0.94);border-radius:20px;padding:8px 14px;">
+          <span style="color:rgba(255,255,255,0.4);font-size:9px;">Screen 1</span>
+          <div style="width:1px;height:14px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.08),transparent);"></div>
+          <!-- Toggles -->
+          <div style="display:flex;gap:3px;">
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+              <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);"></div>
+            </div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+            </div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+            </div>
+          </div>
+          <div style="width:1px;height:14px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.08),transparent);"></div>
+          <!-- Record -->
+          <div style="display:flex;align-items:center;gap:4px;background:#E0000F;border-radius:10px;padding:5px 12px;">
+            <div style="width:5px;height:5px;border-radius:50%;background:#fff;"></div>
+            <span style="color:#fff;font-size:9px;font-weight:600;">Record</span>
+          </div>
+          <div style="width:1px;height:14px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.08),transparent);"></div>
+          <!-- File path inline -->
+          <div style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="color:rgba(255,255,255,0.15);font-size:8px;text-decoration:underline;text-underline-offset:2px;">recordings</span>
+          </div>
+          <div style="display:flex;gap:3px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Inline (in the bar)</h3>
+      <p>Folder icon + truncated path name right in the bar, after the record button. Ultra-compact. Clickable to change folder.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="path-below" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:30px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;min-height:180px;">
+      <div style="position:relative;">
+        <div style="position:absolute;inset:-1.5px;border-radius:22px;background:linear-gradient(90deg,#E0000F,#FF4500,#FF6B35,#FF8C00,#E0000F);background-size:300% 300%;"></div>
+        <div style="position:relative;display:inline-flex;align-items:center;gap:8px;background:rgba(12,12,14,0.94);border-radius:20px;padding:8px 14px;">
+          <span style="color:rgba(255,255,255,0.4);font-size:9px;">Screen 1</span>
+          <div style="width:1px;height:14px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.08),transparent);"></div>
+          <div style="display:flex;gap:3px;">
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);"></div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);"></div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);"></div>
+          </div>
+          <div style="width:1px;height:14px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.08),transparent);"></div>
+          <div style="display:flex;align-items:center;gap:4px;background:#E0000F;border-radius:10px;padding:5px 12px;">
+            <div style="width:5px;height:5px;border-radius:50%;background:#fff;"></div>
+            <span style="color:#fff;font-size:9px;font-weight:600;">Record</span>
+          </div>
+          <div style="display:flex;gap:3px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
+      </div>
+      <!-- Path below -->
+      <div style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span style="color:rgba(255,255,255,0.12);font-size:8px;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.06);text-underline-offset:2px;">~/Desktop/recordings</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Below the Bar</h3>
+      <p>Full path shown as a tiny clickable link underneath the main HUD bar. More room to show the full path. Doesn't crowd the bar. Disappears during recording.</p>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;">
+  <h3>Also — Recording State</h3>
+  <p class="subtitle" style="margin-bottom:12px;">When recording, how should it look?</p>
+  <div class="options">
+    <div class="option" data-choice="rec-timer" onclick="toggleSelect(this)">
+      <div class="letter">R</div>
+      <div class="content">
+        <h3>Red Timer Replaces Record Button</h3>
+        <div style="background:#0a0a0a;border-radius:10px;padding:12px;margin-top:6px;display:flex;align-items:center;gap:6px;justify-content:center;">
+          <div style="width:6px;height:6px;border-radius:50%;background:#E0000F;animation:pulse 1.5s infinite;"></div>
+          <span style="color:#E0000F;font-size:12px;font-family:monospace;font-weight:600;">02:34</span>
+          <div style="width:24px;height:24px;border-radius:6px;background:rgba(224,0,15,0.1);display:flex;align-items:center;justify-content:center;margin-left:4px;">
+            <div style="width:8px;height:8px;border-radius:2px;background:#E0000F;"></div>
+          </div>
+        </div>
+        <p style="margin-top:6px;">Pulsing red dot + mono timer + stop square button. The record button area transforms into a timer display.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+</style>
+
+<p class="subtitle" style="margin-top:16px;">Click your choices, then we build.</p>

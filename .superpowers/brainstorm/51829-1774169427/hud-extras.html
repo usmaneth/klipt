@@ -1,0 +1,141 @@
+<h2>HUD — Camera, Mic, & Extra Controls</h2>
+<p class="subtitle">How should these secondary features appear? Multi-select.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="cam-toggle-expand" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Camera: Toggle in bar, settings expand on hover</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;gap:8px;">
+        <!-- Camera button active -->
+        <div style="width:26px;height:26px;border-radius:8px;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <span style="color:rgba(255,255,255,0.12);font-size:8px;">→</span>
+        <!-- Expanded popover on hover -->
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:6px 10px;">
+          <span style="color:rgba(255,255,255,0.3);font-size:8px;">FaceTime HD</span>
+          <div style="width:1px;height:10px;background:rgba(255,255,255,0.06);"></div>
+          <div style="display:flex;gap:2px;">
+            <div style="width:16px;height:16px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+              <span style="color:rgba(255,255,255,0.3);font-size:6px;">●</span>
+            </div>
+            <div style="width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);"></div>
+            <div style="width:16px;height:16px;border-radius:2px;border:1px solid rgba(255,255,255,0.08);"></div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Camera toggle lives in the main bar. Hover/click it → a small popover appears with device selector and shape options (circle/rounded/square). Clean and tucked away.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="mic-level-bar" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Mic: Inline Level Meter</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;gap:6px;">
+        <div style="width:26px;height:26px;border-radius:8px;background:rgba(224,0,15,0.08);border:1px solid rgba(224,0,15,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E0000F" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+        </div>
+        <!-- Tiny inline level bars -->
+        <div style="display:flex;gap:1px;align-items:flex-end;height:16px;">
+          <div style="width:2px;height:40%;background:#E0000F;border-radius:1px;"></div>
+          <div style="width:2px;height:70%;background:#E0000F;border-radius:1px;"></div>
+          <div style="width:2px;height:90%;background:#E0000F;border-radius:1px;"></div>
+          <div style="width:2px;height:55%;background:#E0000F;border-radius:1px;"></div>
+          <div style="width:2px;height:30%;background:rgba(255,255,255,0.06);border-radius:1px;"></div>
+        </div>
+      </div>
+      <p style="margin-top:8px;">When mic is active, tiny animated level bars appear next to the mic icon. Real-time visual feedback right in the bar. No separate mic bar needed.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="mic-separate-bar" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Mic: Separate Bar Above (current)</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <!-- Mic bar above -->
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(12,12,14,0.92);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:5px 10px;">
+          <select style="background:transparent;border:none;color:rgba(255,255,255,0.3);font-size:8px;outline:none;-webkit-appearance:none;">
+            <option>FaceTime HD Camera</option>
+          </select>
+          <div style="display:flex;gap:1px;align-items:flex-end;height:14px;">
+            <div style="width:2px;height:40%;background:#E0000F;border-radius:1px;"></div>
+            <div style="width:2px;height:70%;background:#E0000F;border-radius:1px;"></div>
+            <div style="width:2px;height:50%;background:#E0000F;border-radius:1px;"></div>
+          </div>
+        </div>
+        <!-- Main bar below -->
+        <div style="background:rgba(12,12,14,0.92);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:6px 12px;">
+          <span style="color:rgba(255,255,255,0.2);font-size:8px;">Main HUD bar...</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Keep the separate mic bar that appears above the main bar when mic is enabled. Shows device selector + level meter. Current behavior, just cleaner.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="countdown-overlay" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Countdown: Centered Number Overlay</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;justify-content:center;">
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(224,0,15,0.06);border:2px solid rgba(224,0,15,0.2);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(224,0,15,0.1);">
+          <span style="color:#E0000F;font-size:36px;font-weight:300;font-family:monospace;">3</span>
+        </div>
+      </div>
+      <p style="margin-top:8px;">When countdown starts, a large red number appears center-screen in a glowing circle. Counts 3→2→1→Record. Dramatic and clear.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="timer-dropdown" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>Timer Delay: Inline Selector</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;gap:6px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div style="display:flex;gap:2px;">
+          <div style="padding:3px 6px;border-radius:4px;background:rgba(255,255,255,0.06);"><span style="color:rgba(255,255,255,0.3);font-size:8px;">0s</span></div>
+          <div style="padding:3px 6px;border-radius:4px;background:rgba(224,0,15,0.1);border:1px solid rgba(224,0,15,0.2);"><span style="color:#E0000F;font-size:8px;font-weight:600;">3s</span></div>
+          <div style="padding:3px 6px;border-radius:4px;background:rgba(255,255,255,0.06);"><span style="color:rgba(255,255,255,0.3);font-size:8px;">5s</span></div>
+          <div style="padding:3px 6px;border-radius:4px;background:rgba(255,255,255,0.06);"><span style="color:rgba(255,255,255,0.3);font-size:8px;">10s</span></div>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Timer icon + small pill buttons for delay (0/3/5/10s). Click to select. Active one gets red. No dropdown needed — everything visible.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="quick-actions" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content">
+      <h3>Quick Actions: Open Video / Open Project</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;gap:4px;">
+        <div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </div>
+        <div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+      </div>
+      <p style="margin-top:8px;">Small icon buttons for "Open Video" and "Open Project" — jump straight to the editor from the HUD. No need to go back to home screen.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="hud-hide-capture" onclick="toggleSelect(this)">
+    <div class="letter">7</div>
+    <div class="content">
+      <h3>Eye Toggle: Show/Hide HUD from Recording</h3>
+      <div style="background:#0a0a0a;border-radius:10px;padding:16px;margin-top:8px;display:flex;align-items:center;gap:6px;">
+        <div style="width:26px;height:26px;border-radius:8px;background:rgba(224,0,15,0.08);border:1px solid rgba(224,0,15,0.15);display:flex;align-items:center;justify-content:center;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E0000F" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <span style="color:rgba(255,255,255,0.2);font-size:8px;">HUD visible in recording</span>
+      </div>
+      <p style="margin-top:8px;">Eye icon toggle — controls whether the HUD itself appears in the screen recording. Red when visible, dim when hidden. Already exists, just keep it styled consistently.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Select all the features you want in the HUD. Then we build everything.</p>

@@ -1,0 +1,126 @@
+<h2>HUD Overlay — Complete Redesign</h2>
+<p class="subtitle">The recording control bar that floats over your screen. Which direction?</p>
+
+<div class="cards">
+  <div class="card" data-choice="hud-pill" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:30px;display:flex;justify-content:center;align-items:flex-end;min-height:200px;">
+      <!-- Compact pill -->
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(12,12,14,0.92);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:6px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <div style="width:5px;height:5px;border-radius:2px;background:#E0000F;"></div>
+        <span style="color:rgba(255,255,255,0.4);font-size:9px;font-weight:500;">Screen 1</span>
+        <div style="width:1px;height:12px;background:rgba(255,255,255,0.06);"></div>
+        <div style="display:flex;gap:2px;">
+          <div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;">
+            <div style="width:6px;height:6px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);"></div>
+          </div>
+          <div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+          </div>
+          <div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+          </div>
+        </div>
+        <div style="width:1px;height:12px;background:rgba(255,255,255,0.06);"></div>
+        <!-- Record button -->
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(224,0,15,0.1);border:1px solid rgba(224,0,15,0.2);border-radius:12px;padding:4px 12px;cursor:pointer;">
+          <div style="width:6px;height:6px;border-radius:50%;background:#E0000F;"></div>
+          <span style="color:#E0000F;font-size:9px;font-weight:600;">Record</span>
+        </div>
+        <div style="width:1px;height:12px;background:rgba(255,255,255,0.06);"></div>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Ultra-Compact Pill</h3>
+      <p>Everything on one line. Source, toggles, record, minimize/close. No labels except source name. Tiny icons in rounded squares. Minimal footprint — like the macOS screenshot toolbar.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hud-glass" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:30px;display:flex;justify-content:center;align-items:flex-end;min-height:200px;">
+      <!-- Glass bar with aurora -->
+      <div style="position:relative;">
+        <div style="position:absolute;inset:-1.5px;border-radius:22px;background:linear-gradient(90deg,#E0000F,#FF4500,#FF6B35,#FF8C00,#E0000F);background-size:300% 300%;box-shadow:0 0 20px rgba(255,69,0,0.15);"></div>
+        <div style="position:relative;display:inline-flex;align-items:center;gap:10px;background:rgba(12,12,14,0.94);border-radius:20px;padding:8px 16px;">
+          <div style="display:flex;align-items:center;gap:4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span style="color:rgba(255,255,255,0.4);font-size:10px;">Screen 1</span>
+          </div>
+          <div style="width:1px;height:16px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.1),transparent);"></div>
+          <div style="display:flex;gap:4px;">
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(224,0,15,0.08);border:1px solid rgba(224,0,15,0.15);display:flex;align-items:center;justify-content:center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E0000F" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+            </div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+            </div>
+            <div style="width:26px;height:26px;border-radius:8px;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+          </div>
+          <div style="width:1px;height:16px;background:linear-gradient(to bottom,transparent,rgba(255,255,255,0.1),transparent);"></div>
+          <div style="display:flex;align-items:center;gap:5px;background:#E0000F;border-radius:10px;padding:6px 14px;cursor:pointer;box-shadow:0 0 16px rgba(224,0,15,0.2);">
+            <div style="width:6px;height:6px;border-radius:50%;background:#fff;"></div>
+            <span style="color:#fff;font-size:10px;font-weight:600;">Record</span>
+          </div>
+          <div style="display:flex;gap:3px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Glass Bar + Aurora Border</h3>
+      <p>Keep the animated aurora gradient border but make everything inside cleaner. Bigger toggle buttons (26px squares), solid red Record button (not outline), gradient separators. Current vibe but elevated.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hud-floating" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:30px;display:flex;justify-content:center;align-items:flex-end;min-height:200px;">
+      <!-- Floating segmented bar -->
+      <div style="display:flex;gap:6px;">
+        <!-- Source segment -->
+        <div style="display:flex;align-items:center;gap:5px;background:rgba(12,12,14,0.92);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:6px 12px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+          <span style="color:rgba(255,255,255,0.35);font-size:9px;">Screen 1</span>
+        </div>
+        <!-- Toggles segment -->
+        <div style="display:flex;align-items:center;gap:3px;background:rgba(12,12,14,0.92);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:4px 6px;">
+          <div style="width:24px;height:24px;border-radius:8px;background:rgba(224,0,15,0.08);display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E0000F" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
+          </div>
+          <div style="width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+          </div>
+          <div style="width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+          </div>
+          <div style="width:24px;height:24px;border-radius:8px;background:rgba(22,163,74,0.08);display:flex;align-items:center;justify-content:center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/></svg>
+          </div>
+        </div>
+        <!-- Record segment -->
+        <div style="display:flex;align-items:center;gap:5px;background:#E0000F;border-radius:14px;padding:6px 16px;cursor:pointer;box-shadow:0 4px 16px rgba(224,0,15,0.25);">
+          <div style="width:6px;height:6px;border-radius:50%;background:#fff;"></div>
+          <span style="color:#fff;font-size:10px;font-weight:600;">Record</span>
+        </div>
+        <!-- Window controls -->
+        <div style="display:flex;align-items:center;gap:3px;background:rgba(12,12,14,0.92);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:4px 8px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Segmented Islands</h3>
+      <p>Break the HUD into 4 separate floating segments: source, toggles, record, window controls. Each is its own glass pill. The record button is a standalone red pill. Feels modular and spatial.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Pick the HUD that IS klipt.</p>
