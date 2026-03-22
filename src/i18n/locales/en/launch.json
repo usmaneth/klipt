@@ -1,0 +1,50 @@
+{
+	"recording": {
+		"disableSystemAudio": "Disable system audio",
+		"enableSystemAudio": "Enable system audio",
+		"disableMicrophone": "Disable microphone",
+		"enableMicrophone": "Enable microphone",
+		"countdownDelay": "Countdown delay",
+		"noDelay": "No delay",
+		"record": "Record",
+		"starting": "Starting...",
+		"recordingFolder": "Recording folder: {{path}}",
+		"chooseRecordingsFolder": "Choose recordings folder",
+		"folderPath": "Path: /{{name}}/",
+		"openVideoFile": "Open video file",
+		"openProject": "Open project",
+		"hideHudFromVideo": "Hide HUD from recording",
+		"showHudInVideo": "Show HUD in recording",
+		"hideHud": "Hide HUD",
+		"camera": {
+			"enable": "Enable camera",
+			"disable": "Disable camera",
+			"noDevices": "No camera found",
+			"showPreview": "Show camera preview",
+			"hidePreview": "Hide camera preview",
+			"permissionNeeded": "klipt needs camera permission. Open System Settings > Privacy & Security > Camera to enable it.",
+			"disconnected": "Camera disconnected. Screen recording continues."
+		},
+		"closeApp": "Close App"
+	},
+	"sourceSelector": {
+		"loadingSources": "Loading sources...",
+		"screens": "Screens",
+		"windows": "Windows",
+		"windowsNote": "Only visible (non-minimized) windows can be recorded.",
+		"windowPlaceholder": "Window",
+		"cancel": "Cancel",
+		"share": "Share"
+	},
+	"permissions": {
+		"screenRecordingNeeded": "klipt needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen klipt.",
+		"screenRecordingMissing": "Screen Recording permission is still missing. System Settings has been opened again. Enable it, then quit and reopen klipt before recording.",
+		"accessibilityNeeded": "klipt also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, quit and reopen klipt.",
+		"accessibilityMissing": "Accessibility permission is still missing. System Settings has been opened again. Enable it, then quit and reopen klipt before recording.",
+		"selectSource": "Please select a source to record",
+		"systemAudioUnavailable": "System audio is not available for this source. Recording will continue without system audio.",
+		"microphoneDenied": "Microphone access was denied. Recording will continue without microphone audio.",
+		"failedToStart": "Failed to start recording: {{error}}",
+		"failedToStartGeneric": "Failed to start recording"
+	}
+}

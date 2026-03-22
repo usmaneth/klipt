@@ -1,0 +1,333 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.sec{margin-bottom:2rem;}
+.sec-label{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-tertiary);padding-bottom:9px;border-bottom:.5px solid var(--color-border-tertiary);margin-bottom:16px;}
+.card{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;}
+.surface{display:flex;align-items:center;justify-content:center;border-radius:16px;}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;}
+.swatch-row{display:flex;gap:10px;flex-wrap:wrap;}
+.sw{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.sb{width:48px;height:48px;border-radius:10px;}
+.sn{font-size:11px;color:var(--color-text-secondary);font-weight:500;}
+.sh{font-size:10px;color:var(--color-text-tertiary);font-family:var(--font-mono);}
+.note{font-size:12px;color:var(--color-text-tertiary);line-height:1.6;margin-top:12px;padding-top:12px;border-top:.5px solid var(--color-border-tertiary);}
+.wm{display:flex;align-items:center;gap:9px;}
+.pill{display:inline-block;padding:7px 16px;border-radius:99px;font-size:13px;font-weight:500;margin:3px;}
+.do-dont{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:0;}
+.db{border-radius:var(--border-radius-md);padding:12px;border:.5px solid var(--color-border-tertiary);}
+.badge{display:inline-block;font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;margin-bottom:8px;}
+.type-row{display:flex;align-items:baseline;gap:16px;padding-bottom:12px;border-bottom:.5px solid var(--color-border-tertiary);}
+.type-meta{font-size:10px;font-family:var(--font-mono);color:var(--color-text-tertiary);min-width:100px;flex-shrink:0;}
+</style>
+
+<div style="padding:1rem 0;">
+
+<div class="sec">
+  <div class="sec-label">01 — The mark</div>
+  <div class="card">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+      <div class="surface" style="background:#0D0D0D;width:90px;height:90px;">
+        <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+          <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+          <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+          <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+        </svg>
+      </div>
+      <div class="surface" style="background:#F2F0ED;width:90px;height:90px;border:.5px solid #E0DEDA;">
+        <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+          <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#C8C6C3" stroke-width="1.5"/>
+          <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#999" stroke-width="1.5" transform="rotate(10 24 24)"/>
+          <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+        </svg>
+      </div>
+      <div class="surface" style="background:#E0000F;width:90px;height:90px;">
+        <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+          <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+          <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" transform="rotate(10 24 24)"/>
+          <rect x="15" y="15" width="18" height="18" rx="3" fill="white" transform="rotate(20 24 24)"/>
+        </svg>
+      </div>
+      <div class="surface" style="background:var(--color-background-secondary);width:90px;height:90px;">
+        <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+          <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="var(--color-border-secondary)" stroke-width="1.5"/>
+          <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="var(--color-border-primary)" stroke-width="1.5" transform="rotate(10 24 24)"/>
+          <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div style="border-top:.5px solid var(--color-border-tertiary);padding-top:16px;margin-bottom:16px;">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:12px;">Wordmark</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;align-items:center;gap:10px;background:#0D0D0D;padding:12px 20px;border-radius:10px;">
+          <svg width="26" height="26" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:24px;font-weight:500;letter-spacing:-.05em;color:#F2F0ED;">klipt</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:10px;border:.5px solid var(--color-border-tertiary);">
+          <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="var(--color-border-secondary)" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="var(--color-border-primary)" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:18px;font-weight:500;letter-spacing:-.04em;color:var(--color-text-primary);">klipt</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;border:.5px solid var(--color-border-tertiary);">
+          <svg width="14" height="14" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="var(--color-border-secondary)" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="var(--color-border-primary)" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:14px;font-weight:500;letter-spacing:-.03em;color:var(--color-text-primary);">klipt</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:.5px solid var(--color-border-tertiary);padding-top:16px;">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:12px;">Icon scale</div>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="background:#0D0D0D;border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;">
+            <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+              <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+              <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+              <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+            </svg>
+          </div>
+          <span style="font-size:10px;color:var(--color-text-tertiary);">64px</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="background:#0D0D0D;border-radius:9px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;">
+            <svg width="30" height="30" viewBox="0 0 48 48" fill="none">
+              <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+              <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+              <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+            </svg>
+          </div>
+          <span style="font-size:10px;color:var(--color-text-tertiary);">48px</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="background:#0D0D0D;border-radius:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+              <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+              <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+              <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+            </svg>
+          </div>
+          <span style="font-size:10px;color:var(--color-text-tertiary);">32px</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="background:#0D0D0D;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+            <svg width="13" height="13" viewBox="0 0 48 48" fill="none">
+              <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="2"/>
+              <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="2" transform="rotate(10 24 24)"/>
+              <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+            </svg>
+          </div>
+          <span style="font-size:10px;color:var(--color-text-tertiary);">20px</span>
+        </div>
+      </div>
+    </div>
+    <p class="note">Three squares in orbit — each one rotated 10° further than the last, pulling focus inward to the red core. Outer ring: barely-there stroke. Middle ring: visible but restrained. Inner square: the cut — solid, red, decisive. The whole mark reads as depth, intelligence, precision.</p>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">02 — Color system</div>
+  <div class="card">
+    <div class="swatch-row" style="margin-bottom:18px;">
+      <div class="sw"><div class="sb" style="background:#E0000F;"></div><div class="sn">Cut</div><div class="sh">#E0000F</div></div>
+      <div class="sw"><div class="sb" style="background:#FF2215;"></div><div class="sn">Blade</div><div class="sh">#FF2215</div></div>
+      <div class="sw"><div class="sb" style="background:#A80008;"></div><div class="sn">Deep</div><div class="sh">#A80008</div></div>
+      <div class="sw"><div class="sb" style="background:#0D0D0D;"></div><div class="sn">Void</div><div class="sh">#0D0D0D</div></div>
+      <div class="sw"><div class="sb" style="background:#1C1C1C;"></div><div class="sn">Studio</div><div class="sh">#1C1C1C</div></div>
+      <div class="sw"><div class="sb" style="background:#2E2E2E;"></div><div class="sn">Frame</div><div class="sh">#2E2E2E</div></div>
+      <div class="sw"><div class="sb" style="background:#555555;"></div><div class="sn">Slate</div><div class="sh">#555555</div></div>
+      <div class="sw"><div class="sb" style="background:#F2F0ED;border:.5px solid #ddd;"></div><div class="sn">Canvas</div><div class="sh">#F2F0ED</div></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;background:#0D0D0D;border-radius:10px;padding:14px;">
+        <div style="font-size:10px;color:#3A3A3A;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;">Primary dark</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:18px;font-weight:500;letter-spacing:-.05em;color:#F2F0ED;">klipt</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:140px;background:#F2F0ED;border-radius:10px;padding:14px;border:.5px solid #E0DEDA;">
+        <div style="font-size:10px;color:#AAA8A5;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;">Primary light</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#C8C6C3" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#999" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:18px;font-weight:500;letter-spacing:-.05em;color:#0D0D0D;">klipt</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:140px;background:#E0000F;border-radius:10px;padding:14px;">
+        <div style="font-size:10px;color:#A80008;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;">Brand accent</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="white" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:18px;font-weight:500;letter-spacing:-.05em;color:white;">klipt</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">03 — Typography</div>
+  <div class="card">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="type-row">
+        <span class="type-meta">Display / 500</span>
+        <span style="font-size:32px;font-weight:500;letter-spacing:-.05em;color:var(--color-text-primary);line-height:1.1;">Edit at the speed of thought.</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">Heading / 500</span>
+        <span style="font-size:20px;font-weight:500;letter-spacing:-.03em;color:var(--color-text-primary);">Your footage. Already done.</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">Body / 400</span>
+        <span style="font-size:14px;color:var(--color-text-secondary);line-height:1.65;">Klipt is the 10x video editor for creators who ship fast. Drop your footage. Walk away. Come back to a polished, publish-ready edit.</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:16px;">
+        <span class="type-meta">Mono / label</span>
+        <span style="font-size:12px;font-family:var(--font-mono);color:#E0000F;letter-spacing:.04em;">v1.0-beta · klipt.io</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">04 — Voice & taglines</div>
+  <div class="card">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:10px;">Hero line</div>
+      <div style="background:#0D0D0D;border-radius:10px;padding:16px 20px;display:inline-block;">
+        <span style="font-size:18px;font-weight:500;letter-spacing:-.04em;color:#F2F0ED;">Already klipt. <span style="color:#E0000F;">.</span></span>
+      </div>
+    </div>
+    <div style="padding-top:14px;border-top:.5px solid var(--color-border-tertiary);margin-bottom:14px;">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:10px;">Tagline set</div>
+      <div>
+        <span class="pill" style="background:var(--color-background-secondary);color:var(--color-text-primary);border:.5px solid var(--color-border-tertiary);">Cut. Done. Klipt.</span>
+        <span class="pill" style="background:var(--color-background-secondary);color:var(--color-text-primary);border:.5px solid var(--color-border-tertiary);">Your footage. Done.</span>
+        <span class="pill" style="background:var(--color-background-secondary);color:var(--color-text-primary);border:.5px solid var(--color-border-tertiary);">The last editor you'll need.</span>
+        <span class="pill" style="background:#E0000F;color:white;">One cut. Perfect.</span>
+      </div>
+    </div>
+    <div style="padding-top:14px;border-top:.5px solid var(--color-border-tertiary);">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:10px;">Voice principles</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#E0000F;flex-shrink:0;margin-top:7px;"></div><span style="font-size:13px;color:var(--color-text-secondary);line-height:1.5;">Minimal words. Maximum precision. Match the product's speed.</span></div>
+        <div style="display:flex;gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#E0000F;flex-shrink:0;margin-top:7px;"></div><span style="font-size:13px;color:var(--color-text-secondary);line-height:1.5;">Past-tense energy — it's already done before you ask.</span></div>
+        <div style="display:flex;gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#E0000F;flex-shrink:0;margin-top:7px;"></div><span style="font-size:13px;color:var(--color-text-secondary);line-height:1.5;">Always lowercase in product — klipt, not Klipt.</span></div>
+        <div style="display:flex;gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#E0000F;flex-shrink:0;margin-top:7px;"></div><span style="font-size:13px;color:var(--color-text-secondary);line-height:1.5;">Mysterious, not cold. Intelligent, not corporate.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">05 — UI in context</div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:14px;">
+    <div style="background:#0D0D0D;border-radius:12px;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+            <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#2E2E2E" stroke-width="1.5"/>
+            <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#555" stroke-width="1.5" transform="rotate(10 24 24)"/>
+            <rect x="15" y="15" width="18" height="18" rx="3" fill="#E0000F" transform="rotate(20 24 24)"/>
+          </svg>
+          <span style="font-size:14px;font-weight:500;letter-spacing:-.03em;color:#F2F0ED;">klipt</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <div style="padding:4px 10px;border-radius:6px;font-size:11px;background:#1C1C1C;color:#555;">edit</div>
+          <div style="padding:4px 10px;border-radius:6px;font-size:11px;background:#1C1C1C;color:#555;">export</div>
+          <div style="padding:4px 10px;border-radius:6px;font-size:11px;background:#E0000F;color:white;">publish</div>
+        </div>
+      </div>
+      <div style="background:#161616;border-radius:8px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:10px;color:#3A3A3A;font-family:var(--font-mono);margin-bottom:10px;letter-spacing:.04em;">TIMELINE — intro_v3.mp4</div>
+        <div style="height:36px;display:flex;align-items:center;gap:2px;">
+          <div style="height:26px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:32px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:20px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:28px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:24px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:30px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:18px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="width:2px;height:36px;background:#E0000F;border-radius:1px;margin:0 3px;flex-shrink:0;"></div>
+          <div style="height:22px;width:4px;border-radius:2px;background:#2E2E2E;opacity:.3;"></div>
+          <div style="height:28px;width:4px;border-radius:2px;background:#2E2E2E;opacity:.3;"></div>
+          <div style="height:18px;width:4px;border-radius:2px;background:#2E2E2E;opacity:.3;"></div>
+          <div style="height:24px;width:4px;border-radius:2px;background:#2E2E2E;opacity:.3;"></div>
+          <div style="width:2px;height:36px;background:#E0000F;border-radius:1px;margin:0 3px;flex-shrink:0;"></div>
+          <div style="height:26px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:30px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:22px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:28px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+          <div style="height:20px;width:4px;border-radius:2px;background:#2E2E2E;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:10px;color:#3A3A3A;font-family:var(--font-mono);">0:00</span>
+          <span style="font-size:10px;color:#E0000F;font-family:var(--font-mono);">2 cuts removed</span>
+          <span style="font-size:10px;color:#3A3A3A;font-family:var(--font-mono);">2:34</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;background:#161616;border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:#3A3A3A;margin-bottom:3px;font-family:var(--font-mono);">cuts made</div>
+          <div style="font-size:18px;font-weight:500;color:#E0000F;">47</div>
+        </div>
+        <div style="flex:1;background:#161616;border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:#3A3A3A;margin-bottom:3px;font-family:var(--font-mono);">time saved</div>
+          <div style="font-size:18px;font-weight:500;color:#F2F0ED;">1h 23m</div>
+        </div>
+        <div style="flex:1;background:#161616;border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;color:#3A3A3A;margin-bottom:3px;font-family:var(--font-mono);">status</div>
+          <div style="font-size:18px;font-weight:500;color:#E0000F;">klipt.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">06 — Do / don't</div>
+  <div class="do-dont">
+    <div class="db">
+      <div class="badge" style="background:#D4EDDA;color:#1A6B2E;">Do</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Use the mark on dark or off-white only</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Always lowercase: <span style="font-family:var(--font-mono);color:#E0000F;">klipt</span></div>
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Let the outer rings breathe — clear space = at least one ring width on all sides</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Red for decisive moments only — the cut, the CTA, the status</div>
+      </div>
+    </div>
+    <div class="db">
+      <div class="badge" style="background:#FDDEDE;color:#A80008;">Don't</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Never put the mark on a colored background</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Never title-case: <span style="font-family:var(--font-mono);text-decoration:line-through;color:var(--color-text-tertiary);">Klipt</span></div>
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Don't use red for anything other than the cut accent</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">Never add outlines or drop shadows to the mark</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>

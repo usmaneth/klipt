@@ -1,0 +1,278 @@
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e2e8;line-height:1.6}
+.kit{max-width:900px;margin:0 auto;padding:40px 24px}
+.section{margin-bottom:56px}
+.section-label{font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#7c3aed;margin-bottom:24px}
+h1{font-size:36px;font-weight:700;letter-spacing:-1.5px;margin-bottom:8px}
+h1 span:first-child{color:#7c3aed}
+h1 span:last-child{color:#2dd4bf}
+.subtitle{color:#888;font-size:14px;margin-bottom:48px}
+.logo-row{display:flex;gap:24px;flex-wrap:wrap}
+.logo-card{flex:1;min-width:240px;border-radius:16px;padding:40px;display:flex;align-items:center;justify-content:center;position:relative}
+.logo-card .card-label{position:absolute;bottom:12px;right:16px;font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:0.5}
+.logo-dark{background:#141420;border:1px solid rgba(124,58,237,0.15)}
+.logo-light{background:#f4f4f8;border:1px solid rgba(0,0,0,0.08)}
+.logo-gradient{background:linear-gradient(135deg,#7c3aed,#2dd4bf);border:none}
+
+.colors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.color-card{border-radius:12px;overflow:hidden}
+.color-swatch{height:80px;position:relative}
+.color-info{background:#141420;padding:12px 14px;border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 12px 12px}
+.color-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.color-hex{font-size:12px;color:#888;font-family:'SF Mono',Consolas,monospace}
+
+.type-sample{margin-bottom:32px;padding:28px;background:#141420;border-radius:14px;border:1px solid rgba(255,255,255,0.05)}
+.type-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:12px}
+.type-display{font-size:32px;font-weight:700;letter-spacing:-1px;margin-bottom:4px}
+.type-body{font-size:16px;color:#aaa;font-weight:400}
+.type-mono{font-family:'SF Mono',Consolas,'Courier New',monospace;font-size:14px;color:#2dd4bf}
+
+.usage-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.usage-card{padding:24px;border-radius:14px;border:1px solid rgba(255,255,255,0.06);background:#141420}
+.usage-card h3{font-size:14px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.do{color:#2dd4bf}
+.dont{color:#f43f5e}
+.usage-card p{font-size:13px;color:#888;line-height:1.5}
+.check{color:#2dd4bf}
+.cross{color:#f43f5e}
+
+.icon-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:8px}
+.icon-card{width:80px;height:80px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative}
+.icon-card .card-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#888;white-space:nowrap}
+.icon-grad{background:linear-gradient(135deg,#7c3aed,#2dd4bf)}
+.icon-dark{background:#141420;border:1px solid rgba(124,58,237,0.2)}
+.icon-violet{background:#7c3aed}
+.icon-teal{background:#2dd4bf}
+
+.spacing-note{margin-top:24px;padding:20px;background:#141420;border-radius:12px;border:1px solid rgba(255,255,255,0.05);font-size:13px;color:#888;line-height:1.6}
+.spacing-note strong{color:#e2e2e8}
+
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.3),rgba(45,212,191,0.3),transparent);margin:48px 0}
+
+@media(max-width:600px){
+  .logo-row,.usage-grid{grid-template-columns:1fr;flex-direction:column}
+  .colors-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+
+<div class="kit">
+
+  <!-- Header -->
+  <div class="section">
+    <h1><span>pixel</span><span>cast</span></h1>
+    <p class="subtitle">Brand Kit v1.0 — Screen Recording Tool</p>
+  </div>
+
+  <!-- Primary Logo -->
+  <div class="section">
+    <div class="section-label">Logo</div>
+    <div class="logo-row">
+      <div class="logo-card logo-dark">
+        <svg width="180" viewBox="0 0 400 140" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#2dd4bf"/></linearGradient></defs>
+          <g transform="translate(10,10)">
+            <rect x="12" y="8" width="52" height="37" rx="7" fill="url(#lg1)"/>
+            <rect x="16" y="12" width="44" height="26" rx="4" fill="#0f0f1a" opacity="0.55"/>
+            <rect x="22" y="18" width="6" height="6" rx="1.5" fill="#2dd4bf"/>
+            <rect x="31" y="18" width="6" height="6" rx="1.5" fill="#a78bfa" opacity="0.7"/>
+            <rect x="40" y="18" width="6" height="6" rx="1.5" fill="#7c3aed" opacity="0.5"/>
+            <rect x="22" y="27" width="6" height="6" rx="1.5" fill="#6366f1" opacity="0.5"/>
+            <rect x="31" y="27" width="6" height="6" rx="1.5" fill="#2dd4bf" opacity="0.6"/>
+            <rect x="40" y="27" width="6" height="6" rx="1.5" fill="#a78bfa" opacity="0.9"/>
+            <circle cx="54" cy="16" r="3" fill="#f43f5e"/>
+            <path d="M 68 15 Q 76 27 68 39" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+            <path d="M 74 10 Q 84 27 74 44" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+          </g>
+          <text x="105" y="42" font-family="system-ui,-apple-system,sans-serif" font-size="32" font-weight="700" letter-spacing="-1.5"><tspan fill="#7c3aed">pixel</tspan><tspan fill="#2dd4bf">cast</tspan></text>
+        </svg>
+        <span class="card-label">Dark</span>
+      </div>
+      <div class="logo-card logo-light">
+        <svg width="180" viewBox="0 0 400 140" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#2dd4bf"/></linearGradient></defs>
+          <g transform="translate(10,10)">
+            <rect x="12" y="8" width="52" height="37" rx="7" fill="url(#lg2)"/>
+            <rect x="16" y="12" width="44" height="26" rx="4" fill="#0f0f1a" opacity="0.55"/>
+            <rect x="22" y="18" width="6" height="6" rx="1.5" fill="#2dd4bf"/>
+            <rect x="31" y="18" width="6" height="6" rx="1.5" fill="#a78bfa" opacity="0.7"/>
+            <rect x="40" y="18" width="6" height="6" rx="1.5" fill="#7c3aed" opacity="0.5"/>
+            <rect x="22" y="27" width="6" height="6" rx="1.5" fill="#6366f1" opacity="0.5"/>
+            <rect x="31" y="27" width="6" height="6" rx="1.5" fill="#2dd4bf" opacity="0.6"/>
+            <rect x="40" y="27" width="6" height="6" rx="1.5" fill="#a78bfa" opacity="0.9"/>
+            <circle cx="54" cy="16" r="3" fill="#f43f5e"/>
+            <path d="M 68 15 Q 76 27 68 39" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+            <path d="M 74 10 Q 84 27 74 44" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+          </g>
+          <text x="105" y="42" font-family="system-ui,-apple-system,sans-serif" font-size="32" font-weight="700" letter-spacing="-1.5"><tspan fill="#7c3aed">pixel</tspan><tspan fill="#2dd4bf">cast</tspan></text>
+        </svg>
+        <span class="card-label" style="color:#555">Light</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Icon -->
+  <div class="section">
+    <div class="section-label">App Icon</div>
+    <div class="icon-row">
+      <div>
+        <div class="icon-card icon-grad">
+          <svg width="56" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(6,12)">
+              <rect x="0" y="0" width="56" height="40" rx="7" fill="rgba(255,255,255,0.25)"/>
+              <rect x="4" y="4" width="48" height="28" rx="4" fill="rgba(0,0,0,0.3)"/>
+              <rect x="12" y="10" width="7" height="7" rx="1.5" fill="#fff" opacity="0.9"/>
+              <rect x="22" y="10" width="7" height="7" rx="1.5" fill="#fff" opacity="0.6"/>
+              <rect x="32" y="10" width="7" height="7" rx="1.5" fill="#fff" opacity="0.8"/>
+              <rect x="12" y="20" width="7" height="7" rx="1.5" fill="#fff" opacity="0.5"/>
+              <rect x="22" y="20" width="7" height="7" rx="1.5" fill="#fff" opacity="0.85"/>
+              <rect x="32" y="20" width="7" height="7" rx="1.5" fill="#fff" opacity="0.65"/>
+              <circle cx="46" cy="9" r="3" fill="#f43f5e"/>
+              <path d="M 60 10 Q 68 20 60 30" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+              <path d="M 66 4 Q 76 20 66 36" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity="0.35"/>
+            </g>
+          </svg>
+        </div>
+        <span style="display:block;text-align:center;margin-top:8px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#888">Gradient</span>
+      </div>
+      <div>
+        <div class="icon-card icon-dark">
+          <svg width="56" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="ig1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#2dd4bf"/></linearGradient></defs>
+            <g transform="translate(6,12)">
+              <rect x="0" y="0" width="56" height="40" rx="7" fill="url(#ig1)"/>
+              <rect x="4" y="4" width="48" height="28" rx="4" fill="#0f0f1a" opacity="0.55"/>
+              <rect x="12" y="10" width="7" height="7" rx="1.5" fill="#2dd4bf"/>
+              <rect x="22" y="10" width="7" height="7" rx="1.5" fill="#a78bfa" opacity="0.7"/>
+              <rect x="32" y="10" width="7" height="7" rx="1.5" fill="#7c3aed" opacity="0.5"/>
+              <rect x="12" y="20" width="7" height="7" rx="1.5" fill="#6366f1" opacity="0.5"/>
+              <rect x="22" y="20" width="7" height="7" rx="1.5" fill="#2dd4bf" opacity="0.6"/>
+              <rect x="32" y="20" width="7" height="7" rx="1.5" fill="#a78bfa" opacity="0.9"/>
+              <circle cx="46" cy="9" r="3" fill="#f43f5e"/>
+              <path d="M 60 10 Q 68 20 60 30" fill="none" stroke="#2dd4bf" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/>
+              <path d="M 66 4 Q 76 20 66 36" fill="none" stroke="#2dd4bf" stroke-width="1.8" stroke-linecap="round" opacity="0.4"/>
+            </g>
+          </svg>
+        </div>
+        <span style="display:block;text-align:center;margin-top:8px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#888">Dark</span>
+      </div>
+      <div>
+        <div class="icon-card icon-violet">
+          <svg width="56" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(6,12)">
+              <rect x="0" y="0" width="56" height="40" rx="7" fill="rgba(255,255,255,0.2)"/>
+              <rect x="4" y="4" width="48" height="28" rx="4" fill="rgba(0,0,0,0.3)"/>
+              <rect x="12" y="10" width="7" height="7" rx="1.5" fill="#2dd4bf"/>
+              <rect x="22" y="10" width="7" height="7" rx="1.5" fill="#c4b5fd" opacity="0.7"/>
+              <rect x="32" y="10" width="7" height="7" rx="1.5" fill="#fff" opacity="0.5"/>
+              <rect x="12" y="20" width="7" height="7" rx="1.5" fill="#fff" opacity="0.4"/>
+              <rect x="22" y="20" width="7" height="7" rx="1.5" fill="#2dd4bf" opacity="0.7"/>
+              <rect x="32" y="20" width="7" height="7" rx="1.5" fill="#c4b5fd" opacity="0.8"/>
+              <circle cx="46" cy="9" r="3" fill="#f43f5e"/>
+              <path d="M 60 10 Q 68 20 60 30" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+              <path d="M 66 4 Q 76 20 66 36" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity="0.3"/>
+            </g>
+          </svg>
+        </div>
+        <span style="display:block;text-align:center;margin-top:8px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#888">Violet</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Color Palette -->
+  <div class="section">
+    <div class="section-label">Color Palette</div>
+    <div class="colors-grid">
+      <div class="color-card">
+        <div class="color-swatch" style="background:#7c3aed"></div>
+        <div class="color-info"><div class="color-name">Violet</div><div class="color-hex">#7C3AED</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#6366f1"></div>
+        <div class="color-info"><div class="color-name">Indigo</div><div class="color-hex">#6366F1</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#a78bfa"></div>
+        <div class="color-info"><div class="color-name">Lavender</div><div class="color-hex">#A78BFA</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#2dd4bf"></div>
+        <div class="color-info"><div class="color-name">Teal</div><div class="color-hex">#2DD4BF</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#f43f5e"></div>
+        <div class="color-info"><div class="color-name">Record Red</div><div class="color-hex">#F43F5E</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#0a0a0f"></div>
+        <div class="color-info"><div class="color-name">Dark BG</div><div class="color-hex">#0A0A0F</div></div>
+      </div>
+    </div>
+    <div class="spacing-note">
+      <strong>Primary gradient:</strong> Violet → Teal (#7C3AED → #2DD4BF) at 135°. Use for CTAs, hero elements, and the logo icon. <strong>Record Red</strong> is reserved for recording indicators only.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Typography -->
+  <div class="section">
+    <div class="section-label">Typography</div>
+    <div class="type-sample">
+      <div class="type-label">Primary — System UI / Inter</div>
+      <div class="type-display" style="color:#e2e2e8">The quick brown fox jumps</div>
+      <div class="type-body">Use system-ui or Inter for all UI text, headings, and body copy. Weight 400 for body, 600 for emphasis, 700 for headings.</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Monospace — SF Mono / Consolas</div>
+      <div class="type-mono">klipt --record --output demo.mp4</div>
+      <div style="margin-top:8px;font-size:13px;color:#888">Use for code snippets, terminal commands, and technical references.</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Logo Wordmark</div>
+      <div style="font-size:36px;font-weight:700;letter-spacing:-2px"><span style="color:#7c3aed">pixel</span><span style="color:#2dd4bf">cast</span></div>
+      <div style="margin-top:8px;font-size:13px;color:#888">All lowercase. Weight 700. Letter-spacing: -2px. Never capitalize or modify the wordmark.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Usage Guidelines -->
+  <div class="section">
+    <div class="section-label">Usage Guidelines</div>
+    <div class="usage-grid">
+      <div class="usage-card">
+        <h3><span class="check">✓</span> <span class="do">Do</span></h3>
+        <p>Use the full logo with adequate clear space (minimum 1× the icon height on all sides). Maintain the gradient direction at 135°. Use on dark or light backgrounds.</p>
+      </div>
+      <div class="usage-card">
+        <h3><span class="cross">✗</span> <span class="dont">Don't</span></h3>
+        <p>Don't rotate, stretch, or skew the logo. Don't change the gradient colors. Don't place on busy backgrounds without a container. Don't capitalize the wordmark.</p>
+      </div>
+      <div class="usage-card">
+        <h3><span class="check">✓</span> <span class="do">Do</span></h3>
+        <p>Use the icon-only mark for favicons, app icons, and small spaces. Keep the pixel grid and broadcast waves visible at all sizes.</p>
+      </div>
+      <div class="usage-card">
+        <h3><span class="cross">✗</span> <span class="dont">Don't</span></h3>
+        <p>Don't use the icon below 24px. Don't add drop shadows or outlines. Don't recolor the record dot — it's always red. Don't separate the icon elements.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Minimum Sizes -->
+  <div class="section">
+    <div class="section-label">Minimum Sizes</div>
+    <div class="spacing-note">
+      <strong>Full logo:</strong> Minimum width 120px<br>
+      <strong>Icon only:</strong> Minimum 24×24px<br>
+      <strong>Clear space:</strong> Minimum padding equal to the height of the icon on all sides<br>
+      <strong>Favicon:</strong> Use the simplified icon variant at 16×16px and 32×32px
+    </div>
+  </div>
+
+</div>

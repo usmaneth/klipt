@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-accent: #7c3aed;
+    --brand-accent-rgb: 124, 58, 237;
+    --brand-violet: #7c3aed;
+    --brand-indigo: #6366f1;
+    --brand-lavender: #a78bfa;
+    --brand-teal: #2dd4bf;
+    --brand-red: #f43f5e;
+    --brand-dark: #0a0a0f;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 263 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 262 100% 97%;
+    --accent-foreground: 263 70% 45%;
+    --destructive: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 263 70% 58%;
+    --chart-1: 263 70% 58%;
+    --chart-2: 170 53% 51%;
+    --chart-3: 239 84% 67%;
+    --chart-4: 262 83% 76%;
+    --chart-5: 347 77% 50%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 240 47% 4%;
+    --foreground: 240 6% 93%;
+    --card: 240 33% 6%;
+    --card-foreground: 240 6% 93%;
+    --popover: 240 33% 6%;
+    --popover-foreground: 240 6% 93%;
+    --primary: 263 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 10% 14%;
+    --secondary-foreground: 240 6% 93%;
+    --muted: 240 10% 14%;
+    --muted-foreground: 240 5% 58%;
+    --accent: 262 30% 18%;
+    --accent-foreground: 240 6% 93%;
+    --destructive: 347 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 14%;
+    --input: 240 10% 14%;
+    --ring: 263 70% 58%;
+    --chart-1: 263 70% 58%;
+    --chart-2: 170 53% 51%;
+    --chart-3: 239 84% 67%;
+    --chart-4: 262 83% 76%;
+    --chart-5: 347 77% 50%;
+  }
+}
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  [data-platform="macos"] body {
+    font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  [data-platform="macos"] body .font-mono,
+  [data-platform="macos"] body kbd {
+    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Smooth timeline cursor animations */
+@layer utilities {
+  .timeline-cursor-smooth {
+    will-change: transform;
+    transition: left 33ms linear, right 33ms linear;
+  }
+  
+  /* Hidden scrollbar - still scrollable but invisible */
+  .custom-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  /* Smooth playback scrubber */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(255,255,255,0.32);
+    border: 2px solid #fff;
+    transition: all 0.08s ease-out;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #fff;
+    transform: scale(1.15);
+    box-shadow: 0 3px 10px rgba(255,255,255,0.5);
+    border-color: var(--brand-accent);
+  }
+
+  input[type="range"]::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(255,255,255,0.32);
+    transition: all 0.08s ease-out;
+  }
+
+  input[type="range"]::-moz-range-thumb:hover {
+    background: #fff;
+    transform: scale(1.15);
+    box-shadow: 0 3px 10px rgba(255,255,255,0.5);
+    border-color: var(--brand-accent);
+  }
+
+  input[type="range"]::-moz-range-thumb:active {
+    transform: scale(1.25);
+  }
+}
+
