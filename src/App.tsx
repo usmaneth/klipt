@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CountdownOverlay } from "./components/countdown/CountdownOverlay";
+import { HomeScreen } from "./components/home/HomeScreen";
 import CameraBubble from "./components/launch/CameraBubble";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
@@ -8,8 +9,6 @@ import VideoEditor from "./components/video-editor/VideoEditor";
 import { useI18n } from "./contexts/I18nContext";
 import { ShortcutsProvider } from "./contexts/ShortcutsContext";
 import { loadAllCustomFonts } from "./lib/customFonts";
-
-import { HomeScreen } from "./components/home/HomeScreen";
 
 export default function App() {
 	const [windowType, setWindowType] = useState("");
@@ -20,7 +19,12 @@ export default function App() {
 		const type = params.get("windowType") || "";
 		setWindowType(type);
 
-		if (type === "hud-overlay" || type === "source-selector" || type === "countdown" || type === "camera-bubble") {
+		if (
+			type === "hud-overlay" ||
+			type === "source-selector" ||
+			type === "countdown" ||
+			type === "camera-bubble"
+		) {
 			document.body.style.background = "transparent";
 			document.documentElement.style.background = "transparent";
 			document.getElementById("root")?.style.setProperty("background", "transparent");

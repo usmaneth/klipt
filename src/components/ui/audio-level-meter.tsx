@@ -15,13 +15,19 @@ const bars = [
 
 function getBarColor(level: number, threshold: number) {
 	if (!level || level < threshold) return "bg-slate-700/60 shadow-none";
-	if (threshold > 80) return "bg-gradient-to-t from-red-500 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]";
-	if (threshold > 60) return "bg-gradient-to-t from-orange-500 to-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]";
-	if (threshold > 40) return "bg-gradient-to-t from-yellow-400 to-yellow-300 shadow-[0_0_8px_rgba(250,204,21,0.8)]";
+	if (threshold > 80)
+		return "bg-gradient-to-t from-red-500 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]";
+	if (threshold > 60)
+		return "bg-gradient-to-t from-orange-500 to-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]";
+	if (threshold > 40)
+		return "bg-gradient-to-t from-yellow-400 to-yellow-300 shadow-[0_0_8px_rgba(250,204,21,0.8)]";
 	return "bg-gradient-to-t from-green-400 to-green-300 shadow-[0_0_8px_rgba(74,222,128,0.8)]";
 }
 
-export const AudioLevelMeter = memo(function AudioLevelMeter({ level, className = "" }: AudioLevelMeterProps) {
+export const AudioLevelMeter = memo(function AudioLevelMeter({
+	level,
+	className = "",
+}: AudioLevelMeterProps) {
 	return (
 		<div className={`flex items-end justify-between gap-1.5 h-6 ${className}`}>
 			{bars.map((bar, index) => (

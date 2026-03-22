@@ -1,10 +1,6 @@
 import Block from "@uiw/react-color-block";
 import { Camera, Circle, RectangleHorizontal, Square } from "lucide-react";
-import {
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@/components/ui/accordion";
+import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useI18n } from "../../contexts/I18nContext";
@@ -63,16 +59,11 @@ export function WebcamPanel({
 	const { t } = useI18n();
 
 	return (
-		<AccordionItem
-			value="camera"
-			className="border-white/5 rounded-xl bg-white/[0.02] px-3"
-		>
+		<AccordionItem value="camera" className="border-white/5 rounded-xl bg-white/[0.02] px-3">
 			<AccordionTrigger className="py-2.5 hover:no-underline">
 				<div className="flex items-center gap-2">
 					<Camera className="w-4 h-4 text-[#2563EB]" />
-					<span className="text-xs font-medium">
-						{t("editor.camera.title")}
-					</span>
+					<span className="text-xs font-medium">{t("editor.camera.title")}</span>
 				</div>
 			</AccordionTrigger>
 			<AccordionContent className="pb-3">
@@ -140,9 +131,7 @@ export function WebcamPanel({
 								step={1}
 								onChange={onWebcamSizeChange ?? (() => {})}
 								formatValue={(v) => `${Math.round(v)}px`}
-								parseInput={(text) =>
-									Number.parseFloat(text.replace(/px$/, ""))
-								}
+								parseInput={(text) => Number.parseFloat(text.replace(/px$/, ""))}
 							/>
 						</div>
 						<div className="p-2 rounded-lg bg-white/5 border border-white/5">
@@ -155,9 +144,7 @@ export function WebcamPanel({
 								step={1}
 								onChange={onWebcamOpacityChange ?? (() => {})}
 								formatValue={(v) => `${Math.round(v)}%`}
-								parseInput={(text) =>
-									Number.parseFloat(text.replace(/%$/, ""))
-								}
+								parseInput={(text) => Number.parseFloat(text.replace(/%$/, ""))}
 							/>
 						</div>
 					</div>
@@ -170,9 +157,7 @@ export function WebcamPanel({
 						<Block
 							color={webcamBorderColor}
 							colors={BORDER_COLOR_PALETTE}
-							onChange={(color) =>
-								onWebcamBorderColorChange?.(color.hex)
-							}
+							onChange={(color) => onWebcamBorderColorChange?.(color.hex)}
 							style={{
 								width: "100%",
 								borderRadius: "8px",
@@ -192,9 +177,7 @@ export function WebcamPanel({
 								step={0.5}
 								onChange={onWebcamBorderWidthChange ?? (() => {})}
 								formatValue={(v) => `${v.toFixed(1)}px`}
-								parseInput={(text) =>
-									Number.parseFloat(text.replace(/px$/, ""))
-								}
+								parseInput={(text) => Number.parseFloat(text.replace(/px$/, ""))}
 							/>
 						</div>
 						<div className="p-2 rounded-lg bg-white/5 border border-white/5">
@@ -207,9 +190,7 @@ export function WebcamPanel({
 								step={1}
 								onChange={onWebcamShadowChange ?? (() => {})}
 								formatValue={(v) => `${Math.round(v)}%`}
-								parseInput={(text) =>
-									Number.parseFloat(text.replace(/%$/, ""))
-								}
+								parseInput={(text) => Number.parseFloat(text.replace(/%$/, ""))}
 							/>
 						</div>
 					</div>

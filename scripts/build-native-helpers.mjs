@@ -1,65 +1,70 @@
-import { spawnSync } from 'node:child_process';
-import { chmod, mkdir } from 'node:fs/promises';
-import path from 'node:path';
+import { spawnSync } from "node:child_process";
+import { chmod, mkdir } from "node:fs/promises";
+import path from "node:path";
 
 const projectRoot = process.cwd();
-const nativeRoot = path.join(projectRoot, 'electron', 'native');
+const nativeRoot = path.join(projectRoot, "electron", "native");
 
-if (process.platform !== 'darwin') {
-  console.log('[build-native-helpers] Skipping: host platform is not macOS.');
-  process.exit(0);
+if (process.platform !== "darwin") {
+	console.log("[build-native-helpers] Skipping: host platform is not macOS.");
+	process.exit(0);
 }
 
-const archTag = process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
-const outputDir = path.join(nativeRoot, 'bin', archTag);
+const archTag = process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+const outputDir = path.join(nativeRoot, "bin", archTag);
 
 const helpers = [
-  {
-    source: 'ScreenCaptureKitRecorder.swift',
-    output: 'klipt-screencapturekit-helper',
-  },
-  {
-    source: 'ScreenCaptureKitWindowList.swift',
-    output: 'klipt-window-list',
-  },
-  {
-    source: 'SystemCursorAssets.swift',
-    output: 'klipt-system-cursors',
-  },
-  {
-    source: 'NativeCursorMonitor.swift',
-    output: 'klipt-native-cursor-monitor',
-  },
+	{
+		source: "ScreenCaptureKitRecorder.swift",
+		output: "klipt-screencapturekit-helper",
+	},
+	{
+		source: "ScreenCaptureKitWindowList.swift",
+		output: "klipt-window-list",
+	},
+	{
+		source: "SystemCursorAssets.swift",
+		output: "klipt-system-cursors",
+	},
+	{
+		source: "NativeCursorMonitor.swift",
+		output: "klipt-native-cursor-monitor",
+	},
 ];
 
-const swiftcCheck = spawnSync('swiftc', ['--version'], { encoding: 'utf8' });
+const swiftcCheck = spawnSync("swiftc", ["--version"], { encoding: "utf8" });
 if (swiftcCheck.status !== 0) {
-  const details = [swiftcCheck.stderr, swiftcCheck.stdout].filter(Boolean).join('\n').trim();
-  throw new Error(details || 'swiftc is unavailable; install Xcode Command Line Tools.');
+	const details = [swiftcCheck.stderr, swiftcCheck.stdout].filter(Boolean).join("\n").trim();
+	throw new Error(details || "swiftc is unavailable; install Xcode Command Line Tools.");
 }
 
 await mkdir(outputDir, { recursive: true });
 
 for (const helper of helpers) {
-  const sourcePath = path.join(nativeRoot, helper.source);
-  const outputPath = path.join(outputDir, helper.output);
+	const sourcePath = path.join(nativeRoot, helper.source);
+	const outputPath = path.join(outputDir, helper.output);
 
-  const result = spawnSync('swiftc', [
-    '-O',
-    '-target', process.arch === 'arm64' ? 'arm64-apple-macos14.0' : 'x86_64-apple-macos14.0',
-    sourcePath,
-    '-o', outputPath
-  ], {
-    encoding: 'utf8',
-    timeout: 120000,
-  });
+	const result = spawnSync(
+		"swiftc",
+		[
+			"-O",
+			"-target",
+			process.arch === "arm64" ? "arm64-apple-macos14.0" : "x86_64-apple-macos14.0",
+			sourcePath,
+			"-o",
+			outputPath,
+		],
+		{
+			encoding: "utf8",
+			timeout: 120000,
+		},
+	);
 
-  if (result.status !== 0) {
-    const details = [result.stderr, result.stdout].filter(Boolean).join('\n').trim();
-    throw new Error(details || `Failed to compile ${helper.source}`);
-  }
+	if (result.status !== 0) {
+		const details = [result.stderr, result.stdout].filter(Boolean).join("\n").trim();
+		throw new Error(details || `Failed to compile ${helper.source}`);
+	}
 
-  await chmod(outputPath, 0o755);
-  console.log(`[build-native-helpers] Built ${helper.output} -> ${outputPath}`);
+	await chmod(outputPath, 0o755);
+	console.log(`[build-native-helpers] Built ${helper.output} -> ${outputPath}`);
 }
-

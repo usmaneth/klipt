@@ -1,25 +1,25 @@
-import {
-	ipcMain,
-	desktopCapturer,
-	BrowserWindow,
-	shell,
-	app,
-	dialog,
-	systemPreferences,
-} from "electron";
-import { execFile, spawn, spawnSync } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
+import { constants as fsConstants } from "node:fs";
 
 import fs from "node:fs/promises";
-import { constants as fsConstants } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { RECORDINGS_DIR } from "../main";
-import { createCountdownWindow, getCountdownWindow, closeCountdownWindow } from "../windows";
+import {
+	app,
+	BrowserWindow,
+	desktopCapturer,
+	dialog,
+	ipcMain,
+	shell,
+	systemPreferences,
+} from "electron";
 import { transcribeAudio } from "../ai/whisperTranscriber";
+import { RECORDINGS_DIR } from "../main";
+import { closeCountdownWindow, createCountdownWindow, getCountdownWindow } from "../windows";
 
 const execFileAsync = promisify(execFile);
 const nodeRequire = createRequire(import.meta.url);
@@ -561,7 +561,7 @@ function getFfmpegBinaryPath() {
 	}
 
 	if (app.isPackaged) {
-		return ffmpegStatic.replace(/\.asar([\/\\])/, ".asar.unpacked$1");
+		return ffmpegStatic.replace(/\.asar([/\\])/, ".asar.unpacked$1");
 	}
 
 	return ffmpegStatic;
@@ -2700,8 +2700,10 @@ export function registerIpcHandlers(
 		try {
 			const recordingsDir = await getRecordingsDir();
 			const files = await fs.readdir(recordingsDir, { withFileTypes: true });
-			const projectFiles = files.filter(f => f.isFile() && f.name.endsWith(`.${PROJECT_FILE_EXTENSION}`));
-			
+			const projectFiles = files.filter(
+				(f) => f.isFile() && f.name.endsWith(`.${PROJECT_FILE_EXTENSION}`),
+			);
+
 			const results = await Promise.allSettled(
 				projectFiles.map(async (file) => {
 					const filePath = path.join(recordingsDir, file.name);
@@ -2709,13 +2711,16 @@ export function registerIpcHandlers(
 					return {
 						name: file.name,
 						path: filePath,
-						mtime: stats.mtimeMs
+						mtime: stats.mtimeMs,
 					};
-				})
+				}),
 			);
 			const projectsWithStats = results
-				.filter((r): r is PromiseFulfilledResult<{ name: string; path: string; mtime: number }> => r.status === "fulfilled")
-				.map(r => r.value);
+				.filter(
+					(r): r is PromiseFulfilledResult<{ name: string; path: string; mtime: number }> =>
+						r.status === "fulfilled",
+				)
+				.map((r) => r.value);
 
 			// sort descending by modified time
 			const sorted = projectsWithStats.sort((a, b) => b.mtime - a.mtime).slice(0, 4);

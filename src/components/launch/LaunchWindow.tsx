@@ -319,8 +319,9 @@ export function LaunchWindow() {
 
 	return (
 		<div className="flex h-full w-full items-end justify-center overflow-hidden bg-transparent px-3 pb-8 pt-2">
-			<div className={`flex flex-col items-center gap-4 mx-auto ${styles.electronDrag} ${styles.floatingHud}`}>
-
+			<div
+				className={`flex flex-col items-center gap-4 mx-auto ${styles.electronDrag} ${styles.floatingHud}`}
+			>
 				{/* Microphone bar */}
 				{showMicControls && (
 					<div className={`${styles.electronNoDrag} ${styles.micBarWrapper}`}>
@@ -352,358 +353,372 @@ export function LaunchWindow() {
 						className={`mx-auto inline-flex max-w-full items-center gap-2 px-4 py-2.5 ${styles.hudBar}`}
 						style={HUD_BAR_STYLE}
 					>
-					{/* Drag handle */}
-					<div className={`flex items-center px-0.5 ${styles.electronDrag}`}>
-						<RxDragHandleDots2 size={15} className="text-white/25" />
-					</div>
+						{/* Drag handle */}
+						<div className={`flex items-center px-0.5 ${styles.electronDrag}`}>
+							<RxDragHandleDots2 size={15} className="text-white/25" />
+						</div>
 
-					{/* Source selector */}
-					<Button
-						variant="link"
-						size="sm"
-						className={`gap-1.5 text-white/90 bg-transparent px-2.5 py-1.5 text-sm rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-						onClick={openSourceSelector}
-						disabled={recording}
-						title={selectedSource}
-					>
-						<MdMonitor size={17} className="text-white/80" />
-						<ContentClamp truncateLength={12}>{selectedSource}</ContentClamp>
-					</Button>
-
-					<div className={dividerClass} />
-
-					{/* Toggle controls group */}
-					<div className={`flex items-center gap-1.5 ${styles.electronNoDrag}`}>
-						{supportsHudCaptureProtection && (
-							<Button
-								variant="link"
-								size="icon"
-								onClick={() => void toggleHudCaptureProtection()}
-								title={
-									hideHudFromCapture
-										? t("recording.showHudInVideo")
-										: t("recording.hideHudFromVideo")
-								}
-								className={`text-white/90 rounded-xl ${styles.hudBtn} ${
-									!hideHudFromCapture ? styles.toggleBtnActive : ""
-								}`}
-							>
-								{hideHudFromCapture ? (
-									<EyeOff size={18} className="text-white/40" />
-								) : (
-									<Eye size={18} className="text-blue-400" />
-								)}
-							</Button>
-						)}
+						{/* Source selector */}
 						<Button
 							variant="link"
-							size="icon"
-							onClick={() => setSystemAudioEnabled(!systemAudioEnabled)}
+							size="sm"
+							className={`gap-1.5 text-white/90 bg-transparent px-2.5 py-1.5 text-sm rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							onClick={openSourceSelector}
 							disabled={recording}
-							title={
-								systemAudioEnabled
-									? t("recording.disableSystemAudio")
-									: t("recording.enableSystemAudio")
-							}
-							className={`text-white/90 rounded-xl ${styles.hudBtn} ${
-								systemAudioEnabled ? styles.toggleBtnActive : ""
-							}`}
+							title={selectedSource}
 						>
-							{systemAudioEnabled ? (
-								<MdVolumeUp size={18} className="text-blue-400" />
-							) : (
-								<MdVolumeOff size={18} className="text-white/40" />
-							)}
+							<MdMonitor size={17} className="text-white/80" />
+							<ContentClamp truncateLength={12}>{selectedSource}</ContentClamp>
 						</Button>
-						<Button
-							variant="link"
-							size="icon"
-							onClick={toggleMicrophone}
-							disabled={recording}
-							title={
-								microphoneEnabled
-									? t("recording.disableMicrophone")
-									: t("recording.enableMicrophone")
-							}
-							className={`text-white/90 rounded-xl ${styles.hudBtn} ${
-								microphoneEnabled ? styles.toggleBtnActive : ""
-							}`}
-						>
-							{microphoneEnabled ? (
-								<MdMic size={18} className="text-blue-400" />
-							) : (
-								<MdMicOff size={18} className="text-white/40" />
-							)}
-						</Button>
-						<Button
-							variant="link"
-							size="icon"
-							onClick={toggleCamera}
-							disabled={recording || cameraDevices.length === 0}
-							title={
-								cameraDevices.length === 0
-									? t("recording.camera.noDevices")
-									: cameraEnabled
-										? t("recording.camera.disable")
-										: t("recording.camera.enable")
-							}
-							className={`text-white/90 rounded-xl ${styles.hudBtn} ${
-								cameraEnabled ? styles.toggleBtnActiveGreen : ""
-							}`}
-						>
-							{cameraEnabled ? (
-								<Camera size={18} className="text-green-400" />
-							) : (
-								<CameraOff size={18} className="text-white/40" />
-							)}
-						</Button>
-					</div>
 
-					{/* Camera device selector — hidden with 1 device */}
-					{cameraEnabled && cameraDevices.length > 1 && !recording && (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="link"
-									size="sm"
-									title={t("recording.camera.enable")}
-									className={`gap-1.5 px-2 py-1.5 text-sm text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-								>
-									<Camera size={16} />
-									<ContentClamp truncateLength={10}>
-										{cameraDevices.find((d) => d.deviceId === cameraDeviceId)?.label ?? "Camera"}
-									</ContentClamp>
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent
-								side="top"
-								align="center"
-								className={`min-w-[120px] max-h-none overflow-visible ${styles.dropdownGlass}`}
-							>
-								{cameraDevices.map((device) => (
-									<DropdownMenuItem
-										key={device.deviceId}
-										onSelect={() => setCameraDeviceId(device.deviceId)}
-										className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${
-											cameraDeviceId === device.deviceId
-												? "font-medium text-white"
-												: "text-white/70"
-										}`}
-									>
-										{device.label}
-									</DropdownMenuItem>
-								))}
-							</DropdownMenuContent>
-						</DropdownMenu>
-					)}
-
-					{/* Camera shape selector */}
-					{cameraEnabled && !recording && (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="link"
-									size="sm"
-									title="Camera shape"
-									className={`px-2 py-1.5 text-xs text-white/70 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-								>
-									{webcamShape === "circle"
-										? "\u25CF"
-										: webcamShape === "rounded-square"
-											? "\u25A2"
-											: "\u25A0"}
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent
-								side="top"
-								align="center"
-								className={`min-w-[100px] max-h-none overflow-visible ${styles.dropdownGlass}`}
-							>
-								<DropdownMenuItem
-									onSelect={() => setWebcamShape("circle")}
-									className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${webcamShape === "circle" ? "font-medium text-white" : "text-white/70"}`}
-								>
-									Circle
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onSelect={() => setWebcamShape("rounded-square")}
-									className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${webcamShape === "rounded-square" ? "font-medium text-white" : "text-white/70"}`}
-								>
-									Rounded
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onSelect={() => setWebcamShape("square")}
-									className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${webcamShape === "square" ? "font-medium text-white" : "text-white/70"}`}
-								>
-									Square
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					)}
-
-					<div className={dividerClass} />
-
-					{/* Countdown delay */}
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button
-								variant="link"
-								size="sm"
-								disabled={recording || countdownActive}
-								title={t("recording.countdownDelay")}
-								className={`gap-1.5 px-2 py-1.5 text-sm text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-							>
-								<Timer size={16} />
-								<span>{countdownDelay > 0 ? `${countdownDelay}s` : t("recording.noDelay")}</span>
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent
-							side="top"
-							align="center"
-							className={`min-w-[80px] max-h-none overflow-visible ${styles.dropdownGlass}`}
-						>
-							{[0, 3, 5, 10].map((delay) => (
-								<DropdownMenuItem
-									key={delay}
-									onSelect={() => setCountdownDelay(delay)}
-									className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${
-										countdownDelay === delay ? "font-medium text-white" : "text-white/70"
-									}`}
-								>
-									{delay === 0 ? t("recording.noDelay") : `${delay}s`}
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					{/* Record button */}
-					<Button
-						variant="link"
-						size="sm"
-						onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
-						disabled={countdownActive || starting || (!hasSelectedSource && !recording)}
-						className={`gap-2 px-3 py-1.5 text-sm ml-1 rounded-full ${styles.electronNoDrag} ${styles.hudBtn} ${
-							recording ? styles.recordBtnRecording : !starting ? styles.recordBtnIdle : ""
-						}`}
-					>
-						{recording ? (
-							<>
-								<FaRegStopCircle size={18} className={`text-red-400 ${styles.pulseRecord}`} />
-								<span className="text-red-400 font-bold tabular-nums drop-shadow-[0_0_4px_rgba(239,68,68,0.8)]">{formatTime(elapsed)}</span>
-							</>
-						) : starting ? (
-							<>
-								<Loader2 size={18} className="animate-spin text-white/70" />
-								<span className="text-white/70 font-medium tracking-wide">{t("recording.starting")}</span>
-							</>
-						) : (
-							<>
-								<BsRecordCircle
-									size={18}
-									className={hasSelectedSource ? "text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" : "text-white/40"}
-								/>
-								<span className={hasSelectedSource ? "text-white font-medium tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]" : "text-white/40"}>
-									{t("recording.record")}
-								</span>
-							</>
-						)}
-					</Button>
-
-					{/* Recordings folder */}
-					<Button
-						variant="link"
-						size="sm"
-						onClick={chooseRecordingsDirectory}
-						disabled={recording}
-						title={
-							recordingsDirectory
-								? t("recording.recordingFolder", undefined, {
-										path: recordingsDirectory,
-									})
-								: t("recording.chooseRecordingsFolder")
-						}
-						className={`text-white/70 px-2 py-1.5 ml-1 text-sm underline decoration-white/30 underline-offset-4 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-					>
-						<ContentClamp truncateLength={24}>
-							{t("recording.folderPath", undefined, {
-								name: recordingsDirectoryName,
-							})}
-						</ContentClamp>
-					</Button>
-
-					{/* Right-side actions */}
-					<div className="ml-auto flex items-center gap-1.5">
 						<div className={dividerClass} />
-						<Button
-							variant="link"
-							size="icon"
-							onClick={openVideoFile}
-							disabled={recording}
-							title={t("recording.openVideoFile")}
-							className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-						>
-							<MdVideoFile size={18} />
-						</Button>
-						<Button
-							variant="link"
-							size="icon"
-							onClick={openProjectFile}
-							disabled={recording}
-							title={t("recording.openProject")}
-							className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
-						>
-							<FaFolderOpen size={17} />
-						</Button>
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
+
+						{/* Toggle controls group */}
+						<div className={`flex items-center gap-1.5 ${styles.electronNoDrag}`}>
+							{supportsHudCaptureProtection && (
 								<Button
 									variant="link"
 									size="icon"
-									title="Language"
-									className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+									onClick={() => void toggleHudCaptureProtection()}
+									title={
+										hideHudFromCapture
+											? t("recording.showHudInVideo")
+											: t("recording.hideHudFromVideo")
+									}
+									className={`text-white/90 rounded-xl ${styles.hudBtn} ${
+										!hideHudFromCapture ? styles.toggleBtnActive : ""
+									}`}
 								>
-									<Languages size={17} />
+									{hideHudFromCapture ? (
+										<EyeOff size={18} className="text-white/40" />
+									) : (
+										<Eye size={18} className="text-blue-400" />
+									)}
+								</Button>
+							)}
+							<Button
+								variant="link"
+								size="icon"
+								onClick={() => setSystemAudioEnabled(!systemAudioEnabled)}
+								disabled={recording}
+								title={
+									systemAudioEnabled
+										? t("recording.disableSystemAudio")
+										: t("recording.enableSystemAudio")
+								}
+								className={`text-white/90 rounded-xl ${styles.hudBtn} ${
+									systemAudioEnabled ? styles.toggleBtnActive : ""
+								}`}
+							>
+								{systemAudioEnabled ? (
+									<MdVolumeUp size={18} className="text-blue-400" />
+								) : (
+									<MdVolumeOff size={18} className="text-white/40" />
+								)}
+							</Button>
+							<Button
+								variant="link"
+								size="icon"
+								onClick={toggleMicrophone}
+								disabled={recording}
+								title={
+									microphoneEnabled
+										? t("recording.disableMicrophone")
+										: t("recording.enableMicrophone")
+								}
+								className={`text-white/90 rounded-xl ${styles.hudBtn} ${
+									microphoneEnabled ? styles.toggleBtnActive : ""
+								}`}
+							>
+								{microphoneEnabled ? (
+									<MdMic size={18} className="text-blue-400" />
+								) : (
+									<MdMicOff size={18} className="text-white/40" />
+								)}
+							</Button>
+							<Button
+								variant="link"
+								size="icon"
+								onClick={toggleCamera}
+								disabled={recording || cameraDevices.length === 0}
+								title={
+									cameraDevices.length === 0
+										? t("recording.camera.noDevices")
+										: cameraEnabled
+											? t("recording.camera.disable")
+											: t("recording.camera.enable")
+								}
+								className={`text-white/90 rounded-xl ${styles.hudBtn} ${
+									cameraEnabled ? styles.toggleBtnActiveGreen : ""
+								}`}
+							>
+								{cameraEnabled ? (
+									<Camera size={18} className="text-green-400" />
+								) : (
+									<CameraOff size={18} className="text-white/40" />
+								)}
+							</Button>
+						</div>
+
+						{/* Camera device selector — hidden with 1 device */}
+						{cameraEnabled && cameraDevices.length > 1 && !recording && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="link"
+										size="sm"
+										title={t("recording.camera.enable")}
+										className={`gap-1.5 px-2 py-1.5 text-sm text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+									>
+										<Camera size={16} />
+										<ContentClamp truncateLength={10}>
+											{cameraDevices.find((d) => d.deviceId === cameraDeviceId)?.label ?? "Camera"}
+										</ContentClamp>
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									side="top"
+									align="center"
+									className={`min-w-[120px] max-h-none overflow-visible ${styles.dropdownGlass}`}
+								>
+									{cameraDevices.map((device) => (
+										<DropdownMenuItem
+											key={device.deviceId}
+											onSelect={() => setCameraDeviceId(device.deviceId)}
+											className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${
+												cameraDeviceId === device.deviceId
+													? "font-medium text-white"
+													: "text-white/70"
+											}`}
+										>
+											{device.label}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
+
+						{/* Camera shape selector */}
+						{cameraEnabled && !recording && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="link"
+										size="sm"
+										title="Camera shape"
+										className={`px-2 py-1.5 text-xs text-white/70 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+									>
+										{webcamShape === "circle"
+											? "\u25CF"
+											: webcamShape === "rounded-square"
+												? "\u25A2"
+												: "\u25A0"}
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									side="top"
+									align="center"
+									className={`min-w-[100px] max-h-none overflow-visible ${styles.dropdownGlass}`}
+								>
+									<DropdownMenuItem
+										onSelect={() => setWebcamShape("circle")}
+										className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${webcamShape === "circle" ? "font-medium text-white" : "text-white/70"}`}
+									>
+										Circle
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onSelect={() => setWebcamShape("rounded-square")}
+										className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${webcamShape === "rounded-square" ? "font-medium text-white" : "text-white/70"}`}
+									>
+										Rounded
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onSelect={() => setWebcamShape("square")}
+										className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${webcamShape === "square" ? "font-medium text-white" : "text-white/70"}`}
+									>
+										Square
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
+
+						<div className={dividerClass} />
+
+						{/* Countdown delay */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="link"
+									size="sm"
+									disabled={recording || countdownActive}
+									title={t("recording.countdownDelay")}
+									className={`gap-1.5 px-2 py-1.5 text-sm text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+								>
+									<Timer size={16} />
+									<span>{countdownDelay > 0 ? `${countdownDelay}s` : t("recording.noDelay")}</span>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
 								side="top"
-								align="end"
-								className={`min-w-[90px] ${styles.dropdownGlass}`}
+								align="center"
+								className={`min-w-[80px] max-h-none overflow-visible ${styles.dropdownGlass}`}
 							>
-								{SUPPORTED_LOCALES.map((code) => (
+								{[0, 3, 5, 10].map((delay) => (
 									<DropdownMenuItem
-										key={code}
-										onSelect={() => setLocale(code as AppLocale)}
-										className={`text-sm py-2 px-3 cursor-pointer ${styles.dropdownItem} ${
-											locale === code ? "text-white font-medium" : "text-white/70"
+										key={delay}
+										onSelect={() => setCountdownDelay(delay)}
+										className={`cursor-pointer text-sm py-2 px-3 ${styles.dropdownItem} ${
+											countdownDelay === delay ? "font-medium text-white" : "text-white/70"
 										}`}
 									>
-										{LOCALE_LABELS[code] ?? code}
+										{delay === 0 ? t("recording.noDelay") : `${delay}s`}
 									</DropdownMenuItem>
 								))}
 							</DropdownMenuContent>
 						</DropdownMenu>
-						<div className={dividerClass} />
+
+						{/* Record button */}
 						<Button
 							variant="link"
-							size="icon"
-							onClick={sendHudOverlayHide}
-							title={t("recording.hideHud")}
-							className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							size="sm"
+							onClick={hasSelectedSource ? toggleRecording : openSourceSelector}
+							disabled={countdownActive || starting || (!hasSelectedSource && !recording)}
+							className={`gap-2 px-3 py-1.5 text-sm ml-1 rounded-full ${styles.electronNoDrag} ${styles.hudBtn} ${
+								recording ? styles.recordBtnRecording : !starting ? styles.recordBtnIdle : ""
+							}`}
 						>
-							<FiMinus size={18} />
+							{recording ? (
+								<>
+									<FaRegStopCircle size={18} className={`text-red-400 ${styles.pulseRecord}`} />
+									<span className="text-red-400 font-bold tabular-nums drop-shadow-[0_0_4px_rgba(239,68,68,0.8)]">
+										{formatTime(elapsed)}
+									</span>
+								</>
+							) : starting ? (
+								<>
+									<Loader2 size={18} className="animate-spin text-white/70" />
+									<span className="text-white/70 font-medium tracking-wide">
+										{t("recording.starting")}
+									</span>
+								</>
+							) : (
+								<>
+									<BsRecordCircle
+										size={18}
+										className={
+											hasSelectedSource
+												? "text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]"
+												: "text-white/40"
+										}
+									/>
+									<span
+										className={
+											hasSelectedSource
+												? "text-white font-medium tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]"
+												: "text-white/40"
+										}
+									>
+										{t("recording.record")}
+									</span>
+								</>
+							)}
 						</Button>
+
+						{/* Recordings folder */}
 						<Button
 							variant="link"
-							size="icon"
-							onClick={sendHudOverlayClose}
-							title={t("recording.closeApp")}
-							className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							size="sm"
+							onClick={chooseRecordingsDirectory}
+							disabled={recording}
+							title={
+								recordingsDirectory
+									? t("recording.recordingFolder", undefined, {
+											path: recordingsDirectory,
+										})
+									: t("recording.chooseRecordingsFolder")
+							}
+							className={`text-white/70 px-2 py-1.5 ml-1 text-sm underline decoration-white/30 underline-offset-4 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
 						>
-							<FiX size={18} />
+							<ContentClamp truncateLength={24}>
+								{t("recording.folderPath", undefined, {
+									name: recordingsDirectoryName,
+								})}
+							</ContentClamp>
 						</Button>
+
+						{/* Right-side actions */}
+						<div className="ml-auto flex items-center gap-1.5">
+							<div className={dividerClass} />
+							<Button
+								variant="link"
+								size="icon"
+								onClick={openVideoFile}
+								disabled={recording}
+								title={t("recording.openVideoFile")}
+								className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							>
+								<MdVideoFile size={18} />
+							</Button>
+							<Button
+								variant="link"
+								size="icon"
+								onClick={openProjectFile}
+								disabled={recording}
+								title={t("recording.openProject")}
+								className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							>
+								<FaFolderOpen size={17} />
+							</Button>
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="link"
+										size="icon"
+										title="Language"
+										className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+									>
+										<Languages size={17} />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									side="top"
+									align="end"
+									className={`min-w-[90px] ${styles.dropdownGlass}`}
+								>
+									{SUPPORTED_LOCALES.map((code) => (
+										<DropdownMenuItem
+											key={code}
+											onSelect={() => setLocale(code as AppLocale)}
+											className={`text-sm py-2 px-3 cursor-pointer ${styles.dropdownItem} ${
+												locale === code ? "text-white font-medium" : "text-white/70"
+											}`}
+										>
+											{LOCALE_LABELS[code] ?? code}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuContent>
+							</DropdownMenu>
+							<div className={dividerClass} />
+							<Button
+								variant="link"
+								size="icon"
+								onClick={sendHudOverlayHide}
+								title={t("recording.hideHud")}
+								className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							>
+								<FiMinus size={18} />
+							</Button>
+							<Button
+								variant="link"
+								size="icon"
+								onClick={sendHudOverlayClose}
+								title={t("recording.closeApp")}
+								className={`text-white/80 rounded-xl ${styles.electronNoDrag} ${styles.hudBtn}`}
+							>
+								<FiX size={18} />
+							</Button>
+						</div>
 					</div>
-				</div>
 				</div>
 			</div>
 		</div>

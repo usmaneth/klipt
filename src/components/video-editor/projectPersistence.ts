@@ -375,19 +375,33 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			webcam = {
 				path: String(raw.path),
 				visible: typeof raw.visible === "boolean" ? raw.visible : true,
-				shape: validShapes.includes(rawShape as typeof validShapes[number]) ? (rawShape as WebcamState["shape"]) : "circle",
+				shape: validShapes.includes(rawShape as (typeof validShapes)[number])
+					? (rawShape as WebcamState["shape"])
+					: "circle",
 				size: isFiniteNumber(raw.size) ? clamp(raw.size as number, 50, 400) : 150,
 				opacity: isFiniteNumber(raw.opacity) ? clamp(raw.opacity as number, 0, 100) : 100,
-				borderColor: typeof raw.borderColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.borderColor) ? raw.borderColor : "#ffffff",
+				borderColor:
+					typeof raw.borderColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.borderColor)
+						? raw.borderColor
+						: "#ffffff",
 				borderWidth: isFiniteNumber(raw.borderWidth) ? clamp(raw.borderWidth as number, 0, 8) : 2,
 				shadow: isFiniteNumber(raw.shadow) ? clamp(raw.shadow as number, 0, 100) : 30,
 				position: {
-					x: isFiniteNumber((raw.position as Record<string, unknown>)?.x) ? clamp((raw.position as Record<string, unknown>).x as number, 0, 1) : 0.9,
-					y: isFiniteNumber((raw.position as Record<string, unknown>)?.y) ? clamp((raw.position as Record<string, unknown>).y as number, 0, 1) : 0.85,
+					x: isFiniteNumber((raw.position as Record<string, unknown>)?.x)
+						? clamp((raw.position as Record<string, unknown>).x as number, 0, 1)
+						: 0.9,
+					y: isFiniteNumber((raw.position as Record<string, unknown>)?.y)
+						? clamp((raw.position as Record<string, unknown>).y as number, 0, 1)
+						: 0.85,
 				},
-				bgMode: (["none", "remove", "blur", "color"] as const).includes(raw.bgMode as "none") ? (raw.bgMode as WebcamState["bgMode"]) : "none",
+				bgMode: (["none", "remove", "blur", "color"] as const).includes(raw.bgMode as "none")
+					? (raw.bgMode as WebcamState["bgMode"])
+					: "none",
 				bgBlur: isFiniteNumber(raw.bgBlur) ? clamp(raw.bgBlur as number, 1, 30) : 10,
-				bgColor: typeof raw.bgColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.bgColor) ? raw.bgColor : "#00FF00",
+				bgColor:
+					typeof raw.bgColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.bgColor)
+						? raw.bgColor
+						: "#00FF00",
 			};
 		}
 	}

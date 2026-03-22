@@ -1,13 +1,6 @@
-export function clampMediaTimeToDuration(
-	targetTime: number,
-	duration?: number | null,
-): number {
+export function clampMediaTimeToDuration(targetTime: number, duration?: number | null): number {
 	const safeTargetTime = Math.max(0, targetTime);
-	if (
-		!Number.isFinite(duration) ||
-		duration === null ||
-		duration === undefined
-	) {
+	if (!Number.isFinite(duration) || duration === null || duration === undefined) {
 		return safeTargetTime;
 	}
 
@@ -38,9 +31,6 @@ export function getEffectiveRecordingDurationMs({
 
 	return Math.max(
 		0,
-		safeEndTime -
-			safeStartTime -
-			Math.max(0, accumulatedPausedDurationMs) -
-			activePauseDuration,
+		safeEndTime - safeStartTime - Math.max(0, accumulatedPausedDurationMs) - activePauseDuration,
 	);
 }

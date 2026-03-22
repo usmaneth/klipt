@@ -78,9 +78,7 @@ export function WebcamOverlay({
 
 	const borderRadius = SHAPE_BORDER_RADIUS[shape];
 
-	const videoSrc = videoPath.startsWith("file://")
-		? videoPath
-		: `file://${videoPath}`;
+	const videoSrc = videoPath.startsWith("file://") ? videoPath : `file://${videoPath}`;
 
 	return (
 		<Rnd

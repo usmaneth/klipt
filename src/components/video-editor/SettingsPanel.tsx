@@ -395,9 +395,7 @@ export function SettingsPanel({
 	// so we never need customImages in the dependency array.
 	useEffect(() => {
 		if (selected.startsWith("data:image")) {
-			setCustomImages((prev) =>
-				prev.includes(selected) ? prev : [selected, ...prev],
-			);
+			setCustomImages((prev) => (prev.includes(selected) ? prev : [selected, ...prev]));
 		}
 	}, [selected]);
 
@@ -508,9 +506,10 @@ export function SettingsPanel({
 
 	// Find selected annotation
 	const selectedAnnotation = useMemo(
-		() => selectedAnnotationId
-			? annotationRegions.find((a) => a.id === selectedAnnotationId) ?? null
-			: null,
+		() =>
+			selectedAnnotationId
+				? (annotationRegions.find((a) => a.id === selectedAnnotationId) ?? null)
+				: null,
 		[selectedAnnotationId, annotationRegions],
 	);
 
@@ -571,9 +570,7 @@ export function SettingsPanel({
 				onTypeChange={handleAnnotationTypeChange}
 				onStyleChange={handleAnnotationStyleChange}
 				onFigureDataChange={
-					onAnnotationFigureDataChange
-						? handleAnnotationFigureDataChange
-						: undefined
+					onAnnotationFigureDataChange ? handleAnnotationFigureDataChange : undefined
 				}
 				onDelete={handleAnnotationDeleteClick}
 			/>
@@ -612,7 +609,7 @@ export function SettingsPanel({
 										zoomEnabled ? "opacity-100 cursor-pointer" : "opacity-40 cursor-not-allowed",
 										isActive
 											? "border-cyan-400/50 bg-gradient-to-b from-blue-600/60 to-cyan-700/60 text-white shadow-[0_0_15px_rgba(6,182,212,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] scale-105"
-											: "border-white/5 bg-[#11131A] text-slate-400 hover:bg-[#1A1D27] hover:border-white/20 hover:text-slate-200 hover:shadow-[0_0_10px_rgba(255,255,255,0.05)]",
+											: "border-transparent bg-white/[0.03] text-white/50 hover:bg-white/[0.08] hover:text-white transition-colors",
 									)}
 								>
 									<span className="text-xs font-semibold tracking-wide">{option.label}</span>
@@ -681,7 +678,7 @@ export function SettingsPanel({
 											: "opacity-40 cursor-not-allowed",
 										isActive
 											? "border-orange-400/50 bg-gradient-to-b from-orange-600/60 to-yellow-600/60 text-white shadow-[0_0_15px_rgba(249,115,22,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] scale-105"
-											: "border-white/5 bg-[#11131A] text-slate-400 hover:bg-[#1A1D27] hover:border-white/20 hover:text-slate-200 hover:shadow-[0_0_10px_rgba(255,255,255,0.05)]",
+											: "border-transparent bg-white/[0.03] text-white/50 hover:bg-white/[0.08] hover:text-white transition-colors",
 									)}
 								>
 									<span className="text-xs font-semibold tracking-wide">{option.label}</span>
@@ -995,19 +992,19 @@ export function SettingsPanel({
 								<TabsList className="mb-2 bg-white/5 border border-white/5 p-0.5 w-full grid grid-cols-3 h-7 rounded-lg">
 									<TabsTrigger
 										value="image"
-										className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
+										className="data-[state=active]:bg-white/20 data-[state=active]:text-white text-white/40 text-[11px] py-1.5 rounded-[8px] font-medium transition-all shadow-sm"
 									>
 										{tSettings("background.image")}
 									</TabsTrigger>
 									<TabsTrigger
 										value="color"
-										className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
+										className="data-[state=active]:bg-white/20 data-[state=active]:text-white text-white/40 text-[11px] py-1.5 rounded-[8px] font-medium transition-all shadow-sm"
 									>
 										{tSettings("background.color")}
 									</TabsTrigger>
 									<TabsTrigger
 										value="gradient"
-										className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"
+										className="data-[state=active]:bg-white/20 data-[state=active]:text-white text-white/40 text-[11px] py-1.5 rounded-[8px] font-medium transition-all shadow-sm"
 									>
 										{tSettings("background.gradient")}
 									</TabsTrigger>
@@ -1025,7 +1022,7 @@ export function SettingsPanel({
 										<Button
 											onClick={() => fileInputRef.current?.click()}
 											variant="outline"
-											className="w-full gap-2 bg-white/5 text-slate-200 border-white/10 hover:bg-[#2563EB] hover:text-white hover:border-[#2563EB] transition-all h-7 text-[10px]"
+											className="w-full gap-1.5 bg-white/5 text-white/90 border-transparent hover:bg-white/15 hover:text-white transition-colors h-8 text-[11px] rounded-[8px]"
 										>
 											<Upload className="w-3 h-3" />
 											{tSettings("background.uploadCustom")}
@@ -1401,4 +1398,3 @@ export function SettingsPanel({
 		</div>
 	);
 }
-

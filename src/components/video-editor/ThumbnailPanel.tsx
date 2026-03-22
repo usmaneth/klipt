@@ -67,7 +67,10 @@ function cropToAspectRatio(dataUrl: string, targetRatio: number): Promise<string
 	});
 }
 
-export const ThumbnailPanel = memo(function ThumbnailPanel({ videoUrl, onSaveThumbnail }: ThumbnailPanelProps) {
+export const ThumbnailPanel = memo(function ThumbnailPanel({
+	videoUrl,
+	onSaveThumbnail,
+}: ThumbnailPanelProps) {
 	const [candidates, setCandidates] = useState<ThumbnailCandidate[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 	const [generating, setGenerating] = useState(false);

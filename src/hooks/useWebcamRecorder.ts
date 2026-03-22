@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { fixWebmDuration } from "@fix-webm-duration/fix";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const WEBCAM_BITRATE = 2_500_000;
 const RECORDER_TIMESLICE_MS = 1000;
@@ -22,20 +22,11 @@ export interface UseWebcamRecorderReturn {
 }
 
 function selectMimeType(): string {
-	const preferred = [
-		"video/webm;codecs=vp9",
-		"video/webm;codecs=vp8",
-		"video/webm",
-	];
-	return (
-		preferred.find((type) => MediaRecorder.isTypeSupported(type)) ??
-		"video/webm"
-	);
+	const preferred = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+	return preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
 }
 
-export function useWebcamRecorder(
-	options: UseWebcamRecorderOptions,
-): UseWebcamRecorderReturn {
+export function useWebcamRecorder(options: UseWebcamRecorderOptions): UseWebcamRecorderReturn {
 	const { enabled, deviceId, previewVisible: initialPreviewVisible } = options;
 
 	const [stream, setStream] = useState<MediaStream | null>(null);
@@ -46,9 +37,7 @@ export function useWebcamRecorder(
 	const chunksRef = useRef<Blob[]>([]);
 	const startTimeRef = useRef<number>(0);
 	const streamRef = useRef<MediaStream | null>(null);
-	const stopPromiseResolveRef = useRef<
-		((path: string | null) => void) | null
-	>(null);
+	const stopPromiseResolveRef = useRef<((path: string | null) => void) | null>(null);
 	const mountedRef = useRef(true);
 
 	// Keep previewVisible in sync with external prop changes
@@ -125,65 +114,56 @@ export function useWebcamRecorder(
 		};
 	}, [enabled, deviceId, recording]);
 
-	const saveRecording = useCallback(
-		async (mimeType: string): Promise<string | null> => {
-			if (chunksRef.current.length === 0) return null;
+	const saveRecording = useCallback(async (mimeType: string): Promise<string | null> => {
+		if (chunksRef.current.length === 0) return null;
 
-			const duration = Date.now() - startTimeRef.current;
-			const recordedChunks = chunksRef.current;
-			chunksRef.current = [];
+		const duration = Date.now() - startTimeRef.current;
+		const recordedChunks = chunksRef.current;
+		chunksRef.current = [];
 
-			const buggyBlob = new Blob(recordedChunks, { type: mimeType });
-			const timestamp = Date.now();
-			const fileName = `${WEBCAM_FILE_PREFIX}${timestamp}${VIDEO_FILE_EXTENSION}`;
+		const buggyBlob = new Blob(recordedChunks, { type: mimeType });
+		const timestamp = Date.now();
+		const fileName = `${WEBCAM_FILE_PREFIX}${timestamp}${VIDEO_FILE_EXTENSION}`;
 
-			try {
-				const videoBlob = await fixWebmDuration(buggyBlob, duration);
-				const arrayBuffer = await videoBlob.arrayBuffer();
+		try {
+			const videoBlob = await fixWebmDuration(buggyBlob, duration);
+			const arrayBuffer = await videoBlob.arrayBuffer();
 
-				const api = window.electronAPI as Record<string, unknown>;
-				if (typeof api.storeWebcamVideo === "function") {
-					const result = (await (
-						api.storeWebcamVideo as (
-							data: ArrayBuffer,
-							name: string,
-						) => Promise<{
-							success: boolean;
-							path?: string;
-							message?: string;
-						}>
-					)(arrayBuffer, fileName)) as {
+			const api = window.electronAPI as Record<string, unknown>;
+			if (typeof api.storeWebcamVideo === "function") {
+				const result = (await (
+					api.storeWebcamVideo as (
+						data: ArrayBuffer,
+						name: string,
+					) => Promise<{
 						success: boolean;
 						path?: string;
 						message?: string;
-					};
-					if (result.success && result.path) {
-						return result.path;
-					}
-					console.error(
-						"Failed to store webcam video:",
-						result.message,
-					);
-					return null;
-				}
-
-				// Fallback: use storeRecordedVideo if storeWebcamVideo is not yet available
-				const result = await window.electronAPI.storeRecordedVideo(
-					arrayBuffer,
-					fileName,
-				);
+					}>
+				)(arrayBuffer, fileName)) as {
+					success: boolean;
+					path?: string;
+					message?: string;
+				};
 				if (result.success && result.path) {
 					return result.path;
 				}
 				console.error("Failed to store webcam video:", result.message);
 				return null;
-			} catch (error) {
-				console.error("Error saving webcam recording:", error);
-				return null;
 			}
-		},
-		[],
-	);
+
+			// Fallback: use storeRecordedVideo if storeWebcamVideo is not yet available
+			const result = await window.electronAPI.storeRecordedVideo(arrayBuffer, fileName);
+			if (result.success && result.path) {
+				return result.path;
+			}
+			console.error("Failed to store webcam video:", result.message);
+			return null;
+		} catch (error) {
+			console.error("Error saving webcam recording:", error);
+			return null;
+		}
+	}, []);
 
 	const stopAndSave = useCallback(async (): Promise<string | null> => {
 		const recorder = mediaRecorderRef.current;
