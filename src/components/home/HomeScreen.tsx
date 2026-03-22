@@ -155,7 +155,7 @@ export function HomeScreen() {
 					playsInline
 					className="absolute inset-0 w-[120%] h-[120%] -left-[10%] -top-[10%] object-cover opacity-[0.3] mix-blend-screen transition-opacity duration-1000"
 					style={{ filter: "blur(60px)" }}
-					src="https://videos.pexels.com/video-files/3129576/3129576-hd_1920_1080_30fps.mp4" 
+					src="/veo-bg.mp4" 
 					// Placeholder. Replace with your Veo generation! -> src="/veo-bg.mp4"
 				/>
 				
