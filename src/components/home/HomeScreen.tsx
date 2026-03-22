@@ -1,5 +1,6 @@
 import { ChevronRight, CircleDot, Film } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getAssetPath } from "@/lib/assetPath";
 
 /* ------------------------------------------------------------------ */
 /*  CSS keyframes injected once into <head>                            */
@@ -64,9 +65,14 @@ function relativeTime(timestampMs: number): string {
 /* ------------------------------------------------------------------ */
 
 export function HomeScreen() {
+	const [videoPath, setVideoPath] = useState<string>("");
 	const [recentProjects, setRecentProjects] = useState<
 		{ name: string; path: string; mtime: number }[]
 	>([]);
+
+	useEffect(() => {
+		getAssetPath("veo-bg.mp4").then(setVideoPath);
+	}, []);
 
 	useEffect(() => {
 		injectStyles();
@@ -154,13 +160,13 @@ export function HomeScreen() {
 					muted
 					playsInline
 					className="absolute inset-0 w-[120%] h-[120%] -left-[10%] -top-[10%] object-cover opacity-[0.8] transition-opacity duration-1000"
-					style={{ filter: "blur(60px)" }}
-					src="/veo-bg.mp4" 
+					style={{ filter: "blur(20px)" }}
+					src={videoPath || "/veo-bg.mp4"} 
 					// Placeholder. Replace with your Veo generation! -> src="/veo-bg.mp4"
 				/>
 				
 				{/* A deep radial gradient to ensure the center content remains highly legible */}
-				<div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(10,10,10,0.5)_0%,rgba(10,10,10,0.98)_100%)] pointer-events-none" />
+				<div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(10,10,10,0.1)_0%,rgba(10,10,10,0.8)_100%)] pointer-events-none" />
 			</div>
 
 			{/* ============ BACKGROUND ORBS ============ */}
