@@ -20,7 +20,8 @@ const PlaybackControls = memo(function PlaybackControls({
 	const t = useScopedT("editor");
 	const [isScrubbing, setIsScrubbing] = useState(false);
 	const [scrubSpeed, setScrubSpeed] = useState(0);
-	const lastClientXRef = useRef<number | null>(null);
+	const lastValueRef = useRef<number>(0);
+	const speedDecayRef = useRef<number>(0);
 
 	function formatTime(seconds: number) {
 		if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return "0:00";
@@ -36,30 +37,37 @@ const PlaybackControls = memo(function PlaybackControls({
 
 	function handleScrubInput(e: React.FormEvent<HTMLInputElement>) {
 		const target = e.target as HTMLInputElement;
-		onSeek(parseFloat(target.value));
+		const newValue = parseFloat(target.value);
+		onSeek(newValue);
 
-		// Calculate scrub speed from mouse movement
-		const nativeEvent = e.nativeEvent as InputEvent;
-		const mouseEvent = nativeEvent as unknown as { clientX?: number };
-		if (mouseEvent.clientX != null) {
-			if (lastClientXRef.current !== null) {
-				const delta = Math.abs(mouseEvent.clientX - lastClientXRef.current);
-				const speed = Math.min(delta / 30, 1); // Normalize: 30px movement = max speed
-				setScrubSpeed(speed);
-			}
-			lastClientXRef.current = mouseEvent.clientX;
+		// Calculate speed from value delta (works regardless of event type)
+		if (isScrubbing && duration > 0) {
+			const delta = Math.abs(newValue - lastValueRef.current);
+			const normalizedDelta = delta / duration; // 0-1 range based on video length
+			const speed = Math.min(normalizedDelta * 50, 1); // Scale up for visibility
+			setScrubSpeed(Math.max(speed, scrubSpeed * 0.8)); // Smooth decay
 		}
+		lastValueRef.current = newValue;
 	}
 
 	function handleScrubStart() {
 		setIsScrubbing(true);
-		lastClientXRef.current = null;
+		lastValueRef.current = currentTime;
+		// Start decay animation
+		const decay = () => {
+			setScrubSpeed((prev) => {
+				if (prev < 0.01) return 0;
+				return prev * 0.92;
+			});
+			speedDecayRef.current = requestAnimationFrame(decay);
+		};
+		speedDecayRef.current = requestAnimationFrame(decay);
 	}
 
 	function handleScrubEnd() {
 		setIsScrubbing(false);
 		setScrubSpeed(0);
-		lastClientXRef.current = null;
+		cancelAnimationFrame(speedDecayRef.current);
 	}
 
 	const handleSkipBack = useCallback(() => {
