@@ -1,7 +1,47 @@
-import { CircleDot, FileVideo, Film } from "lucide-react";
+import { CircleDot, FileVideo, Film, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
-/** Simple relative time formatter — avoids pulling in date-fns. */
+/* ------------------------------------------------------------------ */
+/*  CSS keyframes injected once into <head>                            */
+/* ------------------------------------------------------------------ */
+const KEYFRAMES = `
+@keyframes hs-breathe {
+	0%, 100% { transform: scale(1); }
+	50%      { transform: scale(1.02); }
+}
+@keyframes hs-fadeSlideUp {
+	from { opacity: 0; transform: translateY(12px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hs-fadeIn {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+@keyframes hs-scaleIn {
+	from { opacity: 0; transform: scale(0.8); }
+	to   { opacity: 1; transform: scale(1); }
+}
+@keyframes hs-typewriter {
+	0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
+	30%  { opacity: 1; clip-path: inset(0 100% 0 0); }
+	100% { opacity: 1; clip-path: inset(0 0% 0 0); }
+}
+`;
+
+let stylesInjected = false;
+function injectStyles() {
+	if (stylesInjected) return;
+	stylesInjected = true;
+	const style = document.createElement("style");
+	style.textContent = KEYFRAMES;
+	document.head.appendChild(style);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+/** Simple relative time formatter -- avoids pulling in date-fns. */
 function relativeTime(timestampMs: number): string {
 	const seconds = Math.floor((Date.now() - timestampMs) / 1000);
 	if (seconds < 60) return "just now";
@@ -15,12 +55,19 @@ function relativeTime(timestampMs: number): string {
 	return `${months}mo ago`;
 }
 
+const NOISE_SVG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E")`;
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
 export function HomeScreen() {
 	const [recentProjects, setRecentProjects] = useState<
 		{ name: string; path: string; mtime: number }[]
 	>([]);
 
 	useEffect(() => {
+		injectStyles();
 		async function fetchProjects() {
 			try {
 				const res = await window.electronAPI?.getRecentProjects();
@@ -34,10 +81,10 @@ export function HomeScreen() {
 		fetchProjects();
 	}, []);
 
+	/* ---- handlers ---- */
+
 	const handleRecordClick = () => {
 		window.electronAPI?.openHudOverlay().catch((err: unknown) => {
-			// The home window may be destroyed before the IPC response arrives;
-			// this is expected and safe to ignore.
 			console.warn("openHudOverlay IPC interrupted:", err);
 		});
 	};
@@ -47,10 +94,7 @@ export function HomeScreen() {
 			const res = await window.electronAPI?.openVideoFilePicker();
 			if (res && res.success && res.path) {
 				await window.electronAPI?.setCurrentVideoPath(res.path);
-				// switchToEditor will destroy this window; catch the expected rejection.
-				window.electronAPI?.switchToEditor().catch(() => {
-					// Window destroyed before IPC response — expected.
-				});
+				window.electronAPI?.switchToEditor().catch(() => {});
 			}
 		} catch (err) {
 			console.error("Failed to open video for editing:", err);
@@ -61,114 +105,462 @@ export function HomeScreen() {
 		try {
 			await window.electronAPI?.openSpecificProject(projectPath);
 		} catch {
-			// The home window is destroyed when the editor opens, so the IPC
-			// response may fail to deliver.  This is expected and safe to ignore.
+			// Window destroyed on editor open -- expected.
 		}
 	};
 
+	/* ---- render ---- */
+
 	return (
 		<div
-			className="flex flex-col h-screen w-full bg-[#050505] text-[#F2F0ED] overflow-hidden items-center justify-center p-8 selection:bg-[#E0000F]/30 relative font-sans"
-			style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+			className="relative flex flex-col h-screen w-full overflow-hidden font-sans selection:bg-[#E0000F]/30"
+			style={{
+				background: "#0A0A0A",
+				WebkitAppRegion: "drag",
+			} as React.CSSProperties}
 		>
-			{/* Ambient spatial lighting */}
-			<div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vw] rounded-full bg-[#E0000F]/10 blur-[150px] pointer-events-none mix-blend-screen opacity-60 animate-pulse-slow" />
-			<div className="absolute bottom-1/4 right-1/4 w-[50vw] h-[50vw] rounded-full bg-[#2563EB]/10 blur-[180px] pointer-events-none mix-blend-screen opacity-60" />
-			<div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
-			{/* Ambient spatial lighting */}
-			<div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vw] rounded-full bg-[#E0000F]/10 blur-[150px] pointer-events-none mix-blend-screen opacity-60 animate-pulse-slow" />
-			<div className="absolute bottom-1/4 right-1/4 w-[50vw] h-[50vw] rounded-full bg-[#2563EB]/10 blur-[180px] pointer-events-none mix-blend-screen opacity-60" />
-			<div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
-
+			{/* ============ BACKGROUND LAYER ============ */}
+			{/* Red gradient orb -- top right */}
 			<div
-				className="flex flex-col items-center mb-16"
-				style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+				className="pointer-events-none absolute"
+				style={{
+					top: "-100px",
+					right: "-100px",
+					width: 600,
+					height: 600,
+					borderRadius: "50%",
+					background: "rgba(224,0,15,0.04)",
+					filter: "blur(200px)",
+				}}
+			/>
+			{/* Blue gradient orb -- bottom left */}
+			<div
+				className="pointer-events-none absolute"
+				style={{
+					bottom: "-80px",
+					left: "-80px",
+					width: 500,
+					height: 500,
+					borderRadius: "50%",
+					background: "rgba(37,99,235,0.04)",
+					filter: "blur(180px)",
+				}}
+			/>
+			{/* Noise texture overlay */}
+			<div
+				className="pointer-events-none absolute inset-0"
+				style={{
+					backgroundImage: NOISE_SVG,
+					backgroundRepeat: "repeat",
+					opacity: 0.02,
+					mixBlendMode: "overlay",
+				}}
+			/>
+
+			{/* ============ FROSTED GLASS HEADER (Dynamic Island) ============ */}
+			<div
+				className="relative z-10 flex items-center justify-center shrink-0"
+				style={{
+					height: 52,
+					backdropFilter: "blur(40px) saturate(180%)",
+					WebkitBackdropFilter: "blur(40px) saturate(180%)",
+					background: "rgba(10,10,10,0.6)",
+					borderBottom: "1px solid rgba(255,255,255,0.06)",
+					WebkitAppRegion: "drag",
+				} as React.CSSProperties}
 			>
-				<div className="w-16 h-16 relative flex items-center justify-center mb-4">
-					{/* klipt logo shape simulation - three rotating rectangles */}
-					<div className="absolute w-8 h-8 bg-transparent border-4 border-[#2E2E2E] rounded transform rotate-12" />
-					<div className="absolute w-8 h-8 bg-transparent border-4 border-[#555] rounded transform -rotate-12" />
-					<div className="absolute w-8 h-8 bg-gradient-to-tr from-[#E0000F] to-[#FF4500] rounded transform rotate-45 shadow-[0_0_30px_rgba(224,0,15,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)]" />
-				</div>
-				<h1 className="text-5xl font-semibold tracking-[-0.04em] text-white drop-shadow-lg">
+				<span
+					style={{
+						fontFamily: "'Inter', system-ui, sans-serif",
+						fontSize: 13,
+						fontWeight: 600,
+						letterSpacing: "0.08em",
+						color: "rgba(255,255,255,0.5)",
+						textTransform: "uppercase" as const,
+					}}
+				>
 					klipt
-				</h1>
-				<p className="text-[13px] font-medium text-white/40 mt-3 tracking-[0.2em] uppercase backdrop-blur-sm">
-					edit at the speed of thought
-				</p>
+				</span>
 			</div>
 
+			{/* ============ MAIN CONTENT ============ */}
 			<div
-				className="flex items-center gap-6 w-full max-w-2xl mb-12"
-				style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+				className="relative z-10 flex flex-1 flex-col items-center overflow-y-auto"
+				style={{
+					paddingTop: 48,
+					paddingBottom: 48,
+					paddingLeft: 32,
+					paddingRight: 32,
+					WebkitAppRegion: "no-drag",
+				} as React.CSSProperties}
 			>
-				<div
-					onClick={handleRecordClick}
-					className="flex-1 flex flex-col items-start p-8 rounded-[32px] bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] cursor-pointer group hover:bg-white/[0.04] hover:border-white/[0.15] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(224,0,15,0.25)] relative overflow-hidden"
-				>
-					<div className="absolute inset-0 bg-gradient-to-br from-[#E0000F]/20 via-[#FF4500]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none mix-blend-screen" />
-					<div className="w-12 h-12 rounded-full bg-[#E0000F]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(224,0,15,0.2)] group-hover:shadow-[0_0_25px_rgba(224,0,15,0.4)] ring-1 ring-[#E0000F]/30">
-						<CircleDot className="w-6 h-6 text-[#E0000F]" />
+				{/* ---- HERO SECTION ---- */}
+				<div className="flex flex-col items-center mb-14">
+					{/* Logo: three rotating rectangles */}
+					<div
+						style={{
+							width: 72,
+							height: 72,
+							position: "relative",
+							marginBottom: 20,
+							animation: "hs-breathe 4s ease-in-out infinite",
+							animationDelay: "0ms",
+							opacity: 0,
+							animationFillMode: "none",
+						}}
+					>
+						{/* Wrapper for scale-in entrance */}
+						<div
+							style={{
+								width: "100%",
+								height: "100%",
+								position: "relative",
+								animation: "hs-scaleIn 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both",
+							}}
+						>
+							<div
+								className="absolute inset-0 flex items-center justify-center"
+								style={{ animation: "hs-breathe 4s ease-in-out infinite" }}
+							>
+								<div
+									style={{
+										position: "absolute",
+										width: 32,
+										height: 32,
+										border: "3px solid rgba(255,255,255,0.08)",
+										borderRadius: 6,
+										transform: "rotate(12deg)",
+									}}
+								/>
+								<div
+									style={{
+										position: "absolute",
+										width: 32,
+										height: 32,
+										border: "3px solid rgba(255,255,255,0.15)",
+										borderRadius: 6,
+										transform: "rotate(-12deg)",
+									}}
+								/>
+								<div
+									style={{
+										position: "absolute",
+										width: 32,
+										height: 32,
+										borderRadius: 6,
+										transform: "rotate(45deg)",
+										background: "linear-gradient(135deg, #E0000F 0%, #FF4500 100%)",
+										boxShadow: "0 0 40px rgba(224,0,15,0.5), inset 0 2px 4px rgba(255,255,255,0.3)",
+									}}
+								/>
+							</div>
+						</div>
 					</div>
-					<h2 className="text-xl font-semibold mb-2 text-white">New Recording</h2>
-					<p className="text-sm text-[#888] font-medium leading-relaxed">
-						Capture your screen with AI-powered editing
+
+					{/* Title */}
+					<h1
+						style={{
+							fontFamily: "'Inter', system-ui, sans-serif",
+							fontSize: 48,
+							fontWeight: 500,
+							letterSpacing: "-0.05em",
+							color: "#FFFFFF",
+							margin: 0,
+							lineHeight: 1,
+							animation: "hs-fadeSlideUp 500ms ease-out 400ms both",
+						}}
+					>
+						klipt
+					</h1>
+
+					{/* Tagline */}
+					<p
+						style={{
+							fontFamily: "'Inter', system-ui, sans-serif",
+							fontSize: 14,
+							color: "#666666",
+							marginTop: 12,
+							fontWeight: 400,
+							letterSpacing: "0.01em",
+							animation: "hs-typewriter 1200ms ease-out 600ms both",
+						}}
+					>
+						edit at the speed of thought.
 					</p>
 				</div>
 
-				<div
-					onClick={handleEditClick}
-					className="flex-1 flex flex-col items-start p-8 rounded-[32px] bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] cursor-pointer group hover:bg-white/[0.04] hover:border-white/[0.15] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(37,99,235,0.25)] relative overflow-hidden"
-				>
-					<div className="absolute inset-0 bg-gradient-to-br from-[#2563EB]/20 via-[#4F46E5]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none mix-blend-screen" />
-					<div className="w-12 h-12 rounded-full bg-[#2563EB]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(37,99,235,0.2)] group-hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] ring-1 ring-[#2563EB]/30">
-						<Film className="w-6 h-6 text-[#2563EB]" />
+				{/* ---- ACTION CARDS ---- */}
+				<div className="flex gap-5 w-full max-w-xl mb-12">
+					{/* Record Card */}
+					<div
+						onClick={handleRecordClick}
+						className="group relative flex-1 cursor-pointer"
+						style={{
+							animation: "hs-fadeSlideUp 500ms ease-out 800ms both",
+						}}
+					>
+						{/* Glow element behind card */}
+						<div
+							className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+							style={{
+								background: "rgba(224,0,15,0.15)",
+								filter: "blur(40px)",
+								transform: "translateY(8px) scale(0.95)",
+								zIndex: 0,
+							}}
+						/>
+						<div
+							className="relative z-10 flex flex-col items-start rounded-2xl transition-all duration-300 group-hover:-translate-y-1"
+							style={{
+								height: 200,
+								padding: 28,
+								background: "rgba(255,255,255,0.03)",
+								backdropFilter: "blur(40px)",
+								WebkitBackdropFilter: "blur(40px)",
+								border: "1px solid rgba(255,255,255,0.06)",
+							}}
+							onMouseEnter={(e) => {
+								e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+							}}
+							onMouseLeave={(e) => {
+								e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+							}}
+						>
+							<div
+								className="flex items-center justify-center rounded-full mb-5 transition-transform duration-300 group-hover:scale-110"
+								style={{
+									width: 48,
+									height: 48,
+									background: "rgba(224,0,15,0.08)",
+								}}
+							>
+								<CircleDot style={{ width: 24, height: 24, color: "#E0000F" }} />
+							</div>
+							<h2
+								style={{
+									fontFamily: "'Inter', system-ui, sans-serif",
+									fontSize: 18,
+									fontWeight: 600,
+									color: "#FFFFFF",
+									margin: 0,
+									marginBottom: 8,
+								}}
+							>
+								New Recording
+							</h2>
+							<p
+								style={{
+									fontFamily: "'Inter', system-ui, sans-serif",
+									fontSize: 13,
+									color: "#666",
+									margin: 0,
+									lineHeight: 1.5,
+								}}
+							>
+								Capture your screen with AI-powered editing
+							</p>
+						</div>
 					</div>
-					<h2 className="text-xl font-semibold mb-2 text-white">Edit Video</h2>
-					<p className="text-sm text-[#888] font-medium leading-relaxed">
-						Open and edit an existing recording
-					</p>
+
+					{/* Edit Card */}
+					<div
+						onClick={handleEditClick}
+						className="group relative flex-1 cursor-pointer"
+						style={{
+							animation: "hs-fadeSlideUp 500ms ease-out 900ms both",
+						}}
+					>
+						{/* Glow element behind card */}
+						<div
+							className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+							style={{
+								background: "rgba(37,99,235,0.15)",
+								filter: "blur(40px)",
+								transform: "translateY(8px) scale(0.95)",
+								zIndex: 0,
+							}}
+						/>
+						<div
+							className="relative z-10 flex flex-col items-start rounded-2xl transition-all duration-300 group-hover:-translate-y-1"
+							style={{
+								height: 200,
+								padding: 28,
+								background: "rgba(255,255,255,0.03)",
+								backdropFilter: "blur(40px)",
+								WebkitBackdropFilter: "blur(40px)",
+								border: "1px solid rgba(255,255,255,0.06)",
+							}}
+							onMouseEnter={(e) => {
+								e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+							}}
+							onMouseLeave={(e) => {
+								e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+							}}
+						>
+							<div
+								className="flex items-center justify-center rounded-full mb-5 transition-transform duration-300 group-hover:scale-110"
+								style={{
+									width: 48,
+									height: 48,
+									background: "rgba(37,99,235,0.08)",
+								}}
+							>
+								<Film style={{ width: 24, height: 24, color: "#2563EB" }} />
+							</div>
+							<h2
+								style={{
+									fontFamily: "'Inter', system-ui, sans-serif",
+									fontSize: 18,
+									fontWeight: 600,
+									color: "#FFFFFF",
+									margin: 0,
+									marginBottom: 8,
+								}}
+							>
+								Edit Video
+							</h2>
+							<p
+								style={{
+									fontFamily: "'Inter', system-ui, sans-serif",
+									fontSize: 13,
+									color: "#666",
+									margin: 0,
+									lineHeight: 1.5,
+								}}
+							>
+								Open and edit an existing recording
+							</p>
+						</div>
+					</div>
 				</div>
+
+				{/* ---- RECENT PROJECTS ---- */}
+				{recentProjects.length > 0 && (
+					<div
+						className="w-full max-w-xl flex flex-col"
+						style={{
+							animation: "hs-fadeIn 500ms ease-out 1000ms both",
+						}}
+					>
+						<h3
+							style={{
+								fontFamily: "'Inter', system-ui, sans-serif",
+								fontSize: 11,
+								fontWeight: 600,
+								textTransform: "uppercase",
+								letterSpacing: "0.12em",
+								color: "#444",
+								marginBottom: 12,
+							}}
+						>
+							Recent Projects
+						</h3>
+						<div className="flex flex-col gap-1">
+							{recentProjects.map((project, i) => (
+								<div
+									key={project.path}
+									onClick={() => handleProjectClick(project.path)}
+									className="group flex items-center justify-between rounded-xl cursor-pointer transition-all duration-200 hover:translate-x-1"
+									style={{
+										padding: "10px 12px",
+										background: "transparent",
+										border: "1px solid transparent",
+										animation: `hs-fadeSlideUp 400ms ease-out ${1000 + i * 80}ms both`,
+									}}
+									onMouseEnter={(e) => {
+										e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+										e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+									}}
+									onMouseLeave={(e) => {
+										e.currentTarget.style.background = "transparent";
+										e.currentTarget.style.borderColor = "transparent";
+									}}
+								>
+									<div className="flex items-center gap-3">
+										<div
+											className="flex items-center justify-center rounded-lg transition-colors duration-200"
+											style={{
+												width: 36,
+												height: 36,
+												background: "rgba(255,255,255,0.04)",
+												border: "1px solid rgba(255,255,255,0.06)",
+											}}
+										>
+											<FileVideo
+												style={{ width: 16, height: 16, color: "#555" }}
+												className="group-hover:text-white/70 transition-colors duration-200"
+											/>
+										</div>
+										<div className="flex flex-col">
+											<span
+												className="group-hover:text-white transition-colors duration-200"
+												style={{
+													fontFamily: "'Inter', system-ui, sans-serif",
+													fontSize: 13,
+													fontWeight: 500,
+													color: "rgba(255,255,255,0.8)",
+												}}
+											>
+												{project.name.replace(".klipt", "")}
+											</span>
+											<span
+												style={{
+													fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+													fontSize: 11,
+													color: "#444",
+													marginTop: 2,
+												}}
+											>
+												{relativeTime(project.mtime)}
+											</span>
+										</div>
+									</div>
+									<ChevronRight
+										className="opacity-0 group-hover:opacity-60 transition-all duration-200 translate-x-[-4px] group-hover:translate-x-0"
+										style={{ width: 14, height: 14, color: "#666" }}
+									/>
+								</div>
+							))}
+						</div>
+					</div>
+				)}
 			</div>
 
-			{recentProjects.length > 0 && (
-				<div
-					className="w-full max-w-2xl flex flex-col"
-					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+			{/* ============ FOOTER ============ */}
+			<div
+				className="relative z-10 flex items-center justify-center gap-3 shrink-0 pointer-events-none"
+				style={{
+					paddingBottom: 16,
+					paddingTop: 8,
+				}}
+			>
+				<span
+					style={{
+						fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+						fontSize: 10,
+						color: "#333",
+					}}
 				>
-					<h3 className="text-xs font-bold uppercase tracking-widest text-[#555] mb-4">
-						Recent Projects
-					</h3>
-					<div className="flex flex-col gap-2">
-						{recentProjects.map((project) => (
-							<div
-								key={project.path}
-								onClick={() => handleProjectClick(project.path)}
-								className="flex items-center justify-between p-3 rounded-xl bg-[#1C1C1C]/30 border border-transparent hover:border-[#2E2E2E] hover:bg-[#1C1C1C] cursor-pointer transition-all duration-200 group"
-							>
-								<div className="flex items-center gap-3">
-									<div className="w-10 h-10 rounded bg-[#0D0D0D] flex items-center justify-center border border-[#2E2E2E] group-hover:border-white/10 transition-colors">
-										<FileVideo className="w-4 h-4 text-[#555] group-hover:text-white/80 transition-colors" />
-									</div>
-									<div className="flex flex-col">
-										<span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
-											{project.name.replace(".klipt", "")}
-										</span>
-										<span className="text-xs text-[#555] mt-0.5">
-											{relativeTime(project.mtime)}
-										</span>
-									</div>
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
-
-			<div className="absolute bottom-6 flex items-center gap-4 text-[#555] font-mono text-[10px] tracking-wider pointer-events-none">
-				<span>Made with klipt</span>
-				<span className="w-1 h-1 rounded-full bg-[#2E2E2E]" />
-				<span>v1.0.0</span>
+					klipt
+				</span>
+				<span
+					style={{
+						width: 3,
+						height: 3,
+						borderRadius: "50%",
+						background: "#333",
+						display: "inline-block",
+					}}
+				/>
+				<span
+					style={{
+						fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+						fontSize: 10,
+						color: "#333",
+					}}
+				>
+					v1.0
+				</span>
 			</div>
 		</div>
 	);

@@ -6,23 +6,7 @@
 	-webkit-app-region: no-drag;
 }
 
-/* 6. Gentle floating animation */
-@keyframes float {
-	0%,
-	100% {
-		transform: translateY(0);
-	}
-	50% {
-		transform: translateY(-2px);
-	}
-}
-
-.floatingHud {
-	animation: float 4s ease-in-out infinite;
-	will-change: transform;
-}
-
-/* 1 & 2. BOLD Glassmorphism + Animated Gradient Border */
+/* 1. Aurora Border — premium animated gradient */
 @keyframes aurora-border {
 	0% {
 		background-position: 0% 50%;
@@ -35,158 +19,135 @@
 	}
 }
 
-@keyframes glow-pulse {
+@keyframes aurora-glow {
 	0%,
 	100% {
-		box-shadow:
-			0 20px 60px rgba(0, 0, 0, 0.8),
-			0 0 30px rgba(224, 0, 15, 0.3),
-			inset 0 0 10px rgba(255, 255, 255, 0.05);
+		box-shadow: 0 0 30px rgba(255, 69, 0, 0.2);
 	}
 	50% {
-		box-shadow:
-			0 20px 60px rgba(0, 0, 0, 0.8),
-			0 0 60px rgba(255, 107, 53, 0.6),
-			inset 0 0 15px rgba(255, 255, 255, 0.1);
+		box-shadow: 0 0 40px rgba(255, 69, 0, 0.35);
 	}
 }
 
 .hudBarWrapper {
 	position: relative;
-	border-radius: 24px;
-	padding: 1.5px; /* Thicker aurora border */
-	border-radius: 28px;
-	background: linear-gradient(90deg, #e0000f, #ff4500, #ff6b35, #ff8c00, #ff4500, #e0000f);
+	padding: 1.5px;
+	border-radius: 22px;
+	background: linear-gradient(
+		90deg,
+		#e0000f,
+		#ff4500,
+		#ff6b35,
+		#ff8c00,
+		#2563eb,
+		#ff8c00,
+		#ff6b35,
+		#ff4500,
+		#e0000f
+	);
 	background-size: 300% 300%;
 	animation:
-		aurora-border 6s linear infinite,
-		glow-pulse 3s ease-in-out infinite;
-	box-shadow:
-		0 10px 40px rgba(0, 0, 0, 0.6),
-		0 0 20px rgba(255, 69, 0, 0.3);
-	will-change: background-position;
-	contain: content;
+		aurora-border 8s linear infinite,
+		aurora-glow 3s ease-in-out infinite;
 }
 
+/* 2. Inner Bar — ultra clean frosted glass */
 .hudBar {
 	isolation: isolate;
-	border-radius: 26.5px;
-	background: linear-gradient(135deg, rgba(10, 10, 16, 0.85) 0%, rgba(5, 5, 8, 0.95) 100%);
-	backdrop-filter: blur(60px) saturate(250%);
-	-webkit-backdrop-filter: blur(60px) saturate(250%);
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+	border-radius: 20px;
+	background: rgba(12, 12, 14, 0.92);
+	backdrop-filter: blur(40px);
+	-webkit-backdrop-filter: blur(40px);
 }
 
+/* 7. Mic Bar — same glass, thinner aurora border */
 .micBarWrapper {
 	position: relative;
-	border-radius: 18px;
 	padding: 1px;
-	background: linear-gradient(90deg, #ff4500, #ff6b35, #e0000f, #ff4500);
+	border-radius: 18px;
+	background: linear-gradient(
+		90deg,
+		#e0000f,
+		#ff4500,
+		#ff6b35,
+		#ff8c00,
+		#2563eb,
+		#ff8c00,
+		#ff6b35,
+		#ff4500,
+		#e0000f
+	);
 	background-size: 300% 300%;
-	animation: aurora-border 6s linear infinite;
-	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-	will-change: background-position;
+	animation:
+		aurora-border 8s linear infinite,
+		aurora-glow 3s ease-in-out infinite;
 }
 
 .micBar {
 	isolation: isolate;
 	border-radius: 17px;
-	background: linear-gradient(135deg, rgba(10, 10, 16, 0.85) 0%, rgba(5, 5, 8, 0.95) 100%);
-	backdrop-filter: blur(40px) saturate(200%);
-	-webkit-backdrop-filter: blur(40px) saturate(200%);
+	background: rgba(12, 12, 14, 0.92);
+	backdrop-filter: blur(40px);
+	-webkit-backdrop-filter: blur(40px);
 }
 
-/* 3. Smooth hover animations on buttons */
+/* 3. Buttons — clean and minimal */
 .hudBtn {
 	transition:
-		transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-		background 0.2s ease,
-		box-shadow 0.2s ease !important;
-	transform: translateZ(0);
-	backface-visibility: hidden;
+		background 200ms ease,
+		opacity 200ms ease !important;
 }
 
 .hudBtn:hover:not(:disabled) {
-	transform: scale(1.15);
-	background: rgba(255, 255, 255, 0.1) !important;
-	box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.06) !important;
 }
 
 .hudBtn:active:not(:disabled) {
-	transform: scale(0.95);
+	opacity: 0.7;
 }
 
-/* 5. Toggle active states (blue & green glow) */
+/* 5. Toggle active states — subtle colored bg */
 .toggleBtnActive {
-	background: rgba(59, 130, 246, 0.25) !important;
-	box-shadow:
-		0 0 15px rgba(59, 130, 246, 0.6),
-		inset 0 0 10px rgba(59, 130, 246, 0.4) !important;
+	background: rgba(59, 130, 246, 0.12) !important;
 	color: #fff !important;
-	will-change: transform, box-shadow;
 }
 .toggleBtnActive:hover:not(:disabled) {
-	background: rgba(59, 130, 246, 0.35) !important;
-	box-shadow:
-		0 0 20px rgba(59, 130, 246, 0.8),
-		inset 0 0 15px rgba(59, 130, 246, 0.5) !important;
-	transform: scale(1.15) translateZ(0);
+	background: rgba(59, 130, 246, 0.18) !important;
 }
 
 .toggleBtnActiveGreen {
-	background: rgba(22, 163, 74, 0.25) !important;
-	box-shadow:
-		0 0 15px rgba(22, 163, 74, 0.6),
-		inset 0 0 10px rgba(22, 163, 74, 0.4) !important;
+	background: rgba(22, 163, 74, 0.12) !important;
 	color: #fff !important;
-	will-change: transform, box-shadow;
 }
 .toggleBtnActiveGreen:hover:not(:disabled) {
-	background: rgba(22, 163, 74, 0.35) !important;
-	box-shadow:
-		0 0 20px rgba(22, 163, 74, 0.8),
-		inset 0 0 15px rgba(22, 163, 74, 0.5) !important;
-	transform: scale(1.15) translateZ(0);
+	background: rgba(22, 163, 74, 0.18) !important;
 }
 
-/* 4. Record button pulsing */
-@keyframes pulse-idle {
-	0%,
-	100% {
-		box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+/* 4. Record button — the star of the show */
+@keyframes pulse-ring {
+	0% {
+		border-color: rgba(239, 68, 68, 0.5);
 	}
 	50% {
-		box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+		border-color: rgba(239, 68, 68, 0.15);
+	}
+	100% {
+		border-color: rgba(239, 68, 68, 0.5);
 	}
 }
 
 .recordBtnIdle {
-	background: rgba(239, 68, 68, 0.15) !important;
-	animation: pulse-idle 2s infinite ease-in-out;
-	will-change: box-shadow, opacity, transform;
+	background: rgba(239, 68, 68, 0.1) !important;
+	border: 1px solid rgba(239, 68, 68, 0.25);
 }
 .recordBtnIdle:hover:not(:disabled) {
-	background: rgba(239, 68, 68, 0.25) !important;
-	transform: scale(1.05);
-}
-
-@keyframes pulse-recording-ring {
-	0% {
-		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-	}
-	70% {
-		box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-	}
-	100% {
-		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-	}
+	background: rgba(239, 68, 68, 0.18) !important;
 }
 
 .recordBtnRecording {
-	background: rgba(239, 68, 68, 0.2) !important;
-	animation: pulse-recording-ring 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
-	border: 1px solid rgba(239, 68, 68, 0.5);
-	will-change: box-shadow, opacity, transform;
+	background: rgba(239, 68, 68, 0.15) !important;
+	border: 1.5px solid rgba(239, 68, 68, 0.5);
+	animation: pulse-ring 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse-record-dot {
@@ -194,21 +155,18 @@
 	100% {
 		opacity: 1;
 		transform: scale(1);
-		filter: drop-shadow(0 0 4px rgba(239, 68, 68, 1));
 	}
 	50% {
-		opacity: 0.7;
+		opacity: 0.6;
 		transform: scale(0.85);
-		filter: drop-shadow(0 0 1px rgba(239, 68, 68, 0.5));
 	}
 }
 
 .pulseRecord {
 	animation: pulse-record-dot 1.5s ease-in-out infinite;
-	will-change: opacity, transform;
 }
 
-/* 7. Gradient Separators */
+/* Gradient Separators */
 .separator {
 	width: 1.5px;
 	height: 24px;
@@ -222,45 +180,39 @@
 	flex-shrink: 0;
 }
 
-/* 9. Dropdown menus slide in with smooth animation */
+/* Dropdown menus */
 @keyframes dropdown-slide {
 	from {
 		opacity: 0;
 		transform: translateY(10px) scale(0.95);
-		backdrop-filter: blur(0px);
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0) scale(1);
-		backdrop-filter: blur(40px);
 	}
 }
 
 .dropdownGlass {
 	animation: dropdown-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-	will-change: transform, opacity;
-	background: linear-gradient(135deg, rgba(20, 20, 30, 0.85), rgba(10, 10, 15, 0.9)) !important;
-	border: 1px solid rgba(255, 255, 255, 0.15) !important;
-	box-shadow:
-		0 10px 30px rgba(0, 0, 0, 0.7),
-		0 0 20px rgba(0, 210, 255, 0.15) !important;
-	backdrop-filter: blur(40px) saturate(200%) !important;
-	-webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+	background: rgba(12, 12, 14, 0.92) !important;
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+	backdrop-filter: blur(40px) !important;
+	-webkit-backdrop-filter: blur(40px) !important;
 	border-radius: 12px;
 }
 
 .dropdownItem {
-	transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition:
+		background 200ms ease,
+		color 200ms ease;
 	border-radius: 6px;
-	backface-visibility: hidden;
 }
 
 .dropdownItem:hover,
 .dropdownItem:focus {
-	background: rgba(255, 255, 255, 0.15) !important;
-	transform: translateX(4px);
+	background: rgba(255, 255, 255, 0.08) !important;
 	color: #fff !important;
-	text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
 .micSelect {

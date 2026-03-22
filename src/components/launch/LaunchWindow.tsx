@@ -320,7 +320,7 @@ export function LaunchWindow() {
 	return (
 		<div className="flex h-full w-full items-end justify-center overflow-hidden bg-transparent px-3 pb-8 pt-2">
 			<div
-				className={`flex flex-col items-center gap-4 mx-auto ${styles.electronDrag} ${styles.floatingHud}`}
+				className={`flex flex-col items-center gap-4 mx-auto ${styles.electronDrag}`}
 			>
 				{/* Microphone bar */}
 				{showMicControls && (

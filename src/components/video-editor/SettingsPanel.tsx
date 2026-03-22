@@ -578,7 +578,7 @@ export function SettingsPanel({
 	}
 
 	return (
-		<div className="flex-[2] min-w-[340px] max-w-[420px] bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[40px] flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] h-full overflow-hidden relative">
+		<div className="flex-[2] min-w-[340px] max-w-[420px] backdrop-blur-xl rounded-3xl flex flex-col h-full overflow-hidden relative" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 16px 48px rgba(0,0,0,0.5)" }}>
 			<div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-0">
 				<div className="mb-4">
 					<div className="flex items-center justify-between mb-3">

@@ -2167,15 +2167,20 @@ export default function VideoEditor() {
 	}
 
 	return (
-		<div className="flex flex-col h-screen bg-[#050505] text-[#F2F0ED] overflow-hidden relative selection:bg-[#E0000F]/30 font-sans">
-			{/* Spatial Mesh Background */}
-			<div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#E0000F]/5 blur-[120px] pointer-events-none mix-blend-screen opacity-70" />
-			<div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-[#2563EB]/5 blur-[150px] pointer-events-none mix-blend-screen opacity-70" />
-			<div className="absolute top-[20%] right-[30%] w-[30vw] h-[30vw] rounded-full bg-[#BF5AF2]/5 blur-[100px] pointer-events-none mix-blend-screen opacity-50" />
-			<div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
+		<div className="flex flex-col h-screen bg-[#050508] text-[#F2F0ED] overflow-hidden relative selection:bg-[#E0000F]/30 font-sans">
+			{/* Spatial Canvas Background — ambient light orbs */}
+			<div className="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#E0000F] opacity-[0.06] blur-[150px] pointer-events-none z-0" />
+			<div className="absolute bottom-[-15%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-[#0A84FF] opacity-[0.05] blur-[120px] pointer-events-none z-0" />
+			<div className="absolute top-[30%] left-[35%] w-[30vw] h-[30vw] rounded-full bg-[#BF5AF2] opacity-[0.03] blur-[100px] pointer-events-none z-0" />
+			{/* Noise texture overlay */}
 			<div
-				className="relative mx-6 mt-6 h-14 flex-shrink-0 bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-full flex items-center justify-between px-6 z-50 shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all"
-				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+				className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none z-0"
+				style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")", backgroundRepeat: "repeat", backgroundSize: "256px 256px" }}
+			/>
+			{/* Floating Pill Navbar */}
+			<div
+				className="relative mx-4 mt-3 h-14 flex-shrink-0 backdrop-blur-2xl rounded-2xl flex items-center justify-between px-6 z-50 transition-all"
+				style={{ WebkitAppRegion: "drag", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" } as React.CSSProperties}
 			>
 				{/* Left: Branding & Actions */}
 				<div className="flex items-center gap-4" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
@@ -2250,15 +2255,13 @@ export default function VideoEditor() {
 				</div>
 			</div>
 
-			<div className="flex-1 p-4 gap-4 flex min-h-0 relative bg-[#0D0D0D]">
+			<div className="flex-1 p-4 gap-4 flex min-h-0 relative z-10">
 				{/* Left Column - Video & Timeline */}
-				<div className="flex-[7] flex flex-col gap-6 min-w-0 h-full">
-					<PanelGroup direction="vertical" className="gap-6">
+				<div className="flex-[7] flex flex-col gap-4 min-w-0 h-full">
+					<PanelGroup direction="vertical" className="gap-4">
 						{/* Top section: video preview and controls */}
 						<Panel defaultSize={70} minSize={40}>
-							<div className="w-full h-full flex flex-col items-center justify-center bg-transparent relative">
-								{/* Subtle background glow for the container */}
-								<div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent rounded-[40px] pointer-events-none shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] border border-white/[0.05] backdrop-blur-xl" />
+							<div className="w-full h-full flex flex-col items-center justify-center relative rounded-3xl p-1 backdrop-blur-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
 								{/* Video preview */}
 								<div
 									className="w-full flex justify-center items-center relative z-10"
@@ -2353,13 +2356,13 @@ export default function VideoEditor() {
 							</div>
 						</Panel>
 
-						<PanelResizeHandle className="h-6 bg-transparent hover:bg-white/5 transition-colors rounded-full mx-16 flex items-center justify-center cursor-row-resize">
-							<div className="w-12 h-1 bg-white/20 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.2)]"></div>
+						<PanelResizeHandle className="h-4 bg-transparent transition-colors rounded-full mx-16 flex items-center justify-center cursor-row-resize group">
+							<div className="w-8 h-[3px] rounded-full bg-white/[0.15] group-hover:bg-white/[0.30] transition-all duration-200"></div>
 						</PanelResizeHandle>
 
 						{/* Timeline section */}
 						<Panel defaultSize={30} minSize={20}>
-							<div className="h-full min-h-0 bg-white/[0.02] backdrop-blur-3xl rounded-[40px] border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden flex flex-col relative transition-all">
+							<div className="h-full min-h-0 backdrop-blur-xl rounded-3xl overflow-hidden flex flex-col relative transition-all" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 16px 48px rgba(0,0,0,0.5)" }}>
 								<TimelineEditor
 									videoDuration={duration}
 									currentTime={currentTime}
