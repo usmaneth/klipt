@@ -3,6 +3,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 
 interface SliderControlProps {
+	 
 	label: string;
 	value: number;
 	defaultValue: number;

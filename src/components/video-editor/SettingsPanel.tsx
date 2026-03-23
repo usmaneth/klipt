@@ -615,12 +615,12 @@ export function SettingsPanel({
 		>
 			{/* Top tab navigation — floating glow pills */}
 			<div className="flex-shrink-0 px-4 pt-4 pb-0">
-				<div className="flex items-center justify-between mb-3">
-					<span className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">Settings</span>
+				<div className="flex items-center justify-between mb-5">
+					<span className="text-[24px] font-semibold tracking-tight text-white/90">Settings</span>
 					<KeyboardShortcutsHelp />
 				</div>
 
-				<div className="flex items-center gap-1 p-1.5 bg-black/40 rounded-[16px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] border border-white/[0.05]">
+				<div className="flex items-center p-1 bg-black/30 rounded-2xl border border-white/[0.04] shadow-inner mb-6 relative">
 					{(["style", "motion", "audio", "export"] as const).map((tab) => {
 						const isActive = activeTab === tab;
 						return (
@@ -628,15 +628,18 @@ export function SettingsPanel({
 								key={tab}
 								onClick={() => setActiveTab(tab)}
 								className={cn(
-									"flex-1 flex items-center justify-center py-2.5 rounded-xl transition-all duration-300 cursor-pointer",
-									isActive
-										? "bg-white/10 text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] scale-100 border border-white/[0.05]"
-										: "bg-transparent text-white/30 hover:text-white/60 scale-95",
+									"flex-1 flex items-center justify-center py-2.5 rounded-[12px] transition-all duration-400 cursor-pointer relative",
+									isActive ? "text-white" : "text-white/40 hover:text-white/70"
 								)}
 							>
+								{isActive && (
+									<div
+										className="absolute inset-0 bg-white/10 border border-white/10 rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+									/>
+								)}
 								<span className="relative z-10 flex items-center gap-2">
 									{TAB_ICONS[tab]}
-									<span className="text-[10px] uppercase tracking-[0.1em] font-bold">
+									<span className="text-[11px] uppercase tracking-widest font-bold hidden sm:block">
 										{tab}
 									</span>
 								</span>
@@ -818,11 +821,9 @@ export function SettingsPanel({
 								{/* Border Radius, Padding, Shadow */}
 								<div>
 									<SectionHeader>{tSettings("effects.title")}</SectionHeader>
-									<div className="space-y-2">
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.roundness")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.roundness")}
 													value={borderRadius}
 													defaultValue={12.5}
@@ -834,12 +835,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
 													accentColor="blue"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.padding")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.padding")}
 													value={padding}
 													defaultValue={50}
@@ -851,12 +849,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/%$/, ""))}
 													accentColor="blue"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.shadow")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.shadow")}
 													value={shadowIntensity}
 													defaultValue={0}
@@ -868,12 +863,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
 													accentColor="blue"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.backgroundBlur")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.backgroundBlur")}
 													value={backgroundBlur}
 													defaultValue={0}
@@ -885,7 +877,6 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
 													accentColor="blue"
 												/>
-											</div>
 										</div>
 									</div>
 								</div>
@@ -1057,11 +1048,9 @@ export function SettingsPanel({
 								{/* Zoom Motion Settings */}
 								<div>
 									<SectionHeader>Zoom Settings</SectionHeader>
-									<div className="space-y-2">
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.zoomMotionBlur")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.zoomMotionBlur")}
 													value={zoomMotionBlur}
 													defaultValue={DEFAULT_ZOOM_MOTION_BLUR}
@@ -1073,7 +1062,6 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
 													accentColor="green"
 												/>
-											</div>
 										</div>
 										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
 											<span className="text-[11px] font-medium text-white/50 tracking-wide">
@@ -1192,7 +1180,7 @@ export function SettingsPanel({
 								{/* Cursor Effects */}
 								<div>
 									<SectionHeader>Cursor</SectionHeader>
-									<div className="space-y-2">
+									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
 										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
 											<div className="flex items-center gap-2">
 												<span className="text-[11px] font-medium text-white/50 tracking-wide">
@@ -1216,10 +1204,8 @@ export function SettingsPanel({
 												className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
 											/>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorSize")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.cursorSize")}
 													value={cursorSize}
 													defaultValue={DEFAULT_CURSOR_SIZE}
@@ -1231,12 +1217,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
 													accentColor="purple"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorSmoothing")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.cursorSmoothing")}
 													value={cursorSmoothing}
 													defaultValue={DEFAULT_CURSOR_SMOOTHING}
@@ -1248,12 +1231,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t)}
 													accentColor="purple"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorMotionBlur")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.cursorMotionBlur")}
 													value={cursorMotionBlur}
 													defaultValue={DEFAULT_CURSOR_MOTION_BLUR}
@@ -1265,12 +1245,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
 													accentColor="purple"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorClickBounce")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.cursorClickBounce")}
 													value={cursorClickBounce}
 													defaultValue={DEFAULT_CURSOR_CLICK_BOUNCE}
@@ -1282,12 +1259,9 @@ export function SettingsPanel({
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
 													accentColor="purple"
 												/>
-											</div>
 										</div>
-										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
-											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorSway")}</span>
-											<div className="flex-1 max-w-[180px] ml-4">
-												<SliderControl
+										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
+											<SliderControl
 													label={tSettings("effects.cursorSway")}
 													value={toCursorSwaySliderValue(cursorSway)}
 													defaultValue={toCursorSwaySliderValue(DEFAULT_CURSOR_SWAY)}
@@ -1306,7 +1280,6 @@ export function SettingsPanel({
 													}}
 													accentColor="purple"
 												/>
-											</div>
 										</div>
 									</div>
 								</div>
