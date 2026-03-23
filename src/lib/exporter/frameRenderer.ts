@@ -406,11 +406,18 @@ export class FrameRenderer {
 				this.videoContainer.addChild(this.maskGraphics);
 			}
 		} else {
-			// Destroy old texture to avoid memory leaks, then create new one
+			// Create new texture from current frame
 			const oldTexture = this.videoSprite.texture;
 			const newTexture = Texture.from(videoFrame as any);
 			this.videoSprite.texture = newTexture;
-			oldTexture.destroy(true);
+			// Defer old texture cleanup to avoid PixiJS accessing destroyed texture during render
+			if (oldTexture && oldTexture !== Texture.EMPTY) {
+				try {
+					oldTexture.destroy(true);
+				} catch {
+					// Ignore — texture may already be destroyed
+				}
+			}
 		}
 
 		// Apply layout
@@ -470,9 +477,9 @@ export class FrameRenderer {
 			frameTimeMs: timeMs,
 		});
 
-		// Temporarily remove filters if texture is invalid to avoid _resolution null crash
+		// Temporarily strip filters to avoid PixiJS null texture crashes (alphaMode, _resolution)
 		const originalFilters = this.videoContainer.filters as Filter[] | null;
-		if (!textureValid && originalFilters && originalFilters.length > 0) {
+		if (originalFilters && originalFilters.length > 0) {
 			this.videoContainer.filters = [];
 		}
 
@@ -483,8 +490,8 @@ export class FrameRenderer {
 			console.warn("[FrameRenderer] render() failed, skipping frame:", renderError);
 		}
 
-		// Restore filters if they were temporarily removed
-		if (!textureValid && originalFilters && originalFilters.length > 0) {
+		// Restore filters after render
+		if (originalFilters && originalFilters.length > 0) {
 			this.videoContainer.filters = originalFilters;
 		}
 
