@@ -1,4 +1,4 @@
-// Translation service with DeepL (primary) and LibreTranslate (fallback) backends
+// Translation service with DeepL (primary) and MyMemory (fallback) backends
 
 export interface TranslationResult {
 	translatedText: string;
@@ -91,40 +91,41 @@ async function translateWithDeepL(
 	}
 }
 
-async function translateWithLibreTranslate(
+async function translateWithMyMemory(
 	text: string,
 	targetLang: string,
 	sourceLang?: string,
 ): Promise<TranslationResult> {
-	const res = await fetch("https://libretranslate.com/translate", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			q: text,
-			source: sourceLang && sourceLang !== "auto" ? sourceLang : "auto",
-			target: targetLang,
-			format: "text",
-		}),
-	});
+	const source = sourceLang && sourceLang !== "auto" ? sourceLang : "en";
+	const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${targetLang}`;
+
+	const res = await fetch(url);
 
 	if (!res.ok) {
-		throw new Error(`LibreTranslate returned ${res.status}: ${await res.text()}`);
+		throw new Error(`MyMemory returned ${res.status}: ${await res.text()}`);
 	}
 
 	const data = (await res.json()) as {
-		translatedText: string;
-		detectedLanguage?: { language: string };
+		responseData: {
+			translatedText: string;
+			match: number;
+		};
+		responseStatus: number;
 	};
 
+	if (data.responseStatus !== 200) {
+		throw new Error(`MyMemory translation error (status ${data.responseStatus})`);
+	}
+
 	return {
-		translatedText: data.translatedText,
-		sourceLanguage: data.detectedLanguage?.language ?? sourceLang ?? "auto",
+		translatedText: data.responseData.translatedText,
+		sourceLanguage: source,
 		targetLanguage: targetLang,
 	};
 }
 
 /**
- * Translate text using DeepL (if API key available) with LibreTranslate fallback.
+ * Translate text using DeepL (if API key available) with MyMemory fallback.
  *
  * The DeepL API key is read from the DEEPL_API_KEY environment variable.
  */
@@ -139,6 +140,6 @@ export async function translateText(
 	const deeplResult = await translateWithDeepL(text, targetLang, sourceLang, deeplKey);
 	if (deeplResult) return deeplResult;
 
-	// Fall back to LibreTranslate
-	return translateWithLibreTranslate(text, targetLang, sourceLang);
+	// Fall back to MyMemory (free, no API key required)
+	return translateWithMyMemory(text, targetLang, sourceLang);
 }

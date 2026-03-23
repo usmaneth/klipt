@@ -3925,7 +3925,7 @@ export function registerIpcHandlers(
 
 				sendProgress("generating", 55, "Generating dubbed audio...");
 
-				// Phase 4: Generate TTS audio with edge-tts
+				// Phase 4: Generate TTS audio with edge-tts (fallback: macOS say)
 				const { DUBBING_VOICES } = await import("../../src/lib/ai/voiceDubbing");
 				const voiceConfig = DUBBING_VOICES[targetLanguage];
 				const voiceName = voiceConfig?.voice ?? "en-US-AriaNeural";
@@ -3935,6 +3935,25 @@ export function registerIpcHandlers(
 					`klipt-dubbed-${targetLanguage}-${Date.now()}.mp3`,
 				);
 
+				// macOS say voice map for fallback
+				const macSayVoices: Record<string, string> = {
+					es: "Paulina",
+					fr: "Thomas",
+					de: "Anna",
+					pt: "Luciana",
+					ja: "Kyoko",
+					ko: "Yuna",
+					zh: "Ting-Ting",
+					it: "Alice",
+					ru: "Milena",
+					ar: "Maged",
+					hi: "Lekha",
+					en: "Samantha",
+				};
+
+				let ttsSucceeded = false;
+
+				// Try edge-tts first
 				try {
 					const edgeTts = await import("edge-tts");
 					const ttsFunc = edgeTts.ttsSave ?? (edgeTts as any).default?.ttsSave;
@@ -3942,11 +3961,69 @@ export function registerIpcHandlers(
 						throw new Error("edge-tts ttsSave function not found");
 					}
 					await ttsFunc(translatedText, dubbedAudioPath, { voice: voiceName });
-				} catch (ttsErr) {
-					const msg = ttsErr instanceof Error ? ttsErr.message : String(ttsErr);
+					ttsSucceeded = true;
+				} catch (edgeTtsErr) {
+					console.warn(
+						"[dub-video] edge-tts failed, trying macOS say fallback:",
+						edgeTtsErr instanceof Error ? edgeTtsErr.message : String(edgeTtsErr),
+					);
+				}
+
+				// Fallback: macOS say command
+				if (!ttsSucceeded && process.platform === "darwin") {
+					try {
+						const sayVoice = macSayVoices[targetLanguage] ?? "Samantha";
+						const tempAiffPath = path.join(
+							os.tmpdir(),
+							`klipt-dub-say-${Date.now()}.aiff`,
+						);
+
+						// Generate AIFF with macOS say
+						await new Promise<void>((resolve, reject) => {
+							const proc = spawn(
+								"say",
+								["-v", sayVoice, "-o", tempAiffPath, translatedText],
+								{ stdio: "pipe" },
+							);
+							proc.on("close", (code) => {
+								if (code === 0) resolve();
+								else reject(new Error(`say exited with code ${code}`));
+							});
+							proc.on("error", reject);
+						});
+
+						// Convert AIFF to MP3 with ffmpeg
+						await new Promise<void>((resolve, reject) => {
+							const proc = spawn(
+								ffmpegPath,
+								["-i", tempAiffPath, "-ar", "48000", "-y", dubbedAudioPath],
+								{ stdio: "pipe" },
+							);
+							proc.on("close", (code) => {
+								if (code === 0) resolve();
+								else reject(new Error(`ffmpeg AIFF->MP3 conversion failed (code ${code})`));
+							});
+							proc.on("error", reject);
+						});
+
+						// Clean up temp AIFF
+						try {
+							await fs.unlink(tempAiffPath);
+						} catch {}
+
+						ttsSucceeded = true;
+					} catch (sayErr) {
+						console.warn(
+							"[dub-video] macOS say fallback also failed:",
+							sayErr instanceof Error ? sayErr.message : String(sayErr),
+						);
+					}
+				}
+
+				if (!ttsSucceeded) {
 					return {
 						success: false,
-						error: `TTS generation failed: ${msg}`,
+						error: "TTS generation failed: both edge-tts and macOS say fallback failed.",
 					};
 				}
 
