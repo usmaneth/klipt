@@ -86,6 +86,7 @@ interface CreativeWorkspaceProps {
 	cuttingRoomFloor: TrimRegion[];
 	onRestoreFromFloor: (id: string) => void;
 	historyPastRef: MutableRefObject<EditorHistorySnapshot[]>;
+	onHistoryRestore: (index: number) => void;
 	notes: WorkspaceNote[];
 	onNotesChange: (notes: WorkspaceNote[]) => void;
 	currentTime: number;
@@ -97,6 +98,7 @@ interface CreativeWorkspaceProps {
 	onJumpToTime: (timeMs: number) => void;
 	scratchPadClips: ScratchPadClip[];
 	onScratchPadClipsChange: (clips: ScratchPadClip[]) => void;
+	onImportVideo: () => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -174,6 +176,7 @@ export function CreativeWorkspace({
 	cuttingRoomFloor,
 	onRestoreFromFloor,
 	historyPastRef,
+	onHistoryRestore,
 	notes,
 	onNotesChange,
 	currentTime,
@@ -185,6 +188,7 @@ export function CreativeWorkspace({
 	onJumpToTime,
 	scratchPadClips,
 	onScratchPadClipsChange,
+	onImportVideo,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
 	const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
@@ -204,8 +208,8 @@ export function CreativeWorkspace({
 		setGiphyLoading(true);
 		try {
 			const endpoint = query.trim()
-				? `https://api.giphy.com/v1/clips/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20`
-				: `https://api.giphy.com/v1/clips/trending?api_key=${GIPHY_API_KEY}&limit=20`;
+				? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20`
+				: `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=20`;
 			const res = await fetch(endpoint);
 			const json = await res.json();
 			setGiphyResults(json.data ?? []);
@@ -320,6 +324,7 @@ export function CreativeWorkspace({
 			))}
 			<button
 				type="button"
+				onClick={onImportVideo}
 				className="mt-2 w-full py-2 rounded-lg border border-dashed border-white/10 text-[11px] text-white/30 hover:text-white/50 hover:border-white/20 transition-colors cursor-pointer"
 			>
 				+ Import
@@ -340,16 +345,18 @@ export function CreativeWorkspace({
 			<div className="flex flex-col gap-1">
 				{[...snapshots].reverse().map((snap, idx) => {
 					const label = describeSnapshot(snap);
+					const originalIndex = snapshots.length - 1 - idx;
 					return (
 						<div
 							key={idx}
+							onClick={() => onHistoryRestore(originalIndex)}
 							className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer"
 						>
 							<span className="text-[11px] text-white/60 truncate max-w-[180px]">
 								{label}
 							</span>
 							<span className="text-[10px] text-white/25 flex-shrink-0 ml-2">
-								{relativeTime(snapshots.length - 1 - idx, snapshots.length)}
+								{relativeTime(originalIndex, snapshots.length)}
 							</span>
 						</div>
 					);
@@ -709,7 +716,8 @@ export function CreativeWorkspace({
 				{notes.map((note) => (
 					<div
 						key={note.id}
-						className="flex items-start gap-2 rounded-lg bg-white/[0.04] p-2 group"
+						onClick={() => onJumpToTime(note.timeMs)}
+						className="flex items-start gap-2 rounded-lg bg-white/[0.04] p-2 group cursor-pointer hover:bg-white/[0.06] transition-colors"
 					>
 						<div
 							className="w-[3px] rounded-full self-stretch flex-shrink-0"

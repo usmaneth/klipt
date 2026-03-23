@@ -1526,6 +1526,37 @@ export default function VideoEditor() {
 		}
 	}, []);
 
+	const handleHistoryRestore = useCallback(
+		(index: number) => {
+			const snapshot = historyPastRef.current[index];
+			if (!snapshot) return;
+
+			// Save current state to future
+			const current = historyCurrentRef.current ?? cloneSnapshot(buildHistorySnapshot());
+			historyFutureRef.current.push(cloneSnapshot(current));
+
+			// Trim the past stack to everything before the target index
+			historyPastRef.current = historyPastRef.current.slice(0, index);
+
+			historyCurrentRef.current = cloneSnapshot(snapshot);
+			applyHistorySnapshot(snapshot);
+		},
+		[applyHistorySnapshot, buildHistorySnapshot, cloneSnapshot],
+	);
+
+	const handleImportVideo = useCallback(async () => {
+		try {
+			const result = await window.electronAPI.openVideoFilePicker();
+			if (result.success && result.path) {
+				await window.electronAPI.setCurrentVideoPath(result.path);
+				setVideoPath(toFileUrl(result.path));
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Import failed: ${message}`);
+		}
+	}, []);
+
 	const handleSelectSpeed = useCallback((id: string | null) => {
 		setSelectedSpeedId(id);
 		if (id) {
@@ -2509,6 +2540,7 @@ export default function VideoEditor() {
 					cuttingRoomFloor={cuttingRoomFloor}
 					onRestoreFromFloor={handleRestoreFromFloor}
 					historyPastRef={historyPastRef}
+					onHistoryRestore={handleHistoryRestore}
 					notes={workspaceNotes}
 					onNotesChange={setWorkspaceNotes}
 					currentTime={currentTime}
@@ -2520,6 +2552,7 @@ export default function VideoEditor() {
 					onJumpToTime={handleJumpToTime}
 					scratchPadClips={scratchPadClips}
 					onScratchPadClipsChange={setScratchPadClips}
+					onImportVideo={handleImportVideo}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}
