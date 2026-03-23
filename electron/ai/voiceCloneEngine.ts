@@ -562,12 +562,20 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 
 	onProgress?.(0.3);
 
-	// 5. Use source audio_features as inputs_embeds conditioning for the LM
-	//    audio_features [1, seqLen, 1024] is already in the right shape for inputs_embeds
-	const inputsEmbeds = srcAudioFeatures;
-	const seqLen = srcAudioFeatures.dims[1] as number;
-	const hiddenDim = srcAudioFeatures.dims[2] as number;
-	console.log(`[voice-clone] LM conditioning: [1, ${seqLen}, ${hiddenDim}]`);
+	// 5. Embed source audio_tokens via embed_tokens to get proper LM input
+	//    audio_tokens [1, K] are discrete speech codec IDs (0-6562) — must be
+	//    projected through embed_tokens so the LM receives embeddings from the
+	//    same representation space it was trained on. Using audio_features
+	//    (continuous encoder activations) directly would produce garbage.
+	const srcEmbedResult = await withTimeout(
+		sessions.embedTokens.run({ input_ids: srcAudioTokens }),
+		STEP_TIMEOUT_MS,
+		"embed_tokens (source audio_tokens)",
+	) as Record<string, OrtTensor>;
+	const inputsEmbeds = srcEmbedResult["inputs_embeds"] as OrtTensor;
+	const seqLen = inputsEmbeds.dims[1] as number;
+	const hiddenDim = inputsEmbeds.dims[2] as number;
+	console.log(`[voice-clone] LM conditioning: embed_tokens(audio_tokens) → [1, ${seqLen}, ${hiddenDim}]`);
 
 	// 6. Initialise KV cache (float16) and attention mask
 	const kvCache: Record<string, OrtTensor> = {};
