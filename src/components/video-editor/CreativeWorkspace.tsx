@@ -524,7 +524,7 @@ export function CreativeWorkspace({
 					value={giphyQuery}
 					onChange={(e) => setGiphyQuery(e.target.value)}
 					placeholder="Search Giphy clips..."
-					className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-2 text-[11px] text-white/70 placeholder:text-white/20 outline-none focus:border-white/15"
+					className="w-full bg-black/40 border border-white/10 rounded-[14px] pl-9 pr-4 py-2.5 text-[12px] text-white/90 placeholder:text-white/30 outline-none focus:border-white/30 shadow-inner transition-colors"
 				/>
 			</div>
 
@@ -786,7 +786,7 @@ export function CreativeWorkspace({
 				))}
 			</div>
 			{/* Add note input */}
-			<div className="flex flex-col gap-1.5 mt-auto pt-2 border-t border-white/[0.04]">
+			<div className="flex flex-col gap-3 mt-auto pt-4 border-t border-white/[0.04]">
 				<div className="flex gap-1">
 					{NOTE_COLORS.map((c) => (
 						<button
@@ -801,7 +801,7 @@ export function CreativeWorkspace({
 						/>
 					))}
 				</div>
-				<div className="flex gap-1.5">
+				<div className="flex gap-2">
 					<input
 						ref={noteInputRef}
 						type="text"
@@ -811,13 +811,13 @@ export function CreativeWorkspace({
 							if (e.key === "Enter") addNote();
 						}}
 						placeholder={`Note at ${formatMs(currentTime * 1000)}...`}
-						className="flex-1 bg-white/[0.04] border border-white/[0.06] rounded-md px-2 py-1.5 text-[11px] text-white/70 placeholder:text-white/20 outline-none focus:border-white/15"
+						className="flex-1 bg-black/40 border border-white/10 rounded-[14px] px-3 py-2 text-[12px] text-white/90 placeholder:text-white/30 outline-none focus:border-white/30 shadow-inner transition-colors"
 					/>
 					<button
 						type="button"
 						onClick={addNote}
 						disabled={!noteInput.trim()}
-						className="px-2 py-1.5 rounded-md bg-white/[0.06] text-[11px] text-white/50 hover:text-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+						className="px-4 py-2 rounded-[12px] bg-white/10 text-[12px] font-bold text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer border border-white/10 shadow-sm"
 					>
 						Add
 					</button>
@@ -904,10 +904,10 @@ export function CreativeWorkspace({
 					{activePanelConfig && (
 						<>
 							{/* Header */}
-							<div className="flex items-center justify-between px-6 py-5 flex-shrink-0 bg-white/[0.02]">
-								<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">
+							<div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0">
+								<h2 className="text-[24px] font-semibold tracking-tight text-white/90 font-sans">
 									{activePanelConfig.label}
-								</span>
+								</h2>
 								<button
 									type="button"
 									onClick={() => onPanelChange(null)}
