@@ -3491,7 +3491,7 @@ export function registerIpcHandlers(
 			await new Promise<void>((resolve, reject) => {
 				const proc = spawn(
 					ffmpegPath,
-					["-i", videoPath, "-ar", "16000", "-ac", "1", "-f", "wav", "-y", tempWavPath],
+					["-i", videoPath, "-vn", "-ar", "16000", "-ac", "1", "-f", "wav", "-y", tempWavPath],
 					{ stdio: "pipe" },
 				);
 
@@ -3504,11 +3504,16 @@ export function registerIpcHandlers(
 					if (code === 0) {
 						resolve();
 					} else {
-						reject(
-							new Error(
-								`FFmpeg audio extraction failed (code ${code}): ${stderrOutput.slice(-500)}`,
-							),
-						);
+						// Check if the video simply has no audio track
+						if (stderrOutput.includes("does not contain any stream") || stderrOutput.includes("no audio")) {
+							reject(new Error("This video has no audio track. Record with a microphone or system audio enabled to use captions."));
+						} else {
+							reject(
+								new Error(
+									`FFmpeg audio extraction failed (code ${code}): ${stderrOutput.slice(-500)}`,
+								),
+							);
+						}
 					}
 				});
 
