@@ -611,20 +611,16 @@ export function SettingsPanel({
 
 	return (
 		<div
-			className="flex-[2] min-w-0 flex flex-col h-full overflow-hidden relative rounded-tr-2xl rounded-br-2xl"
-			style={{
-				background: "#111113",
-				borderLeft: "1px solid rgba(255,255,255,0.06)",
-			}}
+			className="flex-[2] min-w-0 flex flex-col h-full overflow-hidden relative bg-transparent"
 		>
 			{/* Top tab navigation — floating glow pills */}
 			<div className="flex-shrink-0 px-4 pt-4 pb-0">
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-[13px] font-semibold text-white/90 tracking-tight">Settings</span>
+					<span className="text-[13px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">Settings</span>
 					<KeyboardShortcutsHelp />
 				</div>
 
-				<div className="flex gap-[6px]">
+				<div className="flex items-center gap-1 p-1.5 bg-black/40 rounded-[16px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] border border-white/[0.05]">
 					{(["style", "motion", "audio", "export"] as const).map((tab) => {
 						const isActive = activeTab === tab;
 						return (
@@ -632,34 +628,18 @@ export function SettingsPanel({
 								key={tab}
 								onClick={() => setActiveTab(tab)}
 								className={cn(
-									"relative flex items-center gap-1.5 rounded-full text-[11px] font-medium capitalize transition-all duration-200",
+									"flex-1 flex items-center justify-center py-2.5 rounded-xl transition-all duration-300 cursor-pointer",
 									isActive
-										? "text-[#E0000F]"
-										: "text-white/20 hover:text-white/40",
+										? "bg-white/10 text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] scale-100 border border-white/[0.05]"
+										: "bg-transparent text-white/30 hover:text-white/60 scale-95",
 								)}
-								style={
-									isActive
-										? {
-												background: "rgba(224,0,15,0.08)",
-												border: "1px solid rgba(224,0,15,0.2)",
-												boxShadow: "0 0 16px rgba(224,0,15,0.1)",
-												padding: "8px 16px",
-											}
-										: {
-												background: "transparent",
-												border: "1px solid rgba(255,255,255,0.04)",
-												padding: "8px 16px",
-											}
-								}
 							>
-								{TAB_ICONS[tab]}
-								{tab}
-								{isActive && (
-									<span
-										className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-[60%] rounded-full"
-										style={{ background: "#E0000F" }}
-									/>
-								)}
+								<span className="relative z-10 flex items-center gap-2">
+									{TAB_ICONS[tab]}
+									<span className="text-[10px] uppercase tracking-[0.1em] font-bold hidden sm:block">
+										{tSettings(`tabs.${tab}` as any)}
+									</span>
+								</span>
 							</button>
 						);
 					})}
@@ -838,9 +818,9 @@ export function SettingsPanel({
 								{/* Border Radius, Padding, Shadow */}
 								<div>
 									<SectionHeader>{tSettings("effects.title")}</SectionHeader>
-									<div className="space-y-0">
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.roundness")}</span>
+									<div className="space-y-2">
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.roundness")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.roundness")}
@@ -856,8 +836,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.padding")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.padding")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.padding")}
@@ -873,8 +853,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.shadow")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.shadow")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.shadow")}
@@ -890,8 +870,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.backgroundBlur")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.backgroundBlur")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.backgroundBlur")}
@@ -911,8 +891,8 @@ export function SettingsPanel({
 								</div>
 
 								{/* Ambilight toggle */}
-								<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-									<span className="text-[10px] text-white/40">
+								<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+									<span className="text-[11px] font-medium text-white/50 tracking-wide">
 										Ambilight
 									</span>
 									<Switch
@@ -923,8 +903,8 @@ export function SettingsPanel({
 								</div>
 
 								{/* Remove Background toggle */}
-								<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-									<span className="text-[10px] text-white/40">
+								<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+									<span className="text-[11px] font-medium text-white/50 tracking-wide">
 										{tSettings("effects.removeBackground")}
 									</span>
 									<Switch
@@ -1077,9 +1057,9 @@ export function SettingsPanel({
 								{/* Zoom Motion Settings */}
 								<div>
 									<SectionHeader>Zoom Settings</SectionHeader>
-									<div className="space-y-0">
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.zoomMotionBlur")}</span>
+									<div className="space-y-2">
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.zoomMotionBlur")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.zoomMotionBlur")}
@@ -1095,8 +1075,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">
 												{tSettings("effects.connectZooms")}
 											</span>
 											<Switch
@@ -1133,10 +1113,10 @@ export function SettingsPanel({
 														type="button"
 														onClick={() => onSpeedChange?.(option.speed)}
 														className={cn(
-															"px-3 py-1.5 rounded-full text-[10px] transition-all duration-150",
+															"px-4 py-2 rounded-xl text-[11px] transition-all duration-300",
 															isActive
-																? "bg-[#E0000F] border-[#E0000F] text-white font-semibold"
-																: "bg-transparent text-white/35",
+																? "bg-[#E0000F] border-[#E0000F] text-white font-bold shadow-[0_0_15px_rgba(224,0,15,0.4)] scale-105"
+																: "bg-white/[0.02] text-white/40 hover:bg-white/[0.06] hover:text-white/70 hover:scale-105",
 														)}
 														style={
 															isActive
@@ -1212,10 +1192,10 @@ export function SettingsPanel({
 								{/* Cursor Effects */}
 								<div>
 									<SectionHeader>Cursor</SectionHeader>
-									<div className="space-y-0">
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+									<div className="space-y-2">
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
 											<div className="flex items-center gap-2">
-												<span className="text-[10px] text-white/40">
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
 													{tSettings("effects.showCursor")}
 												</span>
 												<kbd className="px-1 py-[1px] text-[7px] font-mono text-white/20 rounded-[3px]" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>C</kbd>
@@ -1226,8 +1206,8 @@ export function SettingsPanel({
 												className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
 											/>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">
 												{tSettings("effects.loopCursor")}
 											</span>
 											<Switch
@@ -1236,8 +1216,8 @@ export function SettingsPanel({
 												className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
 											/>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.cursorSize")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorSize")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.cursorSize")}
@@ -1253,8 +1233,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.cursorSmoothing")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorSmoothing")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.cursorSmoothing")}
@@ -1270,8 +1250,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.cursorMotionBlur")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorMotionBlur")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.cursorMotionBlur")}
@@ -1287,8 +1267,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.cursorClickBounce")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorClickBounce")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.cursorClickBounce")}
@@ -1304,8 +1284,8 @@ export function SettingsPanel({
 												/>
 											</div>
 										</div>
-										<div className="flex items-center justify-between" style={{ padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-											<span className="text-[10px] text-white/40">{tSettings("effects.cursorSway")}</span>
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<span className="text-[11px] font-medium text-white/50 tracking-wide">{tSettings("effects.cursorSway")}</span>
 											<div className="flex-1 max-w-[180px] ml-4">
 												<SliderControl
 													label={tSettings("effects.cursorSway")}
@@ -1546,18 +1526,18 @@ export function SettingsPanel({
 					<div className="grid grid-cols-2 gap-2">
 						<button
 							onClick={onLoadProject}
-							className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-[9px] text-white/30 hover:text-white/50 transition-all duration-150"
+							className="flex items-center justify-center gap-1.5 py-3 rounded-[14px] text-[10px] uppercase tracking-wider font-bold text-white/40 hover:text-white/80 transition-all duration-300 bg-white/[0.02] hover:bg-white/[0.06] hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,0,0,0.3)]"
 							style={{ border: "1px solid rgba(255,255,255,0.06)" }}
 						>
-							<FolderOpen className="w-3 h-3" />
+							<FolderOpen className="w-4 h-4" />
 							{tSettings("export.loadProject")}
 						</button>
 						<button
 							onClick={onSaveProject}
-							className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-[9px] text-white/30 hover:text-white/50 transition-all duration-150"
-							style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+							className="flex items-center justify-center gap-1.5 py-3 rounded-[14px] text-[10px] uppercase tracking-wider font-bold text-[#2563EB]/60 hover:text-[#2563EB] transition-all duration-300 bg-[#2563EB]/10 hover:bg-[#2563EB]/20 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(37,99,235,0.2)]"
+							style={{ border: "1px solid rgba(37,99,235,0.2)" }}
 						>
-							<Save className="w-3 h-3" />
+							<Save className="w-4 h-4" />
 							{tSettings("export.saveProject")}
 						</button>
 					</div>

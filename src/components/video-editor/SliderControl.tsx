@@ -55,7 +55,7 @@ export const SliderControl = memo(function SliderControl({
 		<>
 			<div className="flex items-center justify-between mb-1">
 				<div className="flex items-center gap-1">
-					<div className="text-[10px] font-medium text-slate-300">{label}</div>
+					
 					{isModified && (
 						<button
 							type="button"
@@ -78,11 +78,11 @@ export const SliderControl = memo(function SliderControl({
 							if (e.key === "Enter") commitEdit();
 							if (e.key === "Escape") cancelEdit();
 						}}
-						className="w-14 text-[10px] text-right font-mono bg-white/10 border border-white/20 rounded px-1 py-0 text-slate-200 outline-none focus:border-white/40"
+						className="w-14 w-14 text-[12px] text-right font-mono bg-black/40 border border-white/10 rounded-md px-2 py-0.5 text-white/90 outline-none focus:border-white/30 shadow-inner"
 					/>
 				) : (
 					<span
-						className="text-[10px] text-slate-500 font-mono cursor-text hover:text-slate-300 transition-colors"
+						className="text-[12px] text-white/40 font-mono cursor-text hover:text-white/80 transition-colors bg-white/[0.03] px-2 py-0.5 rounded-md border border-white/[0.05]"
 						onClick={() => {
 							setEditText(formatValue(value));
 							setEditing(true);
