@@ -38,7 +38,7 @@ import { matchesShortcut } from "@/lib/shortcuts";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { CommandPalette } from "./CommandPalette";
-import { CreativeWorkspace, type WorkspaceNote, type WorkspacePanel } from "./CreativeWorkspace";
+import { type AISuggestion, CreativeWorkspace, type ScratchPadClip, type WorkspaceNote, type WorkspacePanel } from "./CreativeWorkspace";
 import { ExportDialog } from "./ExportDialog";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import PlaybackControls from "./PlaybackControls";
@@ -94,6 +94,13 @@ const STYLE_PLAYBACK_CONTROLS_WRAPPER: React.CSSProperties = {
 	margin: "8px 0 16px 0",
 };
 const STYLE_PLAYBACK_CONTROLS_INNER: React.CSSProperties = { width: "100%", maxWidth: "700px" };
+
+function formatAiMs(ms: number): string {
+	const totalSec = Math.floor(ms / 1000);
+	const m = Math.floor(totalSec / 60);
+	const s = totalSec % 60;
+	return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 type EditorHistorySnapshot = {
 	zoomRegions: ZoomRegion[];
@@ -182,6 +189,9 @@ export default function VideoEditor() {
 	const [isMouseMoving, setIsMouseMoving] = useState(true);
 	const [activeWorkspacePanel, setActiveWorkspacePanel] = useState<WorkspacePanel | null>(null);
 	const [workspaceNotes, setWorkspaceNotes] = useState<WorkspaceNote[]>([]);
+	const [scratchPadClips, setScratchPadClips] = useState<ScratchPadClip[]>([]);
+	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
+	const [aiAnalysisProgress, setAiAnalysisProgress] = useState<number | null>(null);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -1352,6 +1362,170 @@ export default function VideoEditor() {
 		[],
 	);
 
+	// ── AI Suggestions handlers ──────────────────────────────────────────────
+
+	const FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "literally", "right", "so"];
+	const SILENCE_THRESHOLD_MS = 800;
+
+	const handleAnalyzeVideo = useCallback(async () => {
+		if (!videoPath) return;
+
+		setAiAnalysisProgress(0);
+		setAiSuggestions([]);
+
+		const cleanup = window.electronAPI.onTranscriptionProgress(
+			(progress: { percent: number }) => {
+				setAiAnalysisProgress(progress.percent);
+			},
+		);
+
+		try {
+			const response = await window.electronAPI.transcribeAudio(videoPath);
+
+			if (!response.success || !response.result) {
+				toast.error(response.error ?? "Transcription failed");
+				setAiAnalysisProgress(null);
+				cleanup();
+				return;
+			}
+
+			const { words } = response.result;
+			const suggestions: AISuggestion[] = [];
+			let suggestionId = 0;
+
+			// Detect silences (gaps > 0.8s between consecutive words)
+			for (let i = 1; i < words.length; i++) {
+				const prev = words[i - 1];
+				const curr = words[i];
+				if (!prev || !curr) continue;
+				const gapMs = (curr.start - prev.end) * 1000;
+				if (gapMs > SILENCE_THRESHOLD_MS) {
+					suggestions.push({
+						id: `ai-${suggestionId++}`,
+						type: "silence",
+						label: `Remove silence at ${formatAiMs(prev.end * 1000)}\u2013${formatAiMs(curr.start * 1000)}`,
+						startMs: Math.round(prev.end * 1000),
+						endMs: Math.round(curr.start * 1000),
+					});
+				}
+			}
+
+			// Detect filler words
+			for (const w of words) {
+				const lower = w.text.toLowerCase().replace(/[.,!?]/g, "");
+				if (FILLER_WORDS.includes(lower)) {
+					suggestions.push({
+						id: `ai-${suggestionId++}`,
+						type: "filler",
+						label: `Filler word '${lower}' at ${formatAiMs(w.start * 1000)}`,
+						startMs: Math.round(w.start * 1000),
+						endMs: Math.round(w.end * 1000),
+						word: lower,
+					});
+				}
+			}
+
+			// Detect "you know" as a 2-word filler
+			for (let i = 0; i < words.length - 1; i++) {
+				const w1 = words[i];
+				const w2 = words[i + 1];
+				if (!w1 || !w2) continue;
+				const pair = `${w1.text.toLowerCase().replace(/[.,!?]/g, "")} ${w2.text.toLowerCase().replace(/[.,!?]/g, "")}`;
+				if (pair === "you know") {
+					suggestions.push({
+						id: `ai-${suggestionId++}`,
+						type: "filler",
+						label: `Filler 'you know' at ${formatAiMs(w1.start * 1000)}`,
+						startMs: Math.round(w1.start * 1000),
+						endMs: Math.round(w2.end * 1000),
+						word: "you know",
+					});
+				}
+			}
+
+			// Detect best moments (high word density = high energy)
+			// Use a 5-second sliding window
+			const WINDOW_SEC = 5;
+			let bestDensity = 0;
+			let bestWindowStart = 0;
+			let bestWindowEnd = 0;
+
+			if (words.length > 0) {
+				const firstWord = words[0];
+				const lastWord = words[words.length - 1];
+				if (firstWord && lastWord) {
+					for (let winStart = firstWord.start; winStart + WINDOW_SEC <= lastWord.end; winStart += 1) {
+						const winEnd = winStart + WINDOW_SEC;
+						const wordsInWindow = words.filter(
+							(w) => w.start >= winStart && w.end <= winEnd,
+						);
+						const density = wordsInWindow.length / WINDOW_SEC;
+						if (density > bestDensity) {
+							bestDensity = density;
+							bestWindowStart = winStart;
+							bestWindowEnd = winEnd;
+						}
+					}
+					if (bestDensity > 0) {
+						suggestions.push({
+							id: `ai-${suggestionId++}`,
+							type: "best-moment",
+							label: `High energy at ${formatAiMs(bestWindowStart * 1000)}`,
+							startMs: Math.round(bestWindowStart * 1000),
+							endMs: Math.round(bestWindowEnd * 1000),
+						});
+					}
+				}
+			}
+
+			// Sort by startMs
+			suggestions.sort((a, b) => a.startMs - b.startMs);
+			setAiSuggestions(suggestions);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Analysis failed: ${message}`);
+		} finally {
+			setAiAnalysisProgress(null);
+			cleanup();
+		}
+	}, [videoPath]);
+
+	const handleAcceptSuggestion = useCallback(
+		(suggestion: AISuggestion) => {
+			if (suggestion.type === "silence" || suggestion.type === "filler") {
+				// Create a trim region to cut this segment
+				const id = `trim-${nextTrimIdRef.current++}`;
+				const newRegion: TrimRegion = {
+					id,
+					startMs: suggestion.startMs,
+					endMs: suggestion.endMs,
+				};
+				setTrimRegions((prev) => [...prev, newRegion]);
+				setSelectedTrimId(id);
+			} else if (suggestion.type === "best-moment") {
+				// Seek to the best moment
+				const video = videoPlaybackRef.current?.video;
+				if (video) {
+					video.currentTime = suggestion.startMs / 1000;
+				}
+			}
+			// Remove the suggestion after accepting
+			setAiSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
+		},
+		[],
+	);
+
+	const handleDismissSuggestion = useCallback((id: string) => {
+		setAiSuggestions((prev) => prev.filter((s) => s.id !== id));
+	}, []);
+
+	const handleJumpToTime = useCallback((timeMs: number) => {
+		const video = videoPlaybackRef.current?.video;
+		if (video) {
+			video.currentTime = timeMs / 1000;
+		}
+	}, []);
+
 	const handleSelectSpeed = useCallback((id: string | null) => {
 		setSelectedSpeedId(id);
 		if (id) {
@@ -2338,6 +2512,14 @@ export default function VideoEditor() {
 					notes={workspaceNotes}
 					onNotesChange={setWorkspaceNotes}
 					currentTime={currentTime}
+					aiSuggestions={aiSuggestions}
+					aiAnalysisProgress={aiAnalysisProgress}
+					onAnalyzeVideo={handleAnalyzeVideo}
+					onAcceptSuggestion={handleAcceptSuggestion}
+					onDismissSuggestion={handleDismissSuggestion}
+					onJumpToTime={handleJumpToTime}
+					scratchPadClips={scratchPadClips}
+					onScratchPadClipsChange={setScratchPadClips}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}

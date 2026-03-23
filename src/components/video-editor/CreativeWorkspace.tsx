@@ -1,14 +1,34 @@
 import {
+	ArrowRight,
+	ArrowRightLeft,
+	Check,
 	Clipboard,
 	History,
 	LayoutGrid,
+	Loader2,
 	MessageSquare,
 	Music,
+	Play,
+	RotateCcw,
+	Search,
 	Sparkles,
+	Trash2,
 	X,
 } from "lucide-react";
-import { type MutableRefObject, useCallback, useRef, useState } from "react";
+import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { TrimRegion } from "./types";
+
+// ── AI Suggestion type ──────────────────────────────────────────────────────
+
+export interface AISuggestion {
+	id: string;
+	type: "silence" | "filler" | "best-moment";
+	label: string;
+	startMs: number;
+	endMs: number;
+	word?: string;
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -25,6 +45,26 @@ export interface WorkspaceNote {
 	timeMs: number;
 	text: string;
 	color: string;
+}
+
+export interface ScratchPadClip {
+	id: string;
+	label: string;
+	sourceTimeMs: number;
+	durationMs: number;
+	thumbnailUrl?: string;
+	mp4Url?: string;
+}
+
+type AssetSubTab = "clips" | "stickers" | "sounds" | "transitions";
+
+interface GiphyClipResult {
+	id: string;
+	title: string;
+	images: {
+		fixed_width: { mp4?: string; url: string; width: string; height: string };
+		original: { mp4?: string; url: string; width: string; height: string };
+	};
 }
 
 interface EditorHistorySnapshot {
@@ -49,6 +89,14 @@ interface CreativeWorkspaceProps {
 	notes: WorkspaceNote[];
 	onNotesChange: (notes: WorkspaceNote[]) => void;
 	currentTime: number;
+	aiSuggestions: AISuggestion[];
+	aiAnalysisProgress: number | null;
+	onAnalyzeVideo: () => void;
+	onAcceptSuggestion: (suggestion: AISuggestion) => void;
+	onDismissSuggestion: (id: string) => void;
+	onJumpToTime: (timeMs: number) => void;
+	scratchPadClips: ScratchPadClip[];
+	onScratchPadClipsChange: (clips: ScratchPadClip[]) => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -64,11 +112,43 @@ const PANELS: { id: WorkspacePanel; icon: typeof LayoutGrid; label: string }[] =
 	{ id: "notes", icon: MessageSquare, label: "Notes" },
 ];
 
-const AI_SUGGESTIONS = [
-	{ id: "s1", label: "Remove silence", detail: "0:45 - 0:52", timeMs: 45000 },
-	{ id: "s2", label: "Filler word detected", detail: "at 0:33", timeMs: 33000 },
-	{ id: "s3", label: "Best moment", detail: "1:23", timeMs: 83000 },
+const ASSET_SUB_TABS: { id: AssetSubTab; label: string }[] = [
+	{ id: "clips", label: "Clips" },
+	{ id: "stickers", label: "Stickers" },
+	{ id: "sounds", label: "Sounds" },
+	{ id: "transitions", label: "Transitions" },
 ];
+
+const STICKER_EMOJIS = [
+	"\u{1F525}", "\u{2B50}", "\u{1F446}", "\u{1F447}", "\u{2764}\u{FE0F}", "\u{1F602}",
+	"\u{1F3AF}", "\u{1F4AF}", "\u{1F680}", "\u{2705}", "\u{274C}", "\u{1F3B5}",
+	"\u{1F514}", "\u{1F440}", "\u{1F4A1}", "\u{26A1}", "\u{1F3C6}", "\u{1F389}",
+	"\u{1F44B}", "\u{1F4AA}",
+];
+
+const SOUND_EFFECTS = [
+	{ id: "sfx-click", name: "Click", duration: "0.2s" },
+	{ id: "sfx-whoosh", name: "Whoosh", duration: "0.5s" },
+	{ id: "sfx-pop", name: "Pop", duration: "0.3s" },
+	{ id: "sfx-ding", name: "Ding", duration: "0.4s" },
+	{ id: "sfx-swoosh", name: "Swoosh", duration: "0.6s" },
+	{ id: "sfx-thud", name: "Thud", duration: "0.3s" },
+	{ id: "sfx-rise", name: "Rise", duration: "1.0s" },
+	{ id: "sfx-fall", name: "Fall", duration: "0.8s" },
+];
+
+const TRANSITIONS = [
+	{ id: "tr-crossfade", name: "Crossfade" },
+	{ id: "tr-wipe-left", name: "Wipe Left" },
+	{ id: "tr-wipe-right", name: "Wipe Right" },
+	{ id: "tr-zoom-in", name: "Zoom In" },
+	{ id: "tr-zoom-out", name: "Zoom Out" },
+	{ id: "tr-dissolve", name: "Dissolve" },
+];
+
+const SCRATCH_PAD_COLORS = ["#E0000F", "#FF9500", "#30D158", "#0A84FF", "#BF5AF2", "#FF375F"];
+
+const GIPHY_API_KEY = "dc6zaTOxFJmzC";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -97,10 +177,93 @@ export function CreativeWorkspace({
 	notes,
 	onNotesChange,
 	currentTime,
+	aiSuggestions,
+	aiAnalysisProgress,
+	onAnalyzeVideo,
+	onAcceptSuggestion,
+	onDismissSuggestion,
+	onJumpToTime,
+	scratchPadClips,
+	onScratchPadClipsChange,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
 	const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
 	const noteInputRef = useRef<HTMLInputElement>(null);
+
+	// Asset Library state
+	const [assetSubTab, setAssetSubTab] = useState<AssetSubTab>("clips");
+	const [giphyQuery, setGiphyQuery] = useState("");
+	const [giphyResults, setGiphyResults] = useState<GiphyClipResult[]>([]);
+	const [giphyLoading, setGiphyLoading] = useState(false);
+	const [hoveredGiphyId, setHoveredGiphyId] = useState<string | null>(null);
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// ── Giphy fetch ─────────────────────────────────────────────────────────
+
+	const fetchGiphy = useCallback(async (query: string) => {
+		setGiphyLoading(true);
+		try {
+			const endpoint = query.trim()
+				? `https://api.giphy.com/v1/clips/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20`
+				: `https://api.giphy.com/v1/clips/trending?api_key=${GIPHY_API_KEY}&limit=20`;
+			const res = await fetch(endpoint);
+			const json = await res.json();
+			setGiphyResults(json.data ?? []);
+		} catch {
+			setGiphyResults([]);
+		} finally {
+			setGiphyLoading(false);
+		}
+	}, []);
+
+	// Initial trending load when Clips sub-tab is active
+	useEffect(() => {
+		if (activePanel === "assets" && assetSubTab === "clips" && giphyResults.length === 0 && !giphyQuery) {
+			fetchGiphy("");
+		}
+	}, [activePanel, assetSubTab, fetchGiphy, giphyResults.length, giphyQuery]);
+
+	// Debounced search on query change
+	useEffect(() => {
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(() => {
+			fetchGiphy(giphyQuery);
+		}, 500);
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, [giphyQuery, fetchGiphy]);
+
+	const handleGiphyClipClick = useCallback((clip: GiphyClipResult) => {
+		const mp4Url = clip.images.fixed_width.mp4 ?? clip.images.original.mp4 ?? "";
+		const thumbnailUrl = clip.images.fixed_width.url;
+		const newClip: ScratchPadClip = {
+			id: `giphy-${clip.id}-${Date.now()}`,
+			label: clip.title || "Giphy Clip",
+			sourceTimeMs: 0,
+			durationMs: 5000,
+			thumbnailUrl,
+			mp4Url,
+		};
+		onScratchPadClipsChange([...scratchPadClips, newClip]);
+		toast.success("Clip added to scratch pad");
+	}, [scratchPadClips, onScratchPadClipsChange]);
+
+	// ── Scratch pad actions ─────────────────────────────────────────────────
+
+	const handleRemoveScratchPadClip = useCallback((id: string) => {
+		onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
+	}, [scratchPadClips, onScratchPadClipsChange]);
+
+	const handleRestoreScratchPadClip = useCallback((id: string) => {
+		const clip = scratchPadClips.find((c) => c.id === id);
+		if (clip) {
+			toast.success(`"${clip.label}" restored to timeline`);
+			onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
+		}
+	}, [scratchPadClips, onScratchPadClipsChange]);
+
+	// ── Core workspace callbacks ────────────────────────────────────────────
 
 	const togglePanel = useCallback(
 		(panel: WorkspacePanel) => {
@@ -195,61 +358,342 @@ export function CreativeWorkspace({
 		);
 	};
 
-	const renderAI = () => (
-		<div className="flex flex-col gap-2">
-			{AI_SUGGESTIONS.map((s) => (
-				<div
-					key={s.id}
-					className="rounded-lg bg-white/[0.04] p-3 flex flex-col gap-2"
-				>
-					<div className="flex items-center gap-2">
-						<Sparkles className="w-3 h-3 text-[#BF5AF2] flex-shrink-0" />
-						<span className="text-[11px] text-white/70">{s.label}</span>
+	const renderAI = () => {
+		// Analysing in progress
+		if (aiAnalysisProgress !== null) {
+			return (
+				<div className="flex flex-col items-center gap-3 py-6">
+					<Loader2 className="w-5 h-5 text-[#BF5AF2] animate-spin" />
+					<span className="text-[11px] text-white/50">Analyzing audio...</span>
+					<div className="w-full bg-white/[0.06] rounded-full h-1.5 overflow-hidden">
+						<div
+							className="h-full bg-[#BF5AF2] rounded-full transition-all duration-300"
+							style={{ width: `${aiAnalysisProgress}%` }}
+						/>
 					</div>
-					<span className="text-[10px] text-white/30 ml-5">{s.detail}</span>
-					<div className="flex gap-2 ml-5">
-						<button
-							type="button"
-							className="text-[10px] text-[#30D158] hover:text-[#30D158]/80 transition-colors cursor-pointer"
-						>
-							Accept
-						</button>
-						<button
-							type="button"
-							className="text-[10px] text-white/30 hover:text-white/50 transition-colors cursor-pointer"
-						>
-							Dismiss
-						</button>
-						<button
-							type="button"
-							className="text-[10px] text-[#0A84FF] hover:text-[#0A84FF]/80 transition-colors cursor-pointer"
-						>
-							Jump
-						</button>
-					</div>
+					<span className="text-[10px] text-white/30">{aiAnalysisProgress}%</span>
 				</div>
+			);
+		}
+
+		// No suggestions yet — show Analyze button
+		if (aiSuggestions.length === 0) {
+			return (
+				<div className="flex flex-col items-center gap-3 py-6">
+					<Sparkles className="w-5 h-5 text-[#BF5AF2]" />
+					<p className="text-[11px] text-white/40 text-center">
+						Analyze your video to get AI-powered edit suggestions based on audio
+						transcription.
+					</p>
+					<button
+						type="button"
+						onClick={onAnalyzeVideo}
+						className="mt-1 px-4 py-2 rounded-lg bg-[#BF5AF2]/20 text-[11px] text-[#BF5AF2] font-medium hover:bg-[#BF5AF2]/30 transition-colors cursor-pointer"
+					>
+						Analyze Video
+					</button>
+				</div>
+			);
+		}
+
+		// Show suggestion cards
+		const typeIcon: Record<AISuggestion["type"], string> = {
+			silence: "silence",
+			filler: "filler",
+			"best-moment": "moment",
+		};
+		const typeColor: Record<AISuggestion["type"], string> = {
+			silence: "#FF9500",
+			filler: "#E0000F",
+			"best-moment": "#30D158",
+		};
+
+		return (
+			<div className="flex flex-col gap-2">
+				{aiSuggestions.map((s) => (
+					<div
+						key={s.id}
+						className="rounded-lg bg-white/[0.04] p-3 flex flex-col gap-2"
+					>
+						<div className="flex items-center gap-2">
+							<Sparkles
+								className="w-3 h-3 flex-shrink-0"
+								style={{ color: typeColor[s.type] }}
+							/>
+							<span className="text-[11px] text-white/70">{s.label}</span>
+						</div>
+						<span className="text-[10px] text-white/30 ml-5">
+							{formatMs(s.startMs)}
+							{s.endMs !== s.startMs ? ` - ${formatMs(s.endMs)}` : ""}
+							{s.word ? ` "${s.word}"` : ""}
+						</span>
+						<div className="flex items-center gap-1 ml-5">
+							<span className="text-[9px] text-white/20 mr-1 uppercase tracking-wider">
+								{typeIcon[s.type]}
+							</span>
+						</div>
+						<div className="flex gap-2 ml-5">
+							<button
+								type="button"
+								onClick={() => onAcceptSuggestion(s)}
+								className="inline-flex items-center gap-1 text-[10px] text-[#30D158] hover:text-[#30D158]/80 transition-colors cursor-pointer"
+							>
+								<Check className="w-3 h-3" />
+								Accept
+							</button>
+							<button
+								type="button"
+								onClick={() => onDismissSuggestion(s.id)}
+								className="inline-flex items-center gap-1 text-[10px] text-white/30 hover:text-white/50 transition-colors cursor-pointer"
+							>
+								<X className="w-3 h-3" />
+								Dismiss
+							</button>
+							<button
+								type="button"
+								onClick={() => onJumpToTime(s.startMs)}
+								className="inline-flex items-center gap-1 text-[10px] text-[#0A84FF] hover:text-[#0A84FF]/80 transition-colors cursor-pointer"
+							>
+								<ArrowRight className="w-3 h-3" />
+								Jump
+							</button>
+						</div>
+					</div>
+				))}
+				<button
+					type="button"
+					onClick={onAnalyzeVideo}
+					className="mt-2 w-full py-2 rounded-lg border border-dashed border-white/10 text-[11px] text-white/30 hover:text-white/50 hover:border-white/20 transition-colors cursor-pointer"
+				>
+					Re-analyze
+				</button>
+			</div>
+		);
+	};
+
+	// ── Asset Library sub-tab renderers ──────────────────────────────────────
+
+	const renderAssetClips = () => (
+		<div className="flex flex-col gap-3">
+			{/* Search input */}
+			<div className="relative">
+				<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25 pointer-events-none" />
+				<input
+					type="text"
+					value={giphyQuery}
+					onChange={(e) => setGiphyQuery(e.target.value)}
+					placeholder="Search Giphy clips..."
+					className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-2 text-[11px] text-white/70 placeholder:text-white/20 outline-none focus:border-white/15"
+				/>
+			</div>
+
+			{/* Loading */}
+			{giphyLoading && (
+				<p className="text-[10px] text-white/30 text-center py-3">Loading...</p>
+			)}
+
+			{/* Results grid */}
+			{!giphyLoading && (
+				<div className="grid grid-cols-2 gap-2">
+					{giphyResults.map((clip) => {
+						const mp4Url = clip.images.fixed_width.mp4 ?? clip.images.original.mp4;
+						const thumbnailUrl = clip.images.fixed_width.url;
+						const isHovered = hoveredGiphyId === clip.id;
+						return (
+							<button
+								key={clip.id}
+								type="button"
+								onClick={() => handleGiphyClipClick(clip)}
+								onMouseEnter={() => setHoveredGiphyId(clip.id)}
+								onMouseLeave={() => setHoveredGiphyId(null)}
+								className="aspect-video rounded-lg border border-white/[0.04] overflow-hidden bg-white/[0.02] cursor-pointer hover:border-white/10 transition-colors relative"
+							>
+								{isHovered && mp4Url ? (
+									<video
+										src={mp4Url}
+										autoPlay
+										loop
+										muted
+										playsInline
+										className="w-full h-full object-cover"
+									/>
+								) : (
+									<img
+										src={thumbnailUrl}
+										alt={clip.title}
+										className="w-full h-full object-cover"
+										loading="lazy"
+									/>
+								)}
+							</button>
+						);
+					})}
+				</div>
+			)}
+
+			{!giphyLoading && giphyResults.length === 0 && (
+				<p className="text-[10px] text-white/30 text-center py-4">No results found.</p>
+			)}
+		</div>
+	);
+
+	const renderAssetStickers = () => (
+		<div className="grid grid-cols-5 gap-2">
+			{STICKER_EMOJIS.map((emoji, idx) => (
+				<button
+					key={idx}
+					type="button"
+					onClick={() => toast.success(`Sticker "${emoji}" added as annotation overlay`)}
+					className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/[0.02] hover:bg-white/[0.06] cursor-pointer transition-colors text-lg"
+				>
+					{emoji}
+				</button>
 			))}
-			<p className="text-[10px] text-white/20 text-center mt-2">
-				Will connect to Whisper soon
-			</p>
+		</div>
+	);
+
+	const renderAssetSounds = () => (
+		<div className="flex flex-col gap-1">
+			{SOUND_EFFECTS.map((sfx) => (
+				<button
+					key={sfx.id}
+					type="button"
+					onClick={() => toast("Sound effects coming soon")}
+					className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer w-full text-left"
+				>
+					<Play className="w-3 h-3 text-white/30 flex-shrink-0" />
+					<span className="text-[11px] text-white/60 flex-1">{sfx.name}</span>
+					<span className="text-[10px] text-white/25">{sfx.duration}</span>
+				</button>
+			))}
+		</div>
+	);
+
+	const renderAssetTransitions = () => (
+		<div className="flex flex-col gap-1">
+			{TRANSITIONS.map((tr) => (
+				<button
+					key={tr.id}
+					type="button"
+					onClick={() => toast("Transitions coming soon")}
+					className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer w-full text-left"
+				>
+					<ArrowRightLeft className="w-3 h-3 text-white/30 flex-shrink-0" />
+					<span className="text-[11px] text-white/60">{tr.name}</span>
+				</button>
+			))}
 		</div>
 	);
 
 	const renderAssets = () => (
-		<div className="grid grid-cols-4 gap-2">
-			{Array.from({ length: 16 }).map((_, i) => (
-				<div
-					key={i}
-					className="aspect-square rounded-md bg-white/[0.04] border border-white/[0.04]"
-				/>
-			))}
+		<div className="flex flex-col gap-3">
+			{/* Sub-tab bar */}
+			<div className="flex gap-0.5 bg-white/[0.03] rounded-lg p-0.5">
+				{ASSET_SUB_TABS.map((tab) => (
+					<button
+						key={tab.id}
+						type="button"
+						onClick={() => setAssetSubTab(tab.id)}
+						className={`flex-1 py-1.5 text-[10px] rounded-md transition-colors cursor-pointer ${
+							assetSubTab === tab.id
+								? "bg-white/[0.08] text-white/70"
+								: "text-white/30 hover:text-white/50"
+						}`}
+					>
+						{tab.label}
+					</button>
+				))}
+			</div>
+
+			{/* Sub-tab content */}
+			{assetSubTab === "clips" && renderAssetClips()}
+			{assetSubTab === "stickers" && renderAssetStickers()}
+			{assetSubTab === "sounds" && renderAssetSounds()}
+			{assetSubTab === "transitions" && renderAssetTransitions()}
 		</div>
 	);
 
+	// ── Scratch Pad ─────────────────────────────────────────────────────────
+
 	const renderScratchPad = () => (
-		<div className="flex flex-col items-center justify-center py-8">
-			<div className="w-full border-2 border-dashed border-white/10 rounded-xl py-10 flex items-center justify-center">
-				<span className="text-[12px] text-white/25">Drop clips here</span>
+		<div className="flex flex-col gap-3 h-full">
+			{/* Scratch pad clips */}
+			<div className="flex-1 overflow-y-auto flex flex-col gap-2">
+				{scratchPadClips.length === 0 && (
+					<p className="text-[11px] text-white/30 text-center py-4">
+						No clips in scratch pad yet. Add clips from the Asset Library or cut clips from the timeline.
+					</p>
+				)}
+				{scratchPadClips.map((clip, idx) => {
+					const borderColor = SCRATCH_PAD_COLORS[idx % SCRATCH_PAD_COLORS.length];
+					return (
+						<div
+							key={clip.id}
+							className="rounded-lg bg-white/[0.04] p-2.5 flex flex-col gap-2"
+							style={{ borderLeft: `3px solid ${borderColor}` }}
+						>
+							{/* Thumbnail preview */}
+							{clip.thumbnailUrl && (
+								<div className="aspect-video rounded-md overflow-hidden bg-white/[0.02]">
+									{clip.mp4Url ? (
+										<video
+											src={clip.mp4Url}
+											muted
+											loop
+											playsInline
+											className="w-full h-full object-cover"
+											onMouseEnter={(e) => (e.currentTarget).play()}
+											onMouseLeave={(e) => {
+												const vid = e.currentTarget;
+												vid.pause();
+												vid.currentTime = 0;
+											}}
+										/>
+									) : (
+										<img
+											src={clip.thumbnailUrl}
+											alt={clip.label}
+											className="w-full h-full object-cover"
+										/>
+									)}
+								</div>
+							)}
+							<div className="flex items-center justify-between">
+								<div className="flex flex-col min-w-0">
+									<span className="text-[11px] text-white/60 truncate">
+										{clip.label}
+									</span>
+									<span className="text-[10px] text-white/25">
+										{formatMs(clip.durationMs)}
+									</span>
+								</div>
+								<div className="flex gap-1 flex-shrink-0">
+									<button
+										type="button"
+										onClick={() => handleRestoreScratchPadClip(clip.id)}
+										title="Restore to timeline"
+										className="p-1.5 rounded-md hover:bg-white/[0.06] text-white/30 hover:text-[#30D158] transition-colors cursor-pointer"
+									>
+										<RotateCcw className="w-3 h-3" />
+									</button>
+									<button
+										type="button"
+										onClick={() => handleRemoveScratchPadClip(clip.id)}
+										title="Delete"
+										className="p-1.5 rounded-md hover:bg-white/[0.06] text-white/30 hover:text-[#E0000F] transition-colors cursor-pointer"
+									>
+										<Trash2 className="w-3 h-3" />
+									</button>
+								</div>
+							</div>
+						</div>
+					);
+				})}
+			</div>
+
+			{/* Drop zone */}
+			<div className="w-full border-2 border-dashed border-white/10 rounded-xl py-6 flex items-center justify-center mt-auto flex-shrink-0">
+				<span className="text-[11px] text-white/25">Drag clips here to park them</span>
 			</div>
 		</div>
 	);
