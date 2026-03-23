@@ -636,8 +636,8 @@ export function SettingsPanel({
 							>
 								<span className="relative z-10 flex items-center gap-2">
 									{TAB_ICONS[tab]}
-									<span className="text-[10px] uppercase tracking-[0.1em] font-bold hidden sm:block">
-										{tSettings(`tabs.${tab}` as any)}
+									<span className="text-[10px] uppercase tracking-[0.1em] font-bold">
+										{tab}
 									</span>
 								</span>
 							</button>

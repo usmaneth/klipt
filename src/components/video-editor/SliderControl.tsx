@@ -16,7 +16,7 @@ interface SliderControlProps {
 }
 
 export const SliderControl = memo(function SliderControl({
-	label,
+	label: _label,
 	value,
 	defaultValue,
 	min,
