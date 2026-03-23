@@ -3460,7 +3460,13 @@ export function registerIpcHandlers(
 
 	// ── Whisper transcription handlers ──
 
-	ipcMain.handle("transcribe-audio", async (_event, videoPath: string) => {
+	ipcMain.handle("transcribe-audio", async (_event, rawVideoPath: string) => {
+		// Convert file:// URL to filesystem path if needed
+		let videoPath = rawVideoPath;
+		if (videoPath.startsWith("file://")) {
+			videoPath = decodeURIComponent(videoPath.replace(/^file:\/\//, ""));
+		}
+
 		const mainWindow = getMainWindow();
 		const sendProgress = (percent: number) => {
 			if (mainWindow && !mainWindow.isDestroyed()) {
