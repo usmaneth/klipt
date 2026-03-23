@@ -30,6 +30,15 @@ export interface CursorTelemetryPoint {
 		| "not-allowed";
 }
 
+export type CursorStyle = "default" | "dot" | "figma" | "mono";
+
+export const CURSOR_STYLE_OPTIONS: Array<{ value: CursorStyle; label: string }> = [
+	{ value: "default", label: "Default" },
+	{ value: "dot", label: "Dot" },
+	{ value: "figma", label: "Figma" },
+	{ value: "mono", label: "Mono" },
+];
+
 export interface CursorVisualSettings {
 	size: number;
 	smoothing: number;

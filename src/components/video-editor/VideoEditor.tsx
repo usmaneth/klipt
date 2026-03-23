@@ -40,6 +40,7 @@ import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils"
 import { CommandPalette } from "./CommandPalette";
 import { type AISuggestion, CreativeWorkspace, type ScratchPadClip, type WorkspaceNote, type WorkspacePanel } from "./CreativeWorkspace";
 import { ExportDialog } from "./ExportDialog";
+import { ProjectBrowserDialog } from "./ProjectBrowserDialog";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import PlaybackControls from "./PlaybackControls";
 import {
@@ -60,6 +61,7 @@ import {
 	type AnnotationRegion,
 	type AudioRegion,
 	type CropRegion,
+	type CursorStyle,
 	type CursorTelemetryPoint,
 	clampFocusToDepth,
 	DEFAULT_ANNOTATION_POSITION,
@@ -76,6 +78,9 @@ import {
 	type ZoomFocus,
 	type ZoomRegion,
 } from "./types";
+import type { CaptionCue } from "./captionLayout";
+import type { CaptionSettings } from "./captionStyle";
+import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import {
 	buildLoopedCursorTelemetry,
@@ -168,6 +173,7 @@ export default function VideoEditor() {
 		initialEditorPreferences.cursorClickBounce,
 	);
 	const [cursorSway, setCursorSway] = useState(initialEditorPreferences.cursorSway);
+	const [cursorStyle, setCursorStyle] = useState<CursorStyle>("default");
 	const [borderRadius, setBorderRadius] = useState(initialEditorPreferences.borderRadius);
 	const [padding, setPadding] = useState(initialEditorPreferences.padding);
 	const [cropRegion, setCropRegion] = useState<CropRegion>(initialEditorPreferences.cropRegion);
@@ -192,6 +198,10 @@ export default function VideoEditor() {
 	const [scratchPadClips, setScratchPadClips] = useState<ScratchPadClip[]>([]);
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
 	const [aiAnalysisProgress, setAiAnalysisProgress] = useState<number | null>(null);
+	const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
+	const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS);
+	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
+	const [captionTranscriptionProgress, setCaptionTranscriptionProgress] = useState<number | null>(null);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -305,6 +315,7 @@ export default function VideoEditor() {
 	const [exportError, setExportError] = useState<string | null>(null);
 	const [showExportDialog, setShowExportDialog] = useState(false);
 	const [showCommandPalette, setShowCommandPalette] = useState(false);
+	const [showProjectBrowser, setShowProjectBrowser] = useState(false);
 	const [aspectRatio, setAspectRatio] = useState<AspectRatio>(initialEditorPreferences.aspectRatio);
 	const [exportQuality, setExportQuality] = useState<ExportQuality>(
 		initialEditorPreferences.exportQuality,
@@ -1362,6 +1373,62 @@ export default function VideoEditor() {
 		[],
 	);
 
+	// ── Caption generation ──────────────────────────────────────────────────
+	const handleGenerateCaptions = useCallback(async () => {
+		if (!videoPath) return;
+
+		setIsTranscribingCaptions(true);
+		setCaptionTranscriptionProgress(0);
+
+		const cleanup = window.electronAPI.onTranscriptionProgress(
+			(progress: { percent: number }) => {
+				setCaptionTranscriptionProgress(progress.percent);
+			},
+		);
+
+		try {
+			const response = await window.electronAPI.transcribeAudio(videoPath);
+
+			if (!response.success || !response.result) {
+				toast.error(response.error ?? "Caption generation failed");
+				return;
+			}
+
+			const { words } = response.result;
+			// Convert Whisper words into CaptionCue[] with word-level timing
+			// Group words into sentence-like cues (~5 words each)
+			const WORDS_PER_CUE = 5;
+			const cues: CaptionCue[] = [];
+			for (let i = 0; i < words.length; i += WORDS_PER_CUE) {
+				const chunk = words.slice(i, i + WORDS_PER_CUE);
+				if (chunk.length === 0) continue;
+				const cueWords = chunk.map((w) => ({
+					text: w.text,
+					startMs: Math.round(w.start * 1000),
+					endMs: Math.round(w.end * 1000),
+				}));
+				cues.push({
+					id: `cap-${i}`,
+					startMs: cueWords[0].startMs,
+					endMs: cueWords[cueWords.length - 1].endMs,
+					text: chunk.map((w) => w.text).join(" "),
+					words: cueWords,
+				});
+			}
+
+			setCaptionCues(cues);
+			setCaptionSettings((prev) => ({ ...prev, enabled: true }));
+			toast.success("Captions generated");
+		} catch (err) {
+			console.error("[VideoEditor] Caption generation failed:", err);
+			toast.error("Caption generation failed");
+		} finally {
+			setIsTranscribingCaptions(false);
+			setCaptionTranscriptionProgress(null);
+			cleanup();
+		}
+	}, [videoPath]);
+
 	// ── AI Suggestions handlers ──────────────────────────────────────────────
 
 	const FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "literally", "right", "so"];
@@ -1808,6 +1875,13 @@ export default function VideoEditor() {
 				return;
 			}
 
+			// Project browser toggle
+			if (usesPrimaryModifier && !e.shiftKey && !e.altKey && key === "p") {
+				e.preventDefault();
+				setShowProjectBrowser((prev) => !prev);
+				return;
+			}
+
 			if (usesPrimaryModifier && !e.altKey && key === "z") {
 				if (!isEditableTarget) {
 					e.preventDefault();
@@ -2251,6 +2325,8 @@ export default function VideoEditor() {
 									bgColor: webcamBgColor,
 								}
 							: undefined,
+						captionCues: captionCues.length > 0 ? captionCues : undefined,
+						captionSettings: captionSettings.enabled ? captionSettings : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -2847,6 +2923,8 @@ export default function VideoEditor() {
 												webcamShadow={webcamShadow}
 												webcamPosition={webcamPosition}
 												onWebcamPositionChange={setWebcamPosition}
+												captionCues={captionCues}
+												captionSettings={captionSettings}
 											/>
 										</div>
 									</div>
@@ -2974,6 +3052,8 @@ export default function VideoEditor() {
 										onCursorClickBounceChange={setCursorClickBounce}
 										cursorSway={cursorSway}
 										onCursorSwayChange={setCursorSway}
+										cursorStyle={cursorStyle}
+										onCursorStyleChange={setCursorStyle}
 										borderRadius={borderRadius}
 										onBorderRadiusChange={setBorderRadius}
 										padding={padding}
@@ -3003,7 +3083,7 @@ export default function VideoEditor() {
 										onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
 										onAnnotationDelete={handleAnnotationDelete}
 										onSaveProject={handleSaveProject}
-										onLoadProject={handleLoadProject}
+										onLoadProject={() => setShowProjectBrowser(true)}
 										selectedSpeedId={selectedSpeedId}
 										selectedSpeedValue={selectedSpeedValue}
 										onSpeedChange={handleSpeedChange}
@@ -3037,6 +3117,11 @@ export default function VideoEditor() {
 										enhancedAudioUrl={enhancedAudioUrl}
 										onEnhanceAudio={handleEnhanceAudio}
 										onUndoEnhanceAudio={handleUndoEnhanceAudio}
+										captionSettings={captionSettings}
+										onCaptionSettingsChange={setCaptionSettings}
+										onGenerateCaptions={handleGenerateCaptions}
+										isTranscribing={isTranscribingCaptions}
+										transcriptionProgress={captionTranscriptionProgress}
 									/>
 						</div>
 					</Panel>
@@ -3109,6 +3194,30 @@ export default function VideoEditor() {
 					onSaveProject={() => void handleSaveProject()}
 					onLoadProject={() => void handleLoadProject()}
 					onOpenRecordingsFolder={() => void openRecordingsFolder()}
+				/>
+
+				<ProjectBrowserDialog
+					isOpen={showProjectBrowser}
+					onClose={() => setShowProjectBrowser(false)}
+					onOpenProject={async (path: string) => {
+						try {
+							const result = await window.electronAPI.openSpecificProject(path);
+							if (!result.success) {
+								toast.error(result.message || "Failed to load project");
+								return;
+							}
+							const restored = await applyLoadedProject(result.project, result.path ?? path);
+							if (!restored) {
+								toast.error("Invalid project file format");
+								return;
+							}
+							toast.success(`Project loaded from ${result.path ?? path}`);
+						} catch (err) {
+							console.error("Failed to open project:", err);
+							toast.error("Failed to open project");
+						}
+					}}
+					currentProjectPath={currentProjectPath}
 				/>
 
 				<Toaster theme="dark" className="pointer-events-auto" />

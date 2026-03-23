@@ -60,6 +60,9 @@ import {
 	createMotionBlurState,
 	type MotionBlurState,
 } from "./videoPlayback/zoomTransform";
+import type { CaptionCue } from "./captionLayout";
+import { CaptionOverlay } from "./CaptionOverlay";
+import type { CaptionSettings } from "./captionStyle";
 import { WebcamOverlay } from "./WebcamOverlay";
 
 const DEFAULT_WEBCAM_POSITION = { x: 0.9, y: 0.85 } as const;
@@ -132,6 +135,8 @@ interface VideoPlaybackProps {
 	webcamShadow?: number;
 	webcamPosition?: { x: number; y: number };
 	onWebcamPositionChange?: (pos: { x: number; y: number }) => void;
+	captionCues?: CaptionCue[];
+	captionSettings?: CaptionSettings;
 }
 
 export interface VideoPlaybackRef {
@@ -193,6 +198,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			webcamShadow = 30,
 			webcamPosition = DEFAULT_WEBCAM_POSITION,
 			onWebcamPositionChange,
+			captionCues = [],
+			captionSettings,
 		},
 		ref,
 	) => {
@@ -1304,6 +1311,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								shadow={webcamShadow}
 								position={webcamPosition}
 								onPositionChange={onWebcamPositionChange}
+							/>
+						)}
+						{captionSettings?.enabled && captionCues.length > 0 && (
+							<CaptionOverlay
+								cues={captionCues}
+								currentTimeMs={Math.round(currentTime * 1000)}
+								containerWidth={overlayRef.current?.clientWidth || 800}
+								containerHeight={overlayRef.current?.clientHeight || 600}
+								settings={captionSettings}
 							/>
 						)}
 					</div>

@@ -11,6 +11,7 @@ import {
 	Palette,
 	Save,
 	Star,
+	Subtitles,
 	Upload,
 	Volume2,
 	X,
@@ -42,11 +43,13 @@ import type {
 	AnnotationRegion,
 	AnnotationType,
 	CropRegion,
+	CursorStyle,
 	FigureData,
 	PlaybackSpeed,
 	ZoomDepth,
 } from "./types";
 import {
+	CURSOR_STYLE_OPTIONS,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_SIZE,
@@ -56,6 +59,8 @@ import {
 	SPEED_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
+import type { CaptionSettings } from "./captionStyle";
+import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
 // AI Background Removal — shelved, will re-enable in AI features phase
 // import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
 import { WebcamPanel, type WebcamPanelProps } from "./WebcamPanel";
@@ -136,6 +141,8 @@ interface SettingsPanelProps {
 	onCursorClickBounceChange?: (amount: number) => void;
 	cursorSway?: number;
 	onCursorSwayChange?: (amount: number) => void;
+	cursorStyle?: CursorStyle;
+	onCursorStyleChange?: (style: CursorStyle) => void;
 	borderRadius?: number;
 	onBorderRadiusChange?: (radius: number) => void;
 	padding?: number;
@@ -203,6 +210,12 @@ interface SettingsPanelProps {
 	enhancedAudioUrl?: string | null;
 	onEnhanceAudio?: (blob: Blob) => void;
 	onUndoEnhanceAudio?: () => void;
+	// Captions
+	captionSettings?: CaptionSettings;
+	onCaptionSettingsChange?: (settings: CaptionSettings) => void;
+	onGenerateCaptions?: () => void;
+	isTranscribing?: boolean;
+	transcriptionProgress?: number | null;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -292,6 +305,8 @@ export function SettingsPanel({
 	onCursorClickBounceChange,
 	cursorSway = DEFAULT_CURSOR_SWAY,
 	onCursorSwayChange,
+	cursorStyle = "default",
+	onCursorStyleChange,
 	borderRadius = 12.5,
 	onBorderRadiusChange,
 	padding = 50,
@@ -356,6 +371,11 @@ export function SettingsPanel({
 	enhancedAudioUrl,
 	onEnhanceAudio,
 	onUndoEnhanceAudio,
+	captionSettings = DEFAULT_CAPTION_SETTINGS,
+	onCaptionSettingsChange,
+	onGenerateCaptions,
+	isTranscribing = false,
+	transcriptionProgress,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { t } = useI18n();
@@ -1271,6 +1291,63 @@ export function SettingsPanel({
 													}}
 												/>
 										</div>
+										{/* Cursor Style Selector */}
+										<div className="px-5 py-4 bg-transparent border-b border-white/[0.04] last:border-0">
+											<div className="flex items-center justify-between mb-2.5">
+												<span className="text-[11px] font-medium text-white/40">Style</span>
+											</div>
+											<div className="grid grid-cols-4 gap-1.5">
+												{CURSOR_STYLE_OPTIONS.map((option) => {
+													const isActive = cursorStyle === option.value;
+													return (
+														<button
+															key={option.value}
+															type="button"
+															onClick={() => onCursorStyleChange?.(option.value)}
+															className={cn(
+																"flex flex-col items-center gap-1.5 p-1.5 rounded-lg transition-all duration-150",
+																isActive
+																	? "bg-white/[0.08] border border-white/[0.15]"
+																	: "bg-white/[0.02] border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08]",
+															)}
+														>
+															<div
+																className={cn(
+																	"w-10 h-10 rounded-md flex items-center justify-center",
+																	isActive ? "bg-white/[0.06]" : "bg-white/[0.03]",
+																)}
+															>
+																{option.value === "default" && (
+																	<svg width="16" height="20" viewBox="0 0 16 20" fill="none" className="text-white/60">
+																		<path d="M1 1L1 15L5.5 10.5L9.5 18L12 17L8 9L14 9L1 1Z" fill="currentColor" stroke="currentColor" strokeWidth="0.5" />
+																	</svg>
+																)}
+																{option.value === "dot" && (
+																	<div className="w-4 h-4 rounded-full bg-white/60" />
+																)}
+																{option.value === "figma" && (
+																	<svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-white/60">
+																		<line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" strokeWidth="1.5" />
+																		<line x1="0" y1="8" x2="16" y2="8" stroke="currentColor" strokeWidth="1.5" />
+																	</svg>
+																)}
+																{option.value === "mono" && (
+																	<svg width="16" height="20" viewBox="0 0 16 20" fill="none">
+																		<path d="M1 1L1 15L5.5 10.5L9.5 18L12 17L8 9L14 9L1 1Z" fill="black" stroke="white" strokeWidth="1.5" />
+																	</svg>
+																)}
+															</div>
+															<span className={cn(
+																"text-[8px] font-medium uppercase tracking-wider",
+																isActive ? "text-white/60" : "text-white/25",
+															)}>
+																{option.label}
+															</span>
+														</button>
+													);
+												})}
+											</div>
+										</div>
 									</div>
 								</div>
 							</motion.div>
@@ -1295,6 +1372,191 @@ export function SettingsPanel({
 										<Mic className="w-8 h-8 text-white/10 mb-3" />
 										<p className="text-[12px] text-white/30 font-medium">No audio settings available</p>
 										<p className="text-[10px] text-white/15 mt-1">Audio enhancement is not enabled for this recording</p>
+									</div>
+								)}
+
+								{/* Captions */}
+								{onCaptionSettingsChange && (
+									<div>
+										<SectionHeader>Captions</SectionHeader>
+										<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+											{/* Enable toggle */}
+											<div className="flex items-center justify-between p-3 bg-white/[0.02] border-b border-white/[0.04] hover:bg-white/[0.04] transition-all duration-300">
+												<div className="flex items-center gap-2">
+													<Subtitles className="w-3.5 h-3.5 text-white/40" />
+													<span className="text-[11px] font-medium text-white/50 tracking-wide">
+														Show Captions
+													</span>
+												</div>
+												<Switch
+													checked={captionSettings.enabled}
+													onCheckedChange={(enabled) =>
+														onCaptionSettingsChange({ ...captionSettings, enabled })
+													}
+													className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
+												/>
+											</div>
+
+											{/* Generate captions button */}
+											{onGenerateCaptions && (
+												<div className="p-3 border-b border-white/[0.04]">
+													<Button
+														onClick={onGenerateCaptions}
+														disabled={isTranscribing}
+														variant="outline"
+														className="w-full gap-2 bg-white/[0.03] text-white/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-white transition-all duration-150 h-8 text-[11px] rounded-lg disabled:opacity-40"
+													>
+														<Mic className="w-3 h-3" />
+														{isTranscribing
+															? `Transcribing${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`
+															: "Generate Captions"}
+													</Button>
+												</div>
+											)}
+
+											{/* Language selector */}
+											<div className="flex items-center justify-between p-3 border-b border-white/[0.04]">
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
+													Language
+												</span>
+												<select
+													value={captionSettings.language}
+													onChange={(e) =>
+														onCaptionSettingsChange({
+															...captionSettings,
+															language: e.target.value,
+														})
+													}
+													className="bg-white/[0.06] text-white/70 text-[10px] rounded-md px-2 py-1 border border-white/[0.08] outline-none"
+												>
+													<option value="auto">Auto-detect</option>
+													<option value="en">English</option>
+													<option value="es">Spanish</option>
+													<option value="fr">French</option>
+													<option value="de">German</option>
+													<option value="pt">Portuguese</option>
+													<option value="it">Italian</option>
+													<option value="ja">Japanese</option>
+													<option value="ko">Korean</option>
+													<option value="zh">Chinese</option>
+												</select>
+											</div>
+
+											{/* Animation style */}
+											<div className="flex items-center justify-between p-3 border-b border-white/[0.04]">
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
+													Animation
+												</span>
+												<div className="flex gap-1">
+													{(["none", "fade", "rise", "pop"] as const).map((anim) => (
+														<button
+															key={anim}
+															type="button"
+															onClick={() =>
+																onCaptionSettingsChange({
+																	...captionSettings,
+																	animation: anim,
+																})
+															}
+															className={`px-2 py-1 rounded-md text-[9px] font-medium transition-all duration-150 ${
+																captionSettings.animation === anim
+																	? "bg-white/[0.1] text-white border border-white/[0.15]"
+																	: "bg-white/[0.03] text-white/30 border border-transparent"
+															}`}
+														>
+															{anim.charAt(0).toUpperCase() + anim.slice(1)}
+														</button>
+													))}
+												</div>
+											</div>
+
+											{/* Font size */}
+											<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider">
+												<SliderControl
+													label="Font Size"
+													value={captionSettings.fontSize}
+													defaultValue={30}
+													min={16}
+													max={72}
+													step={1}
+													onChange={(v) =>
+														onCaptionSettingsChange({ ...captionSettings, fontSize: v })
+													}
+													formatValue={(v) => `${v}px`}
+													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
+												/>
+											</div>
+
+											{/* Max rows */}
+											<div className="flex items-center justify-between p-3 border-b border-white/[0.04]">
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
+													Max Rows
+												</span>
+												<div className="flex gap-1">
+													{[1, 2, 3, 4].map((rows) => (
+														<button
+															key={rows}
+															type="button"
+															onClick={() =>
+																onCaptionSettingsChange({
+																	...captionSettings,
+																	maxRows: rows,
+																})
+															}
+															className={`w-7 h-7 rounded-md text-[10px] font-medium transition-all duration-150 ${
+																captionSettings.maxRows === rows
+																	? "bg-white/[0.1] text-white border border-white/[0.15]"
+																	: "bg-white/[0.03] text-white/30 border border-transparent"
+															}`}
+														>
+															{rows}
+														</button>
+													))}
+												</div>
+											</div>
+
+											{/* Position offset */}
+											<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider">
+												<SliderControl
+													label="Position"
+													value={captionSettings.positionOffset}
+													defaultValue={85}
+													min={10}
+													max={95}
+													step={1}
+													onChange={(v) =>
+														onCaptionSettingsChange({
+															...captionSettings,
+															positionOffset: v,
+														})
+													}
+													formatValue={(v) => `${v}%`}
+													parseInput={(t) => parseFloat(t.replace(/%$/, ""))}
+												/>
+											</div>
+
+											{/* Background opacity */}
+											<div className="py-4 px-5 bg-transparent transition-colors duration-200 group/slider">
+												<SliderControl
+													label="Background"
+													value={captionSettings.backgroundOpacity}
+													defaultValue={0.6}
+													min={0}
+													max={1}
+													step={0.05}
+													onChange={(v) =>
+														onCaptionSettingsChange({
+															...captionSettings,
+															backgroundOpacity: v,
+														})
+													}
+													formatValue={(v) => `${Math.round(v * 100)}%`}
+													parseInput={(t) =>
+														parseFloat(t.replace(/%$/, "")) / 100
+													}
+												/>
+											</div>
+										</div>
 									</div>
 								)}
 							</motion.div>

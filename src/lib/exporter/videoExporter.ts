@@ -1,3 +1,5 @@
+import type { CaptionCue } from "@/components/video-editor/captionLayout";
+import type { CaptionSettings } from "@/components/video-editor/captionStyle";
 import type { WebcamState } from "@/components/video-editor/projectPersistence";
 import type {
 	AnnotationRegion,
@@ -9,6 +11,7 @@ import type {
 	ZoomRegion,
 } from "@/components/video-editor/types";
 import { AudioProcessor } from "./audioEncoder";
+import { buildExportCaptionPages, renderCaptions } from "./captionRenderer";
 import { FrameRenderer } from "./frameRenderer";
 import { VideoMuxer } from "./muxer";
 import { StreamingVideoDecoder } from "./streamingDecoder";
@@ -43,6 +46,8 @@ interface VideoExporterConfig extends ExportConfig {
 	previewHeight?: number;
 	webcamVideoPath?: string;
 	webcamState?: WebcamState;
+	captionCues?: CaptionCue[];
+	captionSettings?: CaptionSettings;
 	onProgress?: (progress: ExportProgress) => void;
 }
 
@@ -146,6 +151,20 @@ export class VideoExporter {
 			this.muxer = new VideoMuxer(this.config, hasAudio);
 			await this.muxer.initialize();
 
+			// Pre-build caption layout for the entire export
+			const captionPages =
+				this.config.captionCues &&
+				this.config.captionSettings?.enabled &&
+				this.config.captionCues.length > 0
+					? buildExportCaptionPages(
+							this.config.captionCues,
+							this.config.width,
+							this.config.captionSettings.fontSize,
+							this.config.captionSettings.fontFamily,
+							this.config.captionSettings.maxRows,
+						)
+					: [];
+
 			// Calculate effective duration and frame count (excluding trim regions)
 			const effectiveDuration = this.streamingDecoder.getEffectiveDuration(
 				this.config.trimRegions,
@@ -199,6 +218,22 @@ export class VideoExporter {
 
 					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
 					videoFrame.close();
+
+					// Render captions on the composite canvas after all other layers
+					if (captionPages.length > 0 && this.config.captionSettings) {
+						const compositeCanvas = this.renderer!.getCanvas();
+						const captionCtx = compositeCanvas.getContext("2d");
+						if (captionCtx) {
+							renderCaptions(
+								captionCtx,
+								this.config.width,
+								this.config.height,
+								sourceTimestampMs,
+								captionPages,
+								this.config.captionSettings,
+							);
+						}
+					}
 
 					await this.encodeRenderedFrame(timestamp, frameDuration, frameIndex);
 					frameIndex++;
