@@ -1,3 +1,4 @@
+
 import {
 	Command,
 	CommandEmpty,
@@ -5,26 +6,17 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandSeparator,
 } from "cmdk";
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	Download,
-	Film,
-	FolderOpen,
-	Image,
 	Mic,
-	Pencil,
 	Play,
-	Redo2,
 	Save,
 	Scissors,
-	Search,
-	Timer,
-	Undo2,
-	Upload,
 	ZoomIn,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 
 export type CommandPaletteCallbacks = {
 	onExportMp4: () => void;
@@ -43,14 +35,14 @@ export type CommandPaletteCallbacks = {
 	onOpenRecordingsFolder: () => void;
 };
 
-type CommandPaletteProps = {
+interface CommandPaletteProps extends CommandPaletteCallbacks {
 	open: boolean;
 	onClose: () => void;
-} & CommandPaletteCallbacks;
+}
 
 function Kbd({ children }: { children: React.ReactNode }) {
 	return (
-		<kbd className="ml-auto text-[11px] font-mono text-white/30 bg-white/[0.06] px-1.5 py-0.5 rounded">
+		<kbd className="ml-auto text-[14px] font-mono text-white/40 bg-white/[0.08] px-3 py-1 rounded-lg border border-white/10 shadow-sm">
 			{children}
 		</kbd>
 	);
@@ -60,21 +52,13 @@ export function CommandPalette({
 	open,
 	onClose,
 	onExportMp4,
-	onExportGif,
 	onAddZoomRegion,
 	onAddTrimRegion,
-	onAddSpeedRegion,
-	onAddAnnotation,
 	onPlayPause,
-	onUndo,
-	onRedo,
 	onEnhanceAudio,
-	onGenerateThumbnails,
 	onSaveProject,
-	onLoadProject,
-	onOpenRecordingsFolder,
 }: CommandPaletteProps) {
-	const overlayRef = useRef<HTMLDivElement>(null);
+	const [pulse, setPulse] = useState(false);
 
 	useEffect(() => {
 		if (!open) return;
@@ -88,181 +72,133 @@ export function CommandPalette({
 		return () => window.removeEventListener("keydown", handleKey);
 	}, [open, onClose]);
 
-	if (!open) return null;
-
 	const run = (action: () => void) => {
-		onClose();
-		action();
+		setPulse(true);
+		setTimeout(() => {
+			setPulse(false);
+			onClose();
+			action();
+		}, 600);
 	};
 
 	return (
-		<div
-			ref={overlayRef}
-			className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-start justify-center pt-[20vh]"
-			onClick={(e) => {
-				if (e.target === overlayRef.current) onClose();
-			}}
-		>
-			<Command
-				className="w-full max-w-md rounded-2xl overflow-hidden"
-				style={{
-					background: "#111113",
-					border: "1px solid rgba(255,255,255,0.08)",
-					boxShadow: "0 16px 64px rgba(0,0,0,0.6)",
-				}}
-				label="Command Palette"
-			>
-				<div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
-					<Search className="w-4 h-4 text-white/30 flex-shrink-0" />
-					<CommandInput
-						placeholder="Type a command..."
-						className="w-full bg-transparent text-white text-sm placeholder:text-white/30 outline-none border-none"
-						autoFocus
-					/>
-				</div>
+		<AnimatePresence>
+			{open && (
+				<motion.div
+					initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+					animate={{ opacity: 1, backdropFilter: "blur(80px)" }}
+					exit={{ opacity: 0, backdropFilter: "blur(0px)", transition: { duration: 0.3 } }}
+					transition={{ duration: 0.5, ease: "easeInOut" }}
+					className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 pointer-events-auto"
+					onClick={(e) => {
+						if (e.target === e.currentTarget) onClose();
+					}}
+				>
+					{/* Massive Light Pulse Effect when command executed */}
+					{pulse && (
+						<motion.div
+							initial={{ scale: 0.8, opacity: 1 }}
+							animate={{ scale: 5, opacity: 0 }}
+							transition={{ duration: 0.6, ease: "easeOut" }}
+							className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/30 rounded-full blur-3xl pointer-events-none z-0"
+						/>
+					)}
 
-				<CommandList className="max-h-[320px] overflow-y-auto p-1.5">
-					<CommandEmpty className="py-6 text-center text-sm text-white/30">
-						No results found.
-					</CommandEmpty>
-
-					<CommandGroup
-						heading="Actions"
-						className="[&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-white/40 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+					<Command
+						className="relative z-10 flex flex-col items-center w-[90vw] max-w-5xl bg-transparent outline-none"
+						shouldFilter={true}
 					>
-						<CommandItem
-							onSelect={() => run(onExportMp4)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Download className="w-4 h-4 text-white/40" />
-							Export as MP4
-							<Kbd>{"\u2318"}E</Kbd>
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onExportGif)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Film className="w-4 h-4 text-white/40" />
-							Export as GIF
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onPlayPause)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Play className="w-4 h-4 text-white/40" />
-							Play / Pause
-							<Kbd>Space</Kbd>
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onUndo)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Undo2 className="w-4 h-4 text-white/40" />
-							Undo
-							<Kbd>{"\u2318"}Z</Kbd>
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onRedo)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Redo2 className="w-4 h-4 text-white/40" />
-							Redo
-							<Kbd>{"\u2318\u21E7"}Z</Kbd>
-						</CommandItem>
-					</CommandGroup>
+						{/* Shifting Gradient Text Input */}
+						<div className="relative w-full flex justify-center mb-12">
+							<style dangerouslySetInnerHTML={{__html: `
+								@keyframes aura-shift {
+									0% { background-position: 0% 50%; }
+									50% { background-position: 100% 50%; }
+									100% { background-position: 0% 50%; }
+								}
+								.phantom-input {
+									background: linear-gradient(90deg, rgba(255,255,255,0.8), rgba(255,255,255,1), rgba(255,255,255,0.8));
+									background-size: 200% auto;
+									color: transparent;
+									-webkit-background-clip: text;
+									background-clip: text;
+									animation: aura-shift 4s linear infinite;
+								}
+								.phantom-input::placeholder {
+									color: rgba(255,255,255,0.1);
+								}
+							`}} />
+							<CommandInput
+								placeholder="Ask the AI or type a command..."
+								className="phantom-input w-full bg-transparent border-none outline-none text-center text-[48px] sm:text-[64px] md:text-[80px] font-bold tracking-tighter"
+								autoFocus
+							/>
+						</div>
 
-					<CommandSeparator className="my-1 h-px bg-white/[0.06]" />
+						<CommandList className="max-h-[40vh] w-full max-w-3xl overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col items-center gap-2">
+							<CommandEmpty className="py-6 text-center text-white/30 text-xl font-medium tracking-wide">
+								Press Enter to execute AI Prompt...
+							</CommandEmpty>
 
-					<CommandGroup
-						heading="Timeline"
-						className="[&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-white/40 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-					>
-						<CommandItem
-							onSelect={() => run(onAddZoomRegion)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<ZoomIn className="w-4 h-4 text-white/40" />
-							Add Zoom Region
-							<Kbd>Z</Kbd>
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onAddTrimRegion)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Scissors className="w-4 h-4 text-white/40" />
-							Add Trim Region
-							<Kbd>T</Kbd>
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onAddSpeedRegion)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Timer className="w-4 h-4 text-white/40" />
-							Add Speed Region
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onAddAnnotation)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Pencil className="w-4 h-4 text-white/40" />
-							Add Annotation
-							<Kbd>A</Kbd>
-						</CommandItem>
-					</CommandGroup>
-
-					<CommandSeparator className="my-1 h-px bg-white/[0.06]" />
-
-					<CommandGroup
-						heading="AI Features"
-						className="[&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-white/40 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-					>
-						<CommandItem
-							onSelect={() => run(onEnhanceAudio)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Mic className="w-4 h-4 text-white/40" />
-							Enhance Audio
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onGenerateThumbnails)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Image className="w-4 h-4 text-white/40" />
-							Generate Thumbnails
-						</CommandItem>
-					</CommandGroup>
-
-					<CommandSeparator className="my-1 h-px bg-white/[0.06]" />
-
-					<CommandGroup
-						heading="Project"
-						className="[&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-white/40 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-					>
-						<CommandItem
-							onSelect={() => run(onSaveProject)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Save className="w-4 h-4 text-white/40" />
-							Save Project
-							<Kbd>{"\u2318"}S</Kbd>
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onLoadProject)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<Upload className="w-4 h-4 text-white/40" />
-							Load Project
-						</CommandItem>
-						<CommandItem
-							onSelect={() => run(onOpenRecordingsFolder)}
-							className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-white/80 cursor-pointer data-[selected=true]:bg-white/[0.04] transition-colors"
-						>
-							<FolderOpen className="w-4 h-4 text-white/40" />
-							Open Recordings Folder
-						</CommandItem>
-					</CommandGroup>
-				</CommandList>
-			</Command>
-		</div>
+							<CommandGroup className="w-full [&_[cmdk-group-heading]]:hidden">
+								<CommandItem
+									onSelect={() => run(onExportMp4)}
+									className="flex items-center justify-between w-full px-8 py-5 rounded-[24px] text-2xl font-semibold text-white/40 cursor-pointer data-[selected=true]:bg-white/5 data-[selected=true]:text-white data-[selected=true]:scale-[1.02] data-[selected=true]:shadow-[0_20px_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group"
+								>
+									<span className="flex items-center gap-6">
+										<Download className="w-8 h-8 group-data-[selected=true]:text-[#E0000F] transition-colors duration-300" /> Export as MP4
+									</span>
+									<Kbd>{"⌘"}E</Kbd>
+								</CommandItem>
+								<CommandItem
+									onSelect={() => run(onPlayPause)}
+									className="flex items-center justify-between w-full px-8 py-5 rounded-[24px] text-2xl font-semibold text-white/40 cursor-pointer data-[selected=true]:bg-white/5 data-[selected=true]:text-white data-[selected=true]:scale-[1.02] data-[selected=true]:shadow-[0_20px_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group"
+								>
+									<span className="flex items-center gap-6">
+										<Play className="w-8 h-8 group-data-[selected=true]:text-white transition-colors duration-300" /> Play / Pause
+									</span>
+									<Kbd>Space</Kbd>
+								</CommandItem>
+								<CommandItem
+									onSelect={() => run(onAddTrimRegion)}
+									className="flex items-center justify-between w-full px-8 py-5 rounded-[24px] text-2xl font-semibold text-white/40 cursor-pointer data-[selected=true]:bg-white/5 data-[selected=true]:text-white data-[selected=true]:scale-[1.02] data-[selected=true]:shadow-[0_20px_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group"
+								>
+									<span className="flex items-center gap-6">
+										<Scissors className="w-8 h-8 group-data-[selected=true]:text-white transition-colors duration-300" /> Add Trim Region
+									</span>
+									<Kbd>T</Kbd>
+								</CommandItem>
+								<CommandItem
+									onSelect={() => run(onAddZoomRegion)}
+									className="flex items-center justify-between w-full px-8 py-5 rounded-[24px] text-2xl font-semibold text-white/40 cursor-pointer data-[selected=true]:bg-white/5 data-[selected=true]:text-white data-[selected=true]:scale-[1.02] data-[selected=true]:shadow-[0_20px_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group"
+								>
+									<span className="flex items-center gap-6">
+										<ZoomIn className="w-8 h-8 group-data-[selected=true]:text-white transition-colors duration-300" /> Add Zoom Region
+									</span>
+									<Kbd>Z</Kbd>
+								</CommandItem>
+								<CommandItem
+									onSelect={() => run(onEnhanceAudio)}
+									className="flex items-center justify-between w-full px-8 py-5 rounded-[24px] text-2xl font-semibold text-white/40 cursor-pointer data-[selected=true]:bg-white/5 data-[selected=true]:text-white data-[selected=true]:scale-[1.02] data-[selected=true]:shadow-[0_20px_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group"
+								>
+									<span className="flex items-center gap-6">
+										<Mic className="w-8 h-8 group-data-[selected=true]:text-white transition-colors duration-300" /> Enhance Audio
+									</span>
+								</CommandItem>
+								<CommandItem
+									onSelect={() => run(onSaveProject)}
+									className="flex items-center justify-between w-full px-8 py-5 rounded-[24px] text-2xl font-semibold text-white/40 cursor-pointer data-[selected=true]:bg-white/5 data-[selected=true]:text-white data-[selected=true]:scale-[1.02] data-[selected=true]:shadow-[0_20px_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group"
+								>
+									<span className="flex items-center gap-6">
+										<Save className="w-8 h-8 group-data-[selected=true]:text-[#2563EB] transition-colors duration-300" /> Save Project
+									</span>
+									<Kbd>{"⌘"}S</Kbd>
+								</CommandItem>
+							</CommandGroup>
+						</CommandList>
+					</Command>
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 }
