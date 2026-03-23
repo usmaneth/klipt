@@ -579,11 +579,25 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 	onProgress?.(0.15);
 
 	// 3. Encode reference voice
-	const speechEncoderResult = await sessions.speechEncoder.run({ audio_values: audioValues });
-	const condEmb = speechEncoderResult["cond_emb"] as OrtTensor;
-	const promptToken = speechEncoderResult["prompt_token"] as OrtTensor;
-	const speakerEmbeddings = speechEncoderResult["speaker_embeddings"] as OrtTensor;
-	const speakerFeatures = speechEncoderResult["speaker_features"] as OrtTensor;
+	let speechEncoderResult: Awaited<ReturnType<typeof sessions.speechEncoder.run>>;
+	try {
+		speechEncoderResult = await sessions.speechEncoder.run({ audio_values: audioValues });
+	} catch (encErr) {
+		throw new Error(`Speech encoder failed: ${encErr instanceof Error ? encErr.message : String(encErr)}`);
+	}
+
+	// Debug: log available output names
+	const seOutputNames = Object.keys(speechEncoderResult);
+	console.log("[VoiceClone] Speech encoder outputs:", seOutputNames);
+
+	const condEmb = speechEncoderResult["cond_emb"] ?? speechEncoderResult[seOutputNames[0]];
+	const promptToken = speechEncoderResult["prompt_token"] ?? speechEncoderResult[seOutputNames[1]];
+	const speakerEmbeddings = speechEncoderResult["speaker_embeddings"] ?? speechEncoderResult[seOutputNames[2]];
+	const speakerFeatures = speechEncoderResult["speaker_features"] ?? speechEncoderResult[seOutputNames[3]];
+
+	if (!condEmb || !promptToken) {
+		throw new Error(`Speech encoder missing outputs. Got: [${seOutputNames.join(", ")}]`);
+	}
 
 	onProgress?.(0.25);
 
