@@ -3,8 +3,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 
 interface SliderControlProps {
-	 
-	label: string;
+	label?: string;
 	value: number;
 	defaultValue: number;
 	min: number;
@@ -13,11 +12,11 @@ interface SliderControlProps {
 	onChange: (value: number) => void;
 	formatValue: (value: number) => string;
 	parseInput: (text: string) => number | null;
-	accentColor?: "purple" | "blue" | "orange" | "green";
+	
 }
 
 export const SliderControl = memo(function SliderControl({
-	label: _label,
+	label,
 	value,
 	defaultValue,
 	min,
@@ -26,7 +25,7 @@ export const SliderControl = memo(function SliderControl({
 	onChange,
 	formatValue,
 	parseInput,
-	accentColor = "blue",
+	
 }: SliderControlProps) {
 	const [editing, setEditing] = useState(false);
 	const [editText, setEditText] = useState("");
@@ -53,18 +52,18 @@ export const SliderControl = memo(function SliderControl({
 	};
 
 	return (
-		<>
-			<div className="flex items-center justify-between mb-1">
-				<div className="flex items-center gap-1">
-					
+		<div className="w-full flex flex-col gap-3 group/slider-internal">
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					{label && <span className="text-[12px] font-medium text-white/70 tracking-wide group-hover/slider-internal:text-white/90 transition-colors">{label}</span>}
 					{isModified && (
 						<button
 							type="button"
 							onClick={() => onChange(defaultValue)}
-							className="text-slate-500 hover:text-slate-300 transition-colors"
+							className="text-white/20 hover:text-[#E0000F] transition-colors cursor-pointer"
 							title="Reset to default"
 						>
-							<RotateCcw className="w-2.5 h-2.5" />
+							<RotateCcw className="w-3 h-3" />
 						</button>
 					)}
 				</div>
@@ -79,11 +78,11 @@ export const SliderControl = memo(function SliderControl({
 							if (e.key === "Enter") commitEdit();
 							if (e.key === "Escape") cancelEdit();
 						}}
-						className="w-14 w-14 text-[12px] text-right font-mono bg-black/40 border border-white/10 rounded-md px-2 py-0.5 text-white/90 outline-none focus:border-white/30 shadow-inner"
+						className="w-16 text-[12px] text-center font-mono bg-black/40 border border-white/10 rounded-md px-2 py-1 text-white/90 outline-none focus:border-white/30 shadow-inner transition-colors"
 					/>
 				) : (
 					<span
-						className="text-[12px] text-white/40 font-mono cursor-text hover:text-white/80 transition-colors bg-white/[0.03] px-2 py-0.5 rounded-md border border-white/[0.05]"
+						className="text-[12px] text-white/50 font-mono cursor-text hover:text-white/90 transition-colors bg-white/[0.03] px-2 py-1 rounded-md border border-white/[0.05] shadow-sm min-w-[3rem] text-center hover:bg-white/[0.06]"
 						onClick={() => {
 							setEditText(formatValue(value));
 							setEditing(true);
@@ -93,22 +92,16 @@ export const SliderControl = memo(function SliderControl({
 					</span>
 				)}
 			</div>
-			<Slider
-				value={[value]}
-				onValueChange={(values) => onChange(values[0])}
-				min={min}
-				max={max}
-				step={step}
-				className={
-					accentColor === "purple"
-						? "w-full [&_[role=slider]]:bg-purple-500 [&_[role=slider]]:border-purple-500 [&_[role=slider]]:shadow-[0_0_10px_rgba(168,85,247,0.6)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-purple-600 [&_.bg-primary]:to-purple-400 [&_.bg-secondary]:bg-white/10"
-						: accentColor === "orange"
-							? "w-full [&_[role=slider]]:bg-orange-500 [&_[role=slider]]:border-orange-500 [&_[role=slider]]:shadow-[0_0_10px_rgba(249,115,22,0.6)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-orange-600 [&_.bg-primary]:to-orange-400 [&_.bg-secondary]:bg-white/10"
-							: accentColor === "green"
-								? "w-full [&_[role=slider]]:bg-green-400 [&_[role=slider]]:border-green-400 [&_[role=slider]]:shadow-[0_0_10px_rgba(74,222,128,0.6)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-green-600 [&_.bg-primary]:to-green-400 [&_.bg-secondary]:bg-white/10"
-								: "w-full [&_[role=slider]]:bg-white/60 [&_[role=slider]]:border-white/60 [&_[role=slider]]:shadow-[0_0_10px_rgba(255,255,255,0.15)] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:bg-gradient-to-r [&_.bg-primary]:from-white/30 [&_.bg-primary]:to-white/50 [&_.bg-secondary]:bg-white/10"
-				}
-			/>
-		</>
+			<div className="w-full px-1">
+				<Slider
+					value={[value]}
+					onValueChange={(values) => onChange(values[0])}
+					min={min}
+					max={max}
+					step={step}
+					className="w-full [&_[role=slider]]:bg-white [&_[role=slider]]:border-none [&_[role=slider]]:shadow-[0_2px_10px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.4)] [&_[role=slider]]:h-[18px] [&_[role=slider]]:w-[18px] [&_.bg-primary]:bg-[#E0000F] [&_.bg-secondary]:bg-black/40 [&_.bg-secondary]:shadow-inner"
+				/>
+			</div>
+		</div>
 	);
 });

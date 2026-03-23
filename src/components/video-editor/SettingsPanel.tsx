@@ -833,7 +833,6 @@ export function SettingsPanel({
 													onChange={(v) => onBorderRadiusChange?.(v)}
 													formatValue={(v) => `${v}px`}
 													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
-													accentColor="blue"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -847,7 +846,6 @@ export function SettingsPanel({
 													onChange={(v) => onPaddingChange?.(v)}
 													formatValue={(v) => `${v}%`}
 													parseInput={(t) => parseFloat(t.replace(/%$/, ""))}
-													accentColor="blue"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -861,7 +859,6 @@ export function SettingsPanel({
 													onChange={(v) => onShadowChange?.(v)}
 													formatValue={(v) => `${Math.round(v * 100)}%`}
 													parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
-													accentColor="blue"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -875,7 +872,6 @@ export function SettingsPanel({
 													onChange={(v) => onBackgroundBlurChange?.(v)}
 													formatValue={(v) => `${v.toFixed(1)}px`}
 													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
-													accentColor="blue"
 												/>
 										</div>
 									</div>
@@ -1060,7 +1056,6 @@ export function SettingsPanel({
 													onChange={(v) => onZoomMotionBlurChange?.(v)}
 													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-													accentColor="green"
 												/>
 										</div>
 										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
@@ -1215,7 +1210,6 @@ export function SettingsPanel({
 													onChange={(v) => onCursorSizeChange?.(v)}
 													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-													accentColor="purple"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -1229,7 +1223,6 @@ export function SettingsPanel({
 													onChange={(v) => onCursorSmoothingChange?.(v)}
 													formatValue={(v) => (v <= 0 ? "Off" : v.toFixed(2))}
 													parseInput={(t) => parseFloat(t)}
-													accentColor="purple"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -1243,7 +1236,6 @@ export function SettingsPanel({
 													onChange={(v) => onCursorMotionBlurChange?.(v)}
 													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-													accentColor="purple"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -1257,7 +1249,6 @@ export function SettingsPanel({
 													onChange={(v) => onCursorClickBounceChange?.(v)}
 													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
 													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-													accentColor="purple"
 												/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
@@ -1278,7 +1269,6 @@ export function SettingsPanel({
 
 														return parseFloat(t.replace(/\u00d7$/, ""));
 													}}
-													accentColor="purple"
 												/>
 										</div>
 									</div>
@@ -1507,7 +1497,7 @@ export function SettingsPanel({
 						</button>
 						<button
 							onClick={onSaveProject}
-							className="flex items-center justify-center gap-1.5 py-3 rounded-[14px] text-[10px] uppercase tracking-wider font-bold text-[#2563EB]/60 hover:text-[#2563EB] transition-all duration-300 bg-[#2563EB]/10 hover:bg-[#2563EB]/20 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(37,99,235,0.2)]"
+							className="flex items-center justify-center gap-1.5 py-3 rounded-[14px] text-[10px] uppercase tracking-wider font-bold text-white/60 hover:text-white/90 transition-all duration-300 bg-white/[0.04] hover:bg-white/[0.08] hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(255,255,255,0.05)]"
 							style={{ border: "1px solid rgba(37,99,235,0.2)" }}
 						>
 							<Save className="w-4 h-4" />
