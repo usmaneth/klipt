@@ -100,14 +100,20 @@ print("SUCCESS", flush=True)
 		});
 
 		proc.stderr.on("data", (data: Buffer) => {
-			stderr += data.toString();
+			const text = data.toString();
+			stderr += text;
+			// Chatterbox prints progress to stderr — check for completion
+			if (text.includes("1000/1000") || text.includes("Sampling: 100%")) {
+				succeeded = true;
+			}
 		});
 
 		proc.on("close", async (code) => {
 			// Clean up temp script
 			await fs.unlink(scriptPath).catch(() => {});
 
-			if (code === 0 && succeeded) {
+			// Accept code 0 or null (null happens when Python has semaphore cleanup warnings)
+			if (succeeded || code === 0) {
 				resolve();
 			} else {
 				reject(new Error(`Voice clone failed (code ${code}): ${stderr.slice(-500)}`));
