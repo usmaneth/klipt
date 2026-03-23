@@ -843,10 +843,14 @@ export function CreativeWorkspace({
 		<div className="flex h-full flex-shrink-0">
 			{/* Icon dock */}
 			<div
-				className="flex flex-col items-center pt-3 gap-1 flex-shrink-0"
+				className="flex flex-col items-center pt-4 gap-2 flex-shrink-0 relative z-50"
 				style={{
-					width: 44,
-					borderRight: "1px solid rgba(255,255,255,0.04)",
+					width: 52,
+					background: "rgba(12,12,14,0.6)",
+					backdropFilter: "blur(40px)",
+					WebkitBackdropFilter: "blur(40px)",
+					borderRight: "1px solid rgba(255,255,255,0.06)",
+					boxShadow: "2px 0 20px rgba(0,0,0,0.4)",
 				}}
 			>
 				{PANELS.map((panel) => {
@@ -858,15 +862,15 @@ export function CreativeWorkspace({
 							type="button"
 							title={panel.label}
 							onClick={() => togglePanel(panel.id)}
-							className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
+							className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 cursor-pointer relative group ${
 								isActive
-									? "text-white/60 bg-white/[0.06]"
-									: "text-white/20 hover:text-white/40"
+									? "text-white/90 bg-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] scale-95"
+									: "text-white/30 hover:text-white/70 hover:bg-white/[0.03] hover:scale-105"
 							}`}
 						>
 							{isActive && (
 								<div
-									className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r-full bg-[#E0000F]"
+									className="absolute -left-1 top-2 bottom-2 w-[3px] rounded-r-full bg-[#E0000F] shadow-[0_0_10px_rgba(224,0,15,0.8)]"
 								/>
 							)}
 							<Icon className="w-4 h-4" />
@@ -877,27 +881,30 @@ export function CreativeWorkspace({
 
 			{/* Sliding panel */}
 			<div
-				className="overflow-hidden flex-shrink-0"
+				className="overflow-hidden flex-shrink-0 relative z-40"
 				style={{
-					width: activePanel ? 280 : 0,
-					transition: "width 200ms ease",
+					width: activePanel ? 320 : 0,
+					transition: "width 300ms cubic-bezier(0.16, 1, 0.3, 1)",
 				}}
 			>
 				<div
-					className="h-full flex flex-col"
+					className="h-full flex flex-col relative"
 					style={{
-						width: 280,
-						backgroundColor: "#111113",
-						borderRight: "1px solid rgba(255,255,255,0.05)",
-						transform: activePanel ? "translateX(0)" : "translateX(-280px)",
-						transition: "transform 200ms ease",
+						width: 320,
+						background: "rgba(18,18,20,0.85)",
+						backdropFilter: "blur(40px)",
+						WebkitBackdropFilter: "blur(40px)",
+						borderRight: "1px solid rgba(255,255,255,0.06)",
+						boxShadow: "10px 0 40px rgba(0,0,0,0.5)",
+						transform: activePanel ? "translateX(0)" : "translateX(-320px)",
+						transition: "transform 300ms cubic-bezier(0.16, 1, 0.3, 1)",
 					}}
 				>
 					{activePanelConfig && (
 						<>
 							{/* Header */}
-							<div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
-								<span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/40">
+							<div className="flex items-center justify-between px-6 py-5 flex-shrink-0 border-b border-white/[0.04]">
+								<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">
 									{activePanelConfig.label}
 								</span>
 								<button
