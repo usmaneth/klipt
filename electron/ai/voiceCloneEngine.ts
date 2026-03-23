@@ -253,7 +253,7 @@ async function loadTokenizer(): Promise<{ encode: (text: string) => number[] }> 
 	const byteEncoder = bytesToUnicode();
 	// Merges can be either ["a b", ...] (GPT-2 style) or [["a","b"], ...] (HuggingFace style)
 	const merges = data.model.merges.map((m) => {
-		if (Array.isArray(m)) return m as [string, string];
+		if (Array.isArray(m)) return [m[0], m[1]] as [string, string];
 		if (typeof m === "string") return m.split(" ") as [string, string];
 		return ["", ""] as [string, string];
 	}).filter(([a, b]) => a.length > 0 && b.length > 0);
