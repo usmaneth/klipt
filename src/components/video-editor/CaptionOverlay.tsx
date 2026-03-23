@@ -20,6 +20,8 @@ import {
 
 interface CaptionOverlayProps {
 	cues: CaptionCue[];
+	/** Optional translated cues — if provided, text is taken from these while timing uses the originals. */
+	translatedCues?: CaptionCue[];
 	currentTimeMs: number;
 	containerWidth: number;
 	containerHeight: number;
@@ -69,22 +71,25 @@ function wordStyle(
 
 export function CaptionOverlay({
 	cues,
+	translatedCues,
 	currentTimeMs,
 	containerWidth,
 	containerHeight,
 	settings,
 }: CaptionOverlayProps) {
+	// Use translated cues for display if available, original cues for timing
+	const displayCues = translatedCues && translatedCues.length > 0 ? translatedCues : cues;
 	if (!settings.enabled || cues.length === 0) return null;
 
 	const fontSize = scaleFontSize(settings.fontSize, containerWidth);
 
 	// Build layout data — memoised on cues + settings that affect layout
 	const pages: CaptionPage[] = useMemo(() => {
-		const words = flattenCaptionWords(cues);
+		const words = flattenCaptionWords(displayCues);
 		const maxWidth = containerWidth * 0.85;
 		const lines = buildCaptionLines(words, maxWidth, fontSize, settings.fontFamily);
 		return buildCaptionPages(lines, settings.maxRows);
-	}, [cues, containerWidth, fontSize, settings.fontFamily, settings.maxRows]);
+	}, [displayCues, containerWidth, fontSize, settings.fontFamily, settings.maxRows]);
 
 	const layout = buildActiveCaptionLayout(pages, currentTimeMs);
 	if (!layout.page) return null;

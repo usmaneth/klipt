@@ -6,6 +6,7 @@ import {
 	Download,
 	Film,
 	FolderOpen,
+	Globe,
 	Image,
 	Mic,
 	Palette,
@@ -61,6 +62,8 @@ import {
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
 import type { CaptionSettings } from "./captionStyle";
 import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
+import { TRANSLATION_LANGUAGES } from "@/lib/ai/translationService";
+import { DUBBING_LANGUAGES } from "@/lib/ai/voiceDubbing";
 // AI Background Removal — shelved, will re-enable in AI features phase
 // import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
 import { WebcamPanel, type WebcamPanelProps } from "./WebcamPanel";
@@ -217,6 +220,18 @@ interface SettingsPanelProps {
 	isTranscribing?: boolean;
 	transcriptionProgress?: number | null;
 	transcriptionLabel?: string | null;
+	// Translation
+	onTranslateCaptions?: (targetLang: string) => void;
+	isTranslating?: boolean;
+	translationProgress?: number | null;
+	translatedLanguage?: string | null;
+	// Dubbing
+	onGenerateDub?: (targetLanguage: string) => void;
+	isDubbing?: boolean;
+	dubbingProgress?: { phase: string; percent: number; message: string } | null;
+	dubbedAudioPath?: string | null;
+	useDubbedAudio?: boolean;
+	onUseDubbedAudioChange?: (enabled: boolean) => void;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -378,6 +393,16 @@ export function SettingsPanel({
 	isTranscribing = false,
 	transcriptionProgress,
 	transcriptionLabel,
+	onTranslateCaptions,
+	isTranslating = false,
+	translationProgress,
+	translatedLanguage,
+	onGenerateDub,
+	isDubbing = false,
+	dubbingProgress,
+	dubbedAudioPath,
+	useDubbedAudio = false,
+	onUseDubbedAudioChange,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { t } = useI18n();
@@ -387,6 +412,8 @@ export function SettingsPanel({
 	const [customImages, setCustomImages] = useState<string[]>(
 		initialEditorPreferences.customWallpapers,
 	);
+	const [translationTargetLang, setTranslationTargetLang] = useState("es");
+	const [dubbingTargetLang, setDubbingTargetLang] = useState("es");
 	const removeBackgroundStateRef = useRef<{
 		aspectRatio: AspectRatio;
 		padding: number;
@@ -1428,6 +1455,41 @@ export function SettingsPanel({
 												</div>
 											)}
 
+											{/* Translate captions */}
+											{onTranslateCaptions && (
+												<div className="p-3 border-b border-white/[0.04]">
+													<div className="flex gap-2">
+														<select
+															value={translationTargetLang}
+															onChange={(e) => setTranslationTargetLang(e.target.value)}
+															className="flex-1 bg-white/[0.06] text-white/70 text-[10px] rounded-md px-2 py-1 border border-white/[0.08] outline-none"
+														>
+															{TRANSLATION_LANGUAGES.map((lang) => (
+																<option key={lang.code} value={lang.code}>
+																	{lang.label}
+																</option>
+															))}
+														</select>
+														<Button
+															onClick={() => onTranslateCaptions(translationTargetLang)}
+															disabled={isTranslating || isTranscribing}
+															variant="outline"
+															className="gap-1.5 bg-white/[0.03] text-white/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-white transition-all duration-150 h-8 text-[11px] rounded-lg disabled:opacity-40"
+														>
+															<Globe className="w-3 h-3" />
+															{isTranslating
+																? `Translating${translationProgress != null ? ` (${Math.round(translationProgress)}%)` : "..."}`
+																: "Translate"}
+														</Button>
+													</div>
+													{translatedLanguage && !isTranslating && (
+														<p className="text-[9px] text-white/30 mt-1.5">
+															Translated to {TRANSLATION_LANGUAGES.find((l) => l.code === translatedLanguage)?.label ?? translatedLanguage}
+														</p>
+													)}
+												</div>
+											)}
+
 											{/* Language selector */}
 											<div className="flex items-center justify-between p-3 border-b border-white/[0.04]">
 												<span className="text-[11px] font-medium text-white/50 tracking-wide">
@@ -1570,6 +1632,96 @@ export function SettingsPanel({
 													}
 												/>
 											</div>
+										</div>
+									</div>
+								)}
+
+								{/* Dubbing */}
+								{onGenerateDub && (
+									<div>
+										<SectionHeader>Dubbing</SectionHeader>
+										<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+											{/* Use dubbed audio toggle */}
+											{dubbedAudioPath && (
+												<div className="flex items-center justify-between p-3 bg-white/[0.02] border-b border-white/[0.04] hover:bg-white/[0.04] transition-all duration-300">
+													<div className="flex items-center gap-2">
+														<Volume2 className="w-3.5 h-3.5 text-white/40" />
+														<span className="text-[11px] font-medium text-white/50 tracking-wide">
+															Use Dubbed Audio
+														</span>
+													</div>
+													<Switch
+														checked={useDubbedAudio}
+														onCheckedChange={(enabled) =>
+															onUseDubbedAudioChange?.(enabled)
+														}
+														className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
+													/>
+												</div>
+											)}
+
+											{/* Target language selector */}
+											<div className="flex items-center justify-between p-3 border-b border-white/[0.04]">
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
+													Target Language
+												</span>
+												<select
+													value={dubbingTargetLang}
+													onChange={(e) => setDubbingTargetLang(e.target.value)}
+													className="bg-white/[0.06] text-white/70 text-[10px] rounded-md px-2 py-1 border border-white/[0.08] outline-none"
+												>
+													{DUBBING_LANGUAGES.map((lang) => (
+														<option key={lang.code} value={lang.code}>
+															{lang.label}
+														</option>
+													))}
+												</select>
+											</div>
+
+											{/* Generate dub button */}
+											<div className="p-3 border-b border-white/[0.04]">
+												<Button
+													onClick={() => onGenerateDub(dubbingTargetLang)}
+													disabled={isDubbing}
+													variant="outline"
+													className="w-full gap-2 bg-white/[0.03] text-white/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-white transition-all duration-150 h-8 text-[11px] rounded-lg disabled:opacity-40"
+												>
+													<Mic className="w-3 h-3" />
+													{isDubbing
+														? (dubbingProgress?.message ?? "Generating dub...")
+														: dubbedAudioPath
+															? "Re-generate Dub"
+															: "Generate Dub"}
+												</Button>
+												{isDubbing && dubbingProgress && (
+													<div className="mt-2">
+														<div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
+															<div
+																className="h-full bg-[#E0000F] rounded-full transition-all duration-300"
+																style={{ width: `${dubbingProgress.percent}%` }}
+															/>
+														</div>
+														<p className="text-[9px] text-white/30 mt-1 text-center">
+															{dubbingProgress.message}
+														</p>
+													</div>
+												)}
+											</div>
+
+											{/* Preview dubbed audio */}
+											{dubbedAudioPath && !isDubbing && (
+												<div className="p-3">
+													<audio
+														controls
+														src={`file://${dubbedAudioPath}`}
+														className="w-full h-7 opacity-60"
+														style={{ filter: "invert(1)" }}
+													/>
+													<p className="text-[9px] text-white/20 mt-1 text-center">
+														Preview dubbed audio
+													</p>
+												</div>
+											)}
 										</div>
 									</div>
 								)}

@@ -260,6 +260,29 @@ interface Window {
 			regions: Array<{ start: number; end: number }>;
 			error?: string;
 		}>;
+		translateText: (
+			text: string,
+			targetLang: string,
+			sourceLang?: string,
+		) => Promise<{
+			success: boolean;
+			translatedText?: string;
+			sourceLanguage?: string;
+			targetLanguage?: string;
+			error?: string;
+		}>;
+		dubVideo: (
+			videoPath: string,
+			targetLanguage: string,
+		) => Promise<{
+			success: boolean;
+			audioPath?: string;
+			duration?: number;
+			error?: string;
+		}>;
+		onDubbingProgress: (
+			callback: (progress: { phase: string; percent: number; message: string }) => void,
+		) => () => void;
 	};
 }
 

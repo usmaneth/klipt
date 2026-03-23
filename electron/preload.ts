@@ -287,4 +287,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	) => {
 		return ipcRenderer.invoke("native-detect-silence", inputPath, options);
 	},
+	translateText: (text: string, targetLang: string, sourceLang?: string) => {
+		return ipcRenderer.invoke("translate-text", text, targetLang, sourceLang);
+	},
+	dubVideo: (videoPath: string, targetLanguage: string) => {
+		return ipcRenderer.invoke("dub-video", videoPath, targetLanguage);
+	},
+	onDubbingProgress: (
+		callback: (progress: { phase: string; percent: number; message: string }) => void,
+	) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			payload: { phase: string; percent: number; message: string },
+		) => callback(payload);
+		ipcRenderer.on("dubbing-progress", listener);
+		return () => ipcRenderer.removeListener("dubbing-progress", listener);
+	},
 });

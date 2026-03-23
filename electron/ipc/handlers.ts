@@ -19,6 +19,7 @@ import {
 	systemPreferences,
 } from "electron";
 import { transcribeAudio } from "../ai/whisperTranscriber";
+import { translateText } from "../../src/lib/ai/translationService";
 import { RECORDINGS_DIR } from "../main";
 import { closeCountdownWindow, createCountdownWindow, getCountdownWindow } from "../windows";
 
@@ -3795,6 +3796,226 @@ export function registerIpcHandlers(
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[native-detect-silence] Failed:", message);
 				return { success: false, error: message, regions: [] };
+			}
+		},
+	);
+
+	// ── Voice Dubbing ───────────────────────────────────────────────────
+
+	ipcMain.handle(
+		"dub-video",
+		async (
+			_event: Electron.IpcMainInvokeEvent,
+			rawVideoPath: string,
+			targetLanguage: string,
+		): Promise<{
+			success: boolean;
+			audioPath?: string;
+			duration?: number;
+			error?: string;
+		}> => {
+			const mainWindow = getMainWindow();
+			const sendProgress = (phase: string, percent: number, message: string) => {
+				if (mainWindow && !mainWindow.isDestroyed()) {
+					mainWindow.webContents.send("dubbing-progress", { phase, percent, message });
+				}
+			};
+
+			try {
+				// Resolve video path
+				let videoPath = rawVideoPath;
+				if (videoPath.startsWith("file://")) {
+					videoPath = decodeURIComponent(videoPath.replace(/^file:\/\//, ""));
+				}
+
+				// Phase 1: Extract audio from video
+				sendProgress("extracting", 5, "Extracting audio from video...");
+
+				const ffmpegPath = getFfmpegBinaryPath();
+				const tempWavPath = path.join(os.tmpdir(), `klipt-dub-extract-${Date.now()}.wav`);
+
+				await new Promise<void>((resolve, reject) => {
+					const proc = spawn(
+						ffmpegPath,
+						["-i", videoPath, "-vn", "-ar", "16000", "-ac", "1", "-f", "wav", "-y", tempWavPath],
+						{ stdio: "pipe" },
+					);
+
+					let stderrOutput = "";
+					proc.stderr.on("data", (data: Buffer) => {
+						stderrOutput += data.toString();
+					});
+
+					proc.on("close", (code) => {
+						if (code === 0) {
+							resolve();
+						} else {
+							if (
+								stderrOutput.includes("does not contain any stream") ||
+								stderrOutput.includes("no audio")
+							) {
+								reject(
+									new Error(
+										"This video has no audio track. Record with a microphone to use dubbing.",
+									),
+								);
+							} else {
+								reject(
+									new Error(
+										`FFmpeg audio extraction failed (code ${code}): ${stderrOutput.slice(-500)}`,
+									),
+								);
+							}
+						}
+					});
+
+					proc.on("error", reject);
+				});
+
+				sendProgress("extracting", 15, "Audio extracted.");
+
+				// Phase 2: Transcribe with Whisper
+				sendProgress("translating", 20, "Transcribing audio...");
+
+				const modelPath = path.join(WHISPER_MODELS_DIR, WHISPER_MODEL_FILENAME);
+				try {
+					await fs.access(modelPath, fsConstants.R_OK);
+				} catch {
+					try {
+						await fs.unlink(tempWavPath);
+					} catch {}
+					return {
+						success: false,
+						error: "Whisper model not downloaded. Generate captions first to auto-download the model.",
+					};
+				}
+
+				const transcriptionResult = await transcribeAudio(tempWavPath, modelPath);
+
+				// Clean up temp wav
+				try {
+					await fs.unlink(tempWavPath);
+				} catch {}
+
+				if (!transcriptionResult || !transcriptionResult.fullText) {
+					return {
+						success: false,
+						error: "Transcription produced no text. The video may have no speech.",
+					};
+				}
+
+				sendProgress("translating", 35, "Transcription complete. Translating...");
+
+				// Phase 3: Translate text using the translation service
+				const sourceLang = transcriptionResult.language || "en";
+				let translatedText = transcriptionResult.fullText;
+
+				if (sourceLang !== targetLanguage) {
+					try {
+						const translationResult = await translateText(
+							transcriptionResult.fullText,
+							targetLanguage,
+							sourceLang,
+						);
+						translatedText = translationResult.translatedText;
+					} catch (translateErr) {
+						console.warn("[dub-video] Translation failed, using original text:", translateErr);
+					}
+				}
+
+				sendProgress("generating", 55, "Generating dubbed audio...");
+
+				// Phase 4: Generate TTS audio with edge-tts
+				const { DUBBING_VOICES } = await import("../../src/lib/ai/voiceDubbing");
+				const voiceConfig = DUBBING_VOICES[targetLanguage];
+				const voiceName = voiceConfig?.voice ?? "en-US-AriaNeural";
+
+				const dubbedAudioPath = path.join(
+					os.tmpdir(),
+					`klipt-dubbed-${targetLanguage}-${Date.now()}.mp3`,
+				);
+
+				try {
+					const edgeTts = await import("edge-tts");
+					const ttsFunc = edgeTts.ttsSave ?? (edgeTts as any).default?.ttsSave;
+					if (!ttsFunc) {
+						throw new Error("edge-tts ttsSave function not found");
+					}
+					await ttsFunc(translatedText, dubbedAudioPath, { voice: voiceName });
+				} catch (ttsErr) {
+					const msg = ttsErr instanceof Error ? ttsErr.message : String(ttsErr);
+					return {
+						success: false,
+						error: `TTS generation failed: ${msg}`,
+					};
+				}
+
+				sendProgress("syncing", 85, "Finalizing dubbed audio...");
+
+				// Get duration of the generated audio
+				let audioDuration = 0;
+				try {
+					const probeResult = await new Promise<string>((resolve, reject) => {
+						const proc = spawn(
+							ffmpegPath,
+							["-i", dubbedAudioPath, "-f", "null", "-"],
+							{ stdio: "pipe" },
+						);
+						let stderr = "";
+						proc.stderr.on("data", (d: Buffer) => {
+							stderr += d.toString();
+						});
+						proc.on("close", () => resolve(stderr));
+						proc.on("error", reject);
+					});
+					const durationMatch = probeResult.match(/Duration:\s*(\d+):(\d+):(\d+)\.(\d+)/);
+					if (durationMatch) {
+						audioDuration =
+							parseInt(durationMatch[1]) * 3600 +
+							parseInt(durationMatch[2]) * 60 +
+							parseInt(durationMatch[3]) +
+							parseInt(durationMatch[4]) / 100;
+					}
+				} catch {
+					// Non-critical — duration is informational
+				}
+
+				sendProgress("syncing", 100, "Dubbing complete!");
+
+				return {
+					success: true,
+					audioPath: dubbedAudioPath,
+					duration: audioDuration,
+				};
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[dub-video] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	// ── Translation ─────────────────────────────────────────────────────
+	ipcMain.handle(
+		"translate-text",
+		async (
+			_event: Electron.IpcMainInvokeEvent,
+			text: string,
+			targetLang: string,
+			sourceLang?: string,
+		) => {
+			try {
+				const result = await translateText(text, targetLang, sourceLang);
+				return {
+					success: true,
+					translatedText: result.translatedText,
+					sourceLanguage: result.sourceLanguage,
+					targetLanguage: result.targetLanguage,
+				};
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[translate-text] Failed:", message);
+				return { success: false, error: message };
 			}
 		},
 	);

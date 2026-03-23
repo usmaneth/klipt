@@ -16,15 +16,21 @@ import {
 	wordOpacity,
 } from "@/components/video-editor/captionStyle";
 
-/** Pre-compute layout once per export (call before the frame loop). */
+/**
+ * Pre-compute layout once per export (call before the frame loop).
+ * If `translatedCues` are provided, their text is used while timing
+ * comes from the original cues.
+ */
 export function buildExportCaptionPages(
 	cues: CaptionCue[],
 	canvasWidth: number,
 	fontSize: number,
 	fontFamily: string,
 	maxRows: number,
+	translatedCues?: CaptionCue[],
 ): CaptionPage[] {
-	const words = flattenCaptionWords(cues);
+	const displayCues = translatedCues && translatedCues.length > 0 ? translatedCues : cues;
+	const words = flattenCaptionWords(displayCues);
 	const maxWidth = canvasWidth * 0.85;
 	const lines = buildCaptionLines(words, maxWidth, fontSize, fontFamily);
 	return buildCaptionPages(lines, maxRows);

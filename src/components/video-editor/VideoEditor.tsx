@@ -203,6 +203,20 @@ export default function VideoEditor() {
 	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
 	const [captionTranscriptionProgress, setCaptionTranscriptionProgress] = useState<number | null>(null);
 	const [captionTranscriptionLabel, setCaptionTranscriptionLabel] = useState<string | null>(null);
+	const [translatedCaptionCues, setTranslatedCaptionCues] = useState<CaptionCue[] | null>(null);
+	const [captionTranslationLang, setCaptionTranslationLang] = useState<string | null>(null);
+	const [isTranslatingCaptions, setIsTranslatingCaptions] = useState(false);
+	const [captionTranslationProgress, setCaptionTranslationProgress] = useState<number | null>(null);
+
+	// Dubbing state
+	const [dubbedAudioPath, setDubbedAudioPath] = useState<string | null>(null);
+	const [isDubbing, setIsDubbing] = useState(false);
+	const [dubbingProgress, setDubbingProgress] = useState<{
+		phase: string;
+		percent: number;
+		message: string;
+	} | null>(null);
+	const [useDubbedAudio, setUseDubbedAudio] = useState(false);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -1475,6 +1489,64 @@ export default function VideoEditor() {
 		}
 	}, [videoPath]);
 
+	// ── Caption translation ──────────────────────────────────────────────────
+	const handleTranslateCaptions = useCallback(
+		async (targetLang: string) => {
+			if (captionCues.length === 0) {
+				toast.error("Generate captions first before translating");
+				return;
+			}
+
+			setIsTranslatingCaptions(true);
+			setCaptionTranslationProgress(0);
+
+			try {
+				// Batch all cue texts into a single translation request
+				// Join with newlines so we can split back after translation
+				const allTexts = captionCues.map((cue) => cue.text);
+				const batchText = allTexts.join("\n");
+
+				setCaptionTranslationProgress(30);
+
+				const response = await window.electronAPI.translateText(batchText, targetLang);
+
+				setCaptionTranslationProgress(80);
+
+				if (!response.success || !response.translatedText) {
+					toast.error(response.error ?? "Translation failed");
+					return;
+				}
+
+				// Split translated text back into individual cue texts
+				const translatedTexts = response.translatedText.split("\n");
+
+				// Create translated cues with original timestamps but translated text
+				const translated: CaptionCue[] = captionCues.map((cue, i) => ({
+					...cue,
+					id: `${cue.id}-tr`,
+					text: translatedTexts[i]?.trim() ?? cue.text,
+					// Keep original word-level timing but replace text at cue level
+					// Words keep their timing from the original for animation sync
+					words: cue.words
+						? cue.words.map((w) => ({ ...w }))
+						: undefined,
+				}));
+
+				setTranslatedCaptionCues(translated);
+				setCaptionTranslationLang(targetLang);
+				setCaptionTranslationProgress(100);
+				toast.success("Captions translated");
+			} catch (err) {
+				console.error("[VideoEditor] Caption translation failed:", err);
+				toast.error("Caption translation failed");
+			} finally {
+				setIsTranslatingCaptions(false);
+				setCaptionTranslationProgress(null);
+			}
+		},
+		[captionCues],
+	);
+
 	// ── AI Suggestions handlers ──────────────────────────────────────────────
 
 	const FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "literally", "right", "so"];
@@ -2351,7 +2423,9 @@ export default function VideoEditor() {
 						cursorClickBounce,
 						cursorSway,
 						audioRegions,
-						enhancedAudioUrl: enhancedAudioUrl ?? undefined,
+						enhancedAudioUrl: (useDubbedAudio && dubbedAudioPath)
+							? `file://${dubbedAudioPath}`
+							: (enhancedAudioUrl ?? undefined),
 						previewWidth,
 						previewHeight,
 						webcamVideoPath: webcamPath ?? undefined,
@@ -2371,7 +2445,7 @@ export default function VideoEditor() {
 									bgColor: webcamBgColor,
 								}
 							: undefined,
-						captionCues: captionCues.length > 0 ? captionCues : undefined,
+						captionCues: (translatedCaptionCues ?? captionCues).length > 0 ? (translatedCaptionCues ?? captionCues) : undefined,
 						captionSettings: captionSettings.enabled ? captionSettings : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
@@ -2560,6 +2634,41 @@ export default function VideoEditor() {
 		setEnhancedAudioUrl(null);
 		setAudioEnhanced(false);
 	}, [enhancedAudioUrl]);
+
+	const handleGenerateDub = useCallback(
+		async (targetLanguage: string) => {
+			if (!videoPath) return;
+
+			setIsDubbing(true);
+			setDubbingProgress({ phase: "extracting", percent: 0, message: "Starting dubbing..." });
+
+			const cleanupProgress = window.electronAPI.onDubbingProgress(
+				(progress: { phase: string; percent: number; message: string }) => {
+					setDubbingProgress(progress);
+				},
+			);
+
+			try {
+				const result = await window.electronAPI.dubVideo(videoPath, targetLanguage);
+
+				if (result.success && result.audioPath) {
+					setDubbedAudioPath(result.audioPath);
+					setUseDubbedAudio(true);
+					toast.success("Dubbing complete!");
+				} else {
+					toast.error(result.error ?? "Dubbing failed");
+				}
+			} catch (err) {
+				console.error("[VideoEditor] Dubbing failed:", err);
+				toast.error("Dubbing failed unexpectedly");
+			} finally {
+				cleanupProgress();
+				setIsDubbing(false);
+				setDubbingProgress(null);
+			}
+		},
+		[videoPath],
+	);
 
 	const handleExportDialogClose = useCallback(() => {
 		setShowExportDialog(false);
@@ -2969,7 +3078,7 @@ export default function VideoEditor() {
 												webcamShadow={webcamShadow}
 												webcamPosition={webcamPosition}
 												onWebcamPositionChange={setWebcamPosition}
-												captionCues={captionCues}
+												captionCues={translatedCaptionCues ?? captionCues}
 												captionSettings={captionSettings}
 											/>
 										</div>
@@ -3169,6 +3278,16 @@ export default function VideoEditor() {
 										isTranscribing={isTranscribingCaptions}
 										transcriptionProgress={captionTranscriptionProgress}
 										transcriptionLabel={captionTranscriptionLabel}
+										onTranslateCaptions={handleTranslateCaptions}
+										isTranslating={isTranslatingCaptions}
+										translationProgress={captionTranslationProgress}
+										translatedLanguage={captionTranslationLang}
+										onGenerateDub={handleGenerateDub}
+										isDubbing={isDubbing}
+										dubbingProgress={dubbingProgress}
+										dubbedAudioPath={dubbedAudioPath}
+										useDubbedAudio={useDubbedAudio}
+										onUseDubbedAudioChange={setUseDubbedAudio}
 									/>
 						</div>
 					</Panel>
