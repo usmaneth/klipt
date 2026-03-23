@@ -251,7 +251,12 @@ async function loadTokenizer(): Promise<{ encode: (text: string) => number[] }> 
 
 	// Build byte-to-unicode mapping (GPT-2 style)
 	const byteEncoder = bytesToUnicode();
-	const merges = data.model.merges.map((m) => m.split(" ") as [string, string]);
+	// Merges can be either ["a b", ...] (GPT-2 style) or [["a","b"], ...] (HuggingFace style)
+	const merges = data.model.merges.map((m) => {
+		if (Array.isArray(m)) return m as [string, string];
+		if (typeof m === "string") return m.split(" ") as [string, string];
+		return ["", ""] as [string, string];
+	}).filter(([a, b]) => a.length > 0 && b.length > 0);
 	const bpeRanks = new Map<string, number>();
 	for (let i = 0; i < merges.length; i++) {
 		bpeRanks.set(merges[i].join(" "), i);
