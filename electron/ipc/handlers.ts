@@ -20,6 +20,12 @@ import {
 } from "electron";
 import { transcribeAudio } from "../ai/whisperTranscriber";
 import { translateText } from "../../src/lib/ai/translationService";
+import {
+	downloadVoiceCloneModel,
+	extractVoiceReference,
+	generateClonedSpeech,
+	getVoiceCloneModelStatus,
+} from "../ai/voiceCloneEngine";
 import { RECORDINGS_DIR } from "../main";
 import { closeCountdownWindow, createCountdownWindow, getCountdownWindow } from "../windows";
 
@@ -3925,7 +3931,8 @@ export function registerIpcHandlers(
 
 				sendProgress("generating", 55, "Generating dubbed audio...");
 
-				// Phase 4: Generate TTS audio with edge-tts (fallback: macOS say)
+				// Phase 4: Generate TTS audio
+				// Priority: voice clone (Chatterbox) → edge-tts → macOS say
 				const { DUBBING_VOICES } = await import("../../src/lib/ai/voiceDubbing");
 				const voiceConfig = DUBBING_VOICES[targetLanguage];
 				const voiceName = voiceConfig?.voice ?? "en-US-AriaNeural";
@@ -3934,6 +3941,80 @@ export function registerIpcHandlers(
 					os.tmpdir(),
 					`klipt-dubbed-${targetLanguage}-${Date.now()}.mp3`,
 				);
+
+				let ttsSucceeded = false;
+
+				// Try voice cloning first (Chatterbox-Turbo)
+				const voiceCloneStatus = await getVoiceCloneModelStatus();
+				if (voiceCloneStatus.installed) {
+					try {
+						sendProgress("generating", 58, "Cloning your voice...");
+
+						// Extract voice reference from original video
+						const refAudioPath = await extractVoiceReference(videoPath, ffmpegPath);
+
+						// Generate cloned speech as WAV, then convert to MP3
+						const clonedWavPath = path.join(
+							os.tmpdir(),
+							`klipt-vc-raw-${Date.now()}.wav`,
+						);
+
+						await generateClonedSpeech({
+							referenceAudioPath: refAudioPath,
+							text: translatedText,
+							outputPath: clonedWavPath,
+							ffmpegPath,
+							onProgress: (fraction) => {
+								const percent = 58 + Math.round(fraction * 25);
+								sendProgress("generating", percent, "Cloning your voice...");
+							},
+						});
+
+						// Convert WAV → MP3
+						await new Promise<void>((resolve, reject) => {
+							const proc = spawn(
+								ffmpegPath,
+								["-i", clonedWavPath, "-ar", "48000", "-y", dubbedAudioPath],
+								{ stdio: "pipe" },
+							);
+							proc.on("close", (code) => {
+								if (code === 0) resolve();
+								else reject(new Error(`ffmpeg WAV->MP3 conversion failed (code ${code})`));
+							});
+							proc.on("error", reject);
+						});
+
+						// Clean up temp files
+						try { await fs.unlink(refAudioPath); } catch {}
+						try { await fs.unlink(clonedWavPath); } catch {}
+
+						ttsSucceeded = true;
+						console.log("[dub-video] Voice clone succeeded");
+					} catch (vcErr) {
+						console.warn(
+							"[dub-video] Voice clone failed, falling back to edge-tts:",
+							vcErr instanceof Error ? vcErr.message : String(vcErr),
+						);
+					}
+				}
+
+				// Fallback: edge-tts
+				if (!ttsSucceeded) {
+					try {
+						const edgeTts = await import("edge-tts");
+						const ttsFunc = edgeTts.ttsSave ?? (edgeTts as any).default?.ttsSave;
+						if (!ttsFunc) {
+							throw new Error("edge-tts ttsSave function not found");
+						}
+						await ttsFunc(translatedText, dubbedAudioPath, { voice: voiceName });
+						ttsSucceeded = true;
+					} catch (edgeTtsErr) {
+						console.warn(
+							"[dub-video] edge-tts failed, trying macOS say fallback:",
+							edgeTtsErr instanceof Error ? edgeTtsErr.message : String(edgeTtsErr),
+						);
+					}
+				}
 
 				// macOS say voice map for fallback
 				const macSayVoices: Record<string, string> = {
@@ -3950,24 +4031,6 @@ export function registerIpcHandlers(
 					hi: "Lekha",
 					en: "Samantha",
 				};
-
-				let ttsSucceeded = false;
-
-				// Try edge-tts first
-				try {
-					const edgeTts = await import("edge-tts");
-					const ttsFunc = edgeTts.ttsSave ?? (edgeTts as any).default?.ttsSave;
-					if (!ttsFunc) {
-						throw new Error("edge-tts ttsSave function not found");
-					}
-					await ttsFunc(translatedText, dubbedAudioPath, { voice: voiceName });
-					ttsSucceeded = true;
-				} catch (edgeTtsErr) {
-					console.warn(
-						"[dub-video] edge-tts failed, trying macOS say fallback:",
-						edgeTtsErr instanceof Error ? edgeTtsErr.message : String(edgeTtsErr),
-					);
-				}
 
 				// Fallback: macOS say command
 				if (!ttsSucceeded && process.platform === "darwin") {
@@ -4023,7 +4086,7 @@ export function registerIpcHandlers(
 				if (!ttsSucceeded) {
 					return {
 						success: false,
-						error: "TTS generation failed: both edge-tts and macOS say fallback failed.",
+						error: "TTS generation failed: voice clone, edge-tts, and macOS say all failed.",
 					};
 				}
 
@@ -4096,4 +4159,37 @@ export function registerIpcHandlers(
 			}
 		},
 	);
+
+	// ── Voice Clone Model Management ────────────────────────────────────
+
+	ipcMain.handle("get-voice-clone-status", async () => {
+		try {
+			return await getVoiceCloneModelStatus();
+		} catch (err: unknown) {
+			console.error("[get-voice-clone-status]", err);
+			return { installed: false, downloadedBytes: 0, totalBytes: 0 };
+		}
+	});
+
+	ipcMain.handle("setup-voice-clone", async () => {
+		const mainWindow = getMainWindow();
+		try {
+			await downloadVoiceCloneModel((downloaded, total, file) => {
+				if (mainWindow && !mainWindow.isDestroyed()) {
+					const percent = total > 0 ? Math.round((downloaded / total) * 100) : 0;
+					mainWindow.webContents.send("voice-clone-download-progress", {
+						percent,
+						downloaded,
+						total,
+						file,
+					});
+				}
+			});
+			return { success: true };
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[setup-voice-clone] Failed:", message);
+			return { success: false, error: message };
+		}
+	});
 }

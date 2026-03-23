@@ -303,4 +303,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("dubbing-progress", listener);
 		return () => ipcRenderer.removeListener("dubbing-progress", listener);
 	},
+	getVoiceCloneStatus: () => {
+		return ipcRenderer.invoke("get-voice-clone-status");
+	},
+	setupVoiceClone: () => {
+		return ipcRenderer.invoke("setup-voice-clone");
+	},
+	onVoiceCloneDownloadProgress: (
+		callback: (progress: {
+			percent: number;
+			downloaded: number;
+			total: number;
+			file: string;
+		}) => void,
+	) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			payload: { percent: number; downloaded: number; total: number; file: string },
+		) => callback(payload);
+		ipcRenderer.on("voice-clone-download-progress", listener);
+		return () => ipcRenderer.removeListener("voice-clone-download-progress", listener);
+	},
 });

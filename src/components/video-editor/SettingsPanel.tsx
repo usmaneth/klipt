@@ -414,6 +414,39 @@ export function SettingsPanel({
 	);
 	const [translationTargetLang, setTranslationTargetLang] = useState("es");
 	const [dubbingTargetLang, setDubbingTargetLang] = useState("es");
+	const [voiceCloneInstalled, setVoiceCloneInstalled] = useState(false);
+	const [voiceCloneDownloading, setVoiceCloneDownloading] = useState(false);
+	const [voiceCloneProgress, setVoiceCloneProgress] = useState(0);
+
+	// Check voice clone model status on mount
+	useEffect(() => {
+		window.electronAPI.getVoiceCloneStatus().then((status) => {
+			setVoiceCloneInstalled(status.installed);
+		});
+		const cleanup = window.electronAPI.onVoiceCloneDownloadProgress((progress) => {
+			setVoiceCloneProgress(progress.percent);
+		});
+		return cleanup;
+	}, []);
+
+	const handleSetupVoiceClone = useCallback(async () => {
+		setVoiceCloneDownloading(true);
+		setVoiceCloneProgress(0);
+		try {
+			const result = await window.electronAPI.setupVoiceClone();
+			if (result.success) {
+				setVoiceCloneInstalled(true);
+				toast.success("Voice clone model downloaded successfully");
+			} else {
+				toast.error(result.error ?? "Failed to download voice clone model");
+			}
+		} catch {
+			toast.error("Failed to download voice clone model");
+		} finally {
+			setVoiceCloneDownloading(false);
+		}
+	}, []);
+
 	const removeBackgroundStateRef = useRef<{
 		aspectRatio: AspectRatio;
 		padding: number;
@@ -1678,6 +1711,40 @@ export function SettingsPanel({
 												</select>
 											</div>
 
+											{/* Voice Clone Model Setup */}
+											<div className="p-3 border-b border-white/[0.04]">
+												{voiceCloneInstalled ? (
+													<div className="flex items-center gap-2 text-[10px] text-green-400/70">
+														<Zap className="w-3 h-3" />
+														<span>Voice Clone ready</span>
+													</div>
+												) : voiceCloneDownloading ? (
+													<div>
+														<p className="text-[10px] text-white/40 mb-1.5">
+															Downloading voice clone model...
+														</p>
+														<div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
+															<div
+																className="h-full bg-[#E0000F] rounded-full transition-all duration-300"
+																style={{ width: `${voiceCloneProgress}%` }}
+															/>
+														</div>
+														<p className="text-[9px] text-white/20 mt-1 text-center">
+															{voiceCloneProgress}%
+														</p>
+													</div>
+												) : (
+													<Button
+														onClick={handleSetupVoiceClone}
+														variant="outline"
+														className="w-full gap-2 bg-white/[0.03] text-white/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-white transition-all duration-150 h-7 text-[10px] rounded-lg"
+													>
+														<Download className="w-3 h-3" />
+														Download Voice Clone Model (~536 MB)
+													</Button>
+												)}
+											</div>
+
 											{/* Generate dub button */}
 											<div className="p-3 border-b border-white/[0.04]">
 												<Button
@@ -1691,7 +1758,9 @@ export function SettingsPanel({
 														? (dubbingProgress?.message ?? "Generating dub...")
 														: dubbedAudioPath
 															? "Re-generate Dub"
-															: "Generate Dub"}
+															: voiceCloneInstalled
+																? "Generate Dub (Voice Clone)"
+																: "Generate Dub"}
 												</Button>
 												{isDubbing && dubbingProgress && (
 													<div className="mt-2">

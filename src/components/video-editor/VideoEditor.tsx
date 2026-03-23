@@ -1476,6 +1476,9 @@ export default function VideoEditor() {
 			}
 
 			setCaptionCues(cues);
+			// Clear any existing translation — new transcription invalidates it
+			setTranslatedCaptionCues(null);
+			setCaptionTranslationLang(null);
 			setCaptionSettings((prev) => ({ ...prev, enabled: true }));
 			toast.success("Captions generated");
 		} catch (err) {
@@ -1499,6 +1502,9 @@ export default function VideoEditor() {
 
 			setIsTranslatingCaptions(true);
 			setCaptionTranslationProgress(0);
+			// Clear previous translation so stale cues don't linger during the request
+			setTranslatedCaptionCues(null);
+			setCaptionTranslationLang(null);
 
 			try {
 				// Batch all cue texts into a single translation request

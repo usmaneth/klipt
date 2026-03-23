@@ -283,6 +283,20 @@ interface Window {
 		onDubbingProgress: (
 			callback: (progress: { phase: string; percent: number; message: string }) => void,
 		) => () => void;
+		getVoiceCloneStatus: () => Promise<{
+			installed: boolean;
+			downloadedBytes: number;
+			totalBytes: number;
+		}>;
+		setupVoiceClone: () => Promise<{ success: boolean; error?: string }>;
+		onVoiceCloneDownloadProgress: (
+			callback: (progress: {
+				percent: number;
+				downloaded: number;
+				total: number;
+				file: string;
+			}) => void,
+		) => () => void;
 	};
 }
 
