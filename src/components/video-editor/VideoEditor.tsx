@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { ChevronDown, Download, FolderOpen, Languages, Redo2, Share, Undo2 } from "lucide-react";
+import { ChevronDown, Download, FolderOpen, Languages, Redo2, Share, Undo2, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -2610,10 +2610,8 @@ export default function VideoEditor() {
 							</Tooltip>
 						</div>
 
-					</div>
-
-					{/* Center: Project Name */}
-					<div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+						<Separator orientation="vertical" className="h-3 bg-white/[0.08] ml-2 mr-1" />
+						<div className=" flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
 						{isEditingProjectName ? (
 							<input
 								autoFocus
@@ -2646,8 +2644,26 @@ export default function VideoEditor() {
 						)}
 					</div>
 
+					</div>
+
+					{/* Center: Project Name */}
+					
+					{/* Center: Phantom Prompt Trigger */}
+					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+						<button
+							onClick={() => setShowCommandPalette(true)}
+							className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/10 hover:shadow-[0_4px_20px_rgba(255,255,255,0.05)] transition-all duration-300 group cursor-pointer"
+							style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+						>
+							<Search className="w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors" />
+							<span className="text-[12px] font-medium text-white/30 group-hover:text-white/60 tracking-wide transition-colors">Ask AI or search commands...</span>
+							<kbd className="ml-4 text-[10px] font-mono font-semibold text-white/40 bg-white/[0.04] px-2 py-1 rounded border border-white/5 shadow-inner">⌘K</kbd>
+						</button>
+					</div>
+	
+
 					{/* Right: Actions + Export */}
-					<div className="flex items-center gap-2 ml-auto" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+					<div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
 						<LanguageSwitcher />
 
 						<Tooltip>
