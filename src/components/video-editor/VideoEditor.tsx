@@ -38,6 +38,7 @@ import { matchesShortcut } from "@/lib/shortcuts";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { CommandPalette } from "./CommandPalette";
+import { CreativeWorkspace, type WorkspaceNote, type WorkspacePanel } from "./CreativeWorkspace";
 import { ExportDialog } from "./ExportDialog";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import PlaybackControls from "./PlaybackControls";
@@ -179,6 +180,8 @@ export default function VideoEditor() {
 	const [enhancedAudioUrl, setEnhancedAudioUrl] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 	const [isMouseMoving, setIsMouseMoving] = useState(true);
+	const [activeWorkspacePanel, setActiveWorkspacePanel] = useState<WorkspacePanel | null>(null);
+	const [workspaceNotes, setWorkspaceNotes] = useState<WorkspaceNote[]>([]);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -2325,7 +2328,18 @@ export default function VideoEditor() {
 
 	return (
 		<TooltipProvider delayDuration={300}>
-			<div className="flex flex-col h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans">
+			<div className="flex h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans">
+				<CreativeWorkspace
+					activePanel={activeWorkspacePanel}
+					onPanelChange={setActiveWorkspacePanel}
+					cuttingRoomFloor={cuttingRoomFloor}
+					onRestoreFromFloor={handleRestoreFromFloor}
+					historyPastRef={historyPastRef}
+					notes={workspaceNotes}
+					onNotesChange={setWorkspaceNotes}
+					currentTime={currentTime}
+				/>
+				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}
 				<div className="absolute top-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-[#E0000F] opacity-[0.05] blur-[150px] pointer-events-none mix-blend-screen z-0" />
 				<div className="absolute bottom-[-15%] left-[-10%] w-[35vw] h-[35vw] rounded-full bg-[#E0000F] opacity-[0.03] blur-[120px] pointer-events-none mix-blend-screen z-0" />
@@ -2857,6 +2871,7 @@ export default function VideoEditor() {
 				/>
 
 				<Toaster theme="dark" className="pointer-events-auto" />
+				</div>
 			</div>
 		</TooltipProvider>
 	);

@@ -1,0 +1,195 @@
+<h2>Dock Panels — What Each Workspace Looks Like</h2>
+<p class="subtitle">When you click an icon in the left dock, a panel slides out. Here's each one. Multi-select the ones you want to build.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="clips-panel" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">1</div>
+    <div class="content">
+      <h3>Clip Library</h3>
+      <div style="background:#0a0a0c;border-radius:10px;padding:14px;margin-top:8px;display:flex;gap:8px;">
+        <!-- Dock icon -->
+        <div style="width:28px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="width:24px;height:24px;border-radius:6px;background:rgba(224,0,15,0.1);border:1px solid rgba(224,0,15,0.2);display:flex;align-items:center;justify-content:center;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E0000F" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+          </div>
+        </div>
+        <!-- Panel -->
+        <div style="flex:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:10px;">
+          <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">CLIP LIBRARY</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <div style="width:56px;height:36px;background:rgba(224,0,15,0.05);border:1px solid rgba(224,0,15,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:6px;color:rgba(224,0,15,0.4);">0:04-0:08</span>
+            </div>
+            <div style="width:56px;height:36px;background:rgba(224,0,15,0.05);border:1px solid rgba(224,0,15,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:6px;color:rgba(224,0,15,0.4);">0:12-0:15</span>
+            </div>
+            <div style="width:56px;height:36px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.06);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:8px;color:rgba(255,255,255,0.1);">+</span>
+            </div>
+          </div>
+          <div style="font-size:7px;color:rgba(255,255,255,0.1);margin-top:6px;">Drag clips up to timeline to restore</div>
+        </div>
+      </div>
+      <p style="margin-top:6px;">All cut clips + imported media. Thumbnail cards with timestamps. Drag up to timeline to restore/insert. "+" to import B-roll.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="history-panel" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">2</div>
+    <div class="content">
+      <h3>Version History</h3>
+      <div style="background:#0a0a0c;border-radius:10px;padding:14px;margin-top:8px;">
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">HISTORY</div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;background:rgba(224,0,15,0.04);border:1px solid rgba(224,0,15,0.1);">
+            <div style="width:4px;height:4px;border-radius:50%;background:#E0000F;"></div>
+            <span style="font-size:8px;color:rgba(255,255,255,0.5);flex:1;">Current state</span>
+            <span style="font-size:7px;color:rgba(255,255,255,0.1);font-family:monospace;">now</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;">
+            <div style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.1);"></div>
+            <span style="font-size:8px;color:rgba(255,255,255,0.25);flex:1;">Added zoom at 0:04</span>
+            <span style="font-size:7px;color:rgba(255,255,255,0.08);font-family:monospace;">2m ago</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;">
+            <div style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.1);"></div>
+            <span style="font-size:8px;color:rgba(255,255,255,0.25);flex:1;">Changed background</span>
+            <span style="font-size:7px;color:rgba(255,255,255,0.08);font-family:monospace;">5m ago</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;">
+            <div style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.1);"></div>
+            <span style="font-size:8px;color:rgba(255,255,255,0.25);flex:1;">Opened project</span>
+            <span style="font-size:7px;color:rgba(255,255,255,0.08);font-family:monospace;">8m ago</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:6px;">Every undo state as a row. Click any to preview that version. Current state highlighted in red. Like git log but for your edit.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="ai-panel" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">3</div>
+    <div class="content">
+      <h3>AI Suggestions</h3>
+      <div style="background:#0a0a0c;border-radius:10px;padding:14px;margin-top:8px;">
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">AI SUGGESTIONS</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;background:rgba(255,165,0,0.04);border:1px solid rgba(255,165,0,0.1);">
+            <div style="width:16px;height:16px;border-radius:4px;background:rgba(255,165,0,0.1);display:flex;align-items:center;justify-content:center;">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,165,0,0.6)" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:8px;color:rgba(255,255,255,0.4);">Remove silence</div>
+              <div style="font-size:7px;color:rgba(255,255,255,0.12);font-family:monospace;">0:45 — 0:52</div>
+            </div>
+            <div style="display:flex;gap:2px;">
+              <div style="width:18px;height:18px;border-radius:4px;background:rgba(34,197,94,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                <span style="font-size:8px;color:rgba(34,197,94,0.6);">✓</span>
+              </div>
+              <div style="width:18px;height:18px;border-radius:4px;background:rgba(239,68,68,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                <span style="font-size:8px;color:rgba(239,68,68,0.6);">✕</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;background:rgba(255,165,0,0.04);border:1px solid rgba(255,165,0,0.1);">
+            <div style="width:16px;height:16px;border-radius:4px;background:rgba(255,165,0,0.1);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:7px;color:rgba(255,165,0,0.5);">✦</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:8px;color:rgba(255,255,255,0.4);">Best moment detected</div>
+              <div style="font-size:7px;color:rgba(255,255,255,0.12);font-family:monospace;">1:23</div>
+            </div>
+            <div style="width:18px;height:18px;border-radius:4px;background:rgba(59,130,246,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              <span style="font-size:7px;color:rgba(59,130,246,0.5);">→</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:6px;">AI-detected silences, filler words, best moments. Accept (✓) to auto-trim, dismiss (✕), or jump to (→). Powered by Whisper.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="assets-panel" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">4</div>
+    <div class="content">
+      <h3>Asset Library</h3>
+      <div style="background:#0a0a0c;border-radius:10px;padding:14px;margin-top:8px;">
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ASSETS</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+          <div style="aspect-ratio:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;">🔔</span>
+          </div>
+          <div style="aspect-ratio:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;">👆</span>
+          </div>
+          <div style="aspect-ratio:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;">⭐</span>
+          </div>
+          <div style="aspect-ratio:1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;">🎵</span>
+          </div>
+        </div>
+        <div style="font-size:7px;color:rgba(255,255,255,0.1);margin-top:6px;">Drag onto timeline to insert</div>
+      </div>
+      <p style="margin-top:6px;">Stickers, sound effects, transitions, overlays. Grid of assets you can drag onto the timeline. Search + categories.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="scratch-panel" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">5</div>
+    <div class="content">
+      <h3>Scratch Pad</h3>
+      <div style="background:#0a0a0c;border-radius:10px;padding:14px;margin-top:8px;">
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">SCRATCH PAD</div>
+        <div style="display:flex;gap:4px;">
+          <div style="width:60px;height:40px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(59,130,246,0.4);">Parked clip</span>
+          </div>
+          <div style="width:60px;height:40px;background:rgba(191,90,242,0.05);border:1px solid rgba(191,90,242,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(191,90,242,0.4);">Alt take</span>
+          </div>
+          <div style="flex:1;height:40px;background:rgba(255,255,255,0.01);border:1px dashed rgba(255,255,255,0.04);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:6px;color:rgba(255,255,255,0.06);">Drop clips here</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:6px;">Temporary parking lot for clips. Drag from timeline to park, drag back when ready. Visual clipboard for rearranging edits.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="notes-panel" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">6</div>
+    <div class="content">
+      <h3>Notes & Comments</h3>
+      <div style="background:#0a0a0c;border-radius:10px;padding:14px;margin-top:8px;">
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.15);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">NOTES</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="padding:6px 8px;border-radius:6px;background:rgba(34,197,94,0.04);border-left:2px solid rgba(34,197,94,0.3);">
+            <div style="font-size:8px;color:rgba(255,255,255,0.4);">Needs better transition here</div>
+            <div style="font-size:7px;color:rgba(255,255,255,0.1);font-family:monospace;margin-top:2px;">@ 0:15 · you</div>
+          </div>
+          <div style="padding:6px 8px;border-radius:6px;background:rgba(59,130,246,0.04);border-left:2px solid rgba(59,130,246,0.3);">
+            <div style="font-size:8px;color:rgba(255,255,255,0.4);">Love this section!</div>
+            <div style="font-size:7px;color:rgba(255,255,255,0.1);font-family:monospace;margin-top:2px;">@ 0:45 · reviewer</div>
+          </div>
+        </div>
+        <div style="margin-top:6px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);">
+          <span style="font-size:7px;color:rgba(255,255,255,0.1);">Add note at current time...</span>
+        </div>
+      </div>
+      <p style="margin-top:6px;">Timestamped notes and review comments. Click to jump to that moment. Color-coded by author. Add notes at current playhead.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top:20px;">
+  <div class="option" data-choice="ship-all" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#E0000F;color:#fff;">✓</div>
+    <div class="content">
+      <h3>Build all selected panels</h3>
+      <p>Lock it in. Ship the icon dock + selected panels.</p>
+    </div>
+  </div>
+</div>
