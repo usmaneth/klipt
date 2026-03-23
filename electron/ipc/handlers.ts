@@ -23,7 +23,6 @@ import { translateText } from "../../src/lib/ai/translationService";
 import {
 	downloadVoiceCloneModel,
 	extractVoiceReference,
-	generateClonedSpeech,
 	getVoiceCloneModelStatus,
 } from "../ai/voiceCloneEngine";
 import { RECORDINGS_DIR } from "../main";
@@ -3931,106 +3930,45 @@ export function registerIpcHandlers(
 
 				sendProgress("generating", 55, "Generating dubbed audio...");
 
-				// Phase 4: Two-stage voice cloning pipeline
-				// Stage 1: Generate TTS audio via macOS `say` in target language
-				// Stage 2: Voice-convert TTS output to sound like the user
-				const voiceCloneStatus = await getVoiceCloneModelStatus();
-				if (!voiceCloneStatus.installed) {
+				// Phase 4: Voice cloning via official Chatterbox Python package
+				const { isChatterboxInstalled, generateClonedSpeechPython } = await import("../ai/voiceClonePython");
+
+				const pyInstalled = await isChatterboxInstalled();
+				if (!pyInstalled) {
 					return {
 						success: false,
-						error: "Voice clone model not installed. Download the voice clone model first (Settings → Voice Clone).",
+						error: "Chatterbox not installed. Run: pip3 install chatterbox-tts",
 					};
 				}
 
 				const dubbedAudioPath = path.join(
 					os.tmpdir(),
-					`klipt-dubbed-${targetLanguage}-${Date.now()}.mp3`,
+					`klipt-dubbed-${targetLanguage}-${Date.now()}.wav`,
 				);
 
-				sendProgress("generating", 56, "Generating TTS audio...");
+				sendProgress("generating", 56, "Extracting voice reference...");
 
-				// Stage 1: Generate TTS audio via macOS `say`
-				const sayVoices: Record<string, string> = {
-					es: "Paulina", fr: "Thomas", de: "Anna", pt: "Luciana",
-					ja: "Kyoko", ko: "Yuna", zh: "Ting-Ting", it: "Alice",
-					ru: "Milena", ar: "Maged", hi: "Lekha", en: "Samantha",
-				};
-				const sayVoice = sayVoices[targetLanguage] ?? "Samantha";
-				const ttsAiffPath = path.join(os.tmpdir(), `klipt-tts-${Date.now()}.aiff`);
-				const ttsWavPath = path.join(os.tmpdir(), `klipt-tts-${Date.now()}.wav`);
-
-				// Generate speech via macOS `say`
-				await new Promise<void>((resolve, reject) => {
-					const proc = spawn(
-						"say",
-						["-v", sayVoice, "-o", ttsAiffPath, translatedText],
-						{ stdio: "pipe" },
-					);
-					proc.on("close", (code) => {
-						if (code === 0) resolve();
-						else reject(new Error(`macOS say failed (code ${code})`));
-					});
-					proc.on("error", reject);
-				});
-
-				// Convert AIFF → 24kHz mono WAV via ffmpeg
-				await new Promise<void>((resolve, reject) => {
-					const proc = spawn(
-						ffmpegPath,
-						["-i", ttsAiffPath, "-ar", "24000", "-ac", "1", "-f", "wav", "-y", ttsWavPath],
-						{ stdio: "pipe" },
-					);
-					proc.on("close", (code) => {
-						if (code === 0) resolve();
-						else reject(new Error(`ffmpeg AIFF->WAV conversion failed (code ${code})`));
-					});
-					proc.on("error", reject);
-				});
-
-				// Clean up AIFF
-				try { await fs.unlink(ttsAiffPath); } catch {}
-
-				sendProgress("generating", 58, "Cloning your voice...");
-
-				// Stage 2: Extract voice reference + voice-convert
+				// Extract voice reference from original video
 				const refAudioPath = await extractVoiceReference(videoPath, ffmpegPath);
 
-				const clonedWavPath = path.join(
-					os.tmpdir(),
-					`klipt-vc-raw-${Date.now()}.wav`,
-				);
+				sendProgress("generating", 60, "Cloning your voice (this may take a minute)...");
 
-				await generateClonedSpeech({
+				// Generate cloned speech directly from translated text + voice reference
+				// The Python Chatterbox package handles EVERYTHING: text processing, model loading, inference
+				await generateClonedSpeechPython({
 					referenceAudioPath: refAudioPath,
-					sourceAudioPath: ttsWavPath,
-					outputPath: clonedWavPath,
-					ffmpegPath,
+					text: translatedText,
+					outputPath: dubbedAudioPath,
 					onProgress: (fraction) => {
-						const percent = 58 + Math.round(fraction * 25);
+						const percent = 60 + Math.round(fraction * 25);
 						sendProgress("generating", percent, "Cloning your voice...");
 					},
 				});
 
-				// Convert WAV → MP3
-				await new Promise<void>((resolve, reject) => {
-					const proc = spawn(
-						ffmpegPath,
-						["-i", clonedWavPath, "-ar", "48000", "-y", dubbedAudioPath],
-						{ stdio: "pipe" },
-					);
-					proc.on("close", (code) => {
-						if (code === 0) resolve();
-						else reject(new Error(`ffmpeg WAV->MP3 conversion failed (code ${code})`));
-					});
-					proc.on("error", reject);
-				});
-
 				// Clean up temp files
 				try { await fs.unlink(refAudioPath); } catch {}
-				try { await fs.unlink(clonedWavPath); } catch {}
-				try { await fs.unlink(ttsWavPath); } catch {}
 
-				console.log("[dub-video] Voice clone succeeded");
+				console.log("[dub-video] Voice clone succeeded via Python");
 
 				sendProgress("syncing", 85, "Finalizing dubbed audio...");
 
