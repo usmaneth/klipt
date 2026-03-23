@@ -3991,10 +3991,9 @@ export function registerIpcHandlers(
 						ttsSucceeded = true;
 						console.log("[dub-video] Voice clone succeeded");
 					} catch (vcErr) {
-						console.warn(
-							"[dub-video] Voice clone failed, falling back to edge-tts:",
-							vcErr instanceof Error ? vcErr.message : String(vcErr),
-						);
+						const vcMsg = vcErr instanceof Error ? vcErr.stack ?? vcErr.message : String(vcErr);
+						console.error("[dub-video] Voice clone FAILED:", vcMsg);
+						sendProgress("generating", 58, `Voice clone error: ${vcErr instanceof Error ? vcErr.message : "unknown"}. Falling back...`);
 					}
 				}
 
