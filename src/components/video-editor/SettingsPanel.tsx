@@ -647,6 +647,7 @@ export function SettingsPanel({
 					})}
 				</div>
 			</div>
+		</div>
 
 			{/* Tab content area */}
 			<ScrollArea className="flex-1">
