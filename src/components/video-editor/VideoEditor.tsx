@@ -2917,8 +2917,16 @@ export default function VideoEditor() {
 
 					{/* Right panel: Settings */}
 					<Panel defaultSize={25} minSize={20} className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-x-8 blur-md pointer-events-none" : "opacity-100 translate-x-0 blur-0"}`}>
-						<div className="h-full bg-white/[0.02] backdrop-blur-[60px] border border-white/[0.05] rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden flex flex-col relative transition-all hover:border-white/[0.1] hover:shadow-[0_20px_50px_rgba(0,0,0,0.6)] duration-500">
-							<div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
+						<div 
+							className="h-full rounded-[24px] overflow-hidden flex flex-col relative transition-all duration-500"
+							style={{
+								background: "rgba(18,18,20,0.85)",
+								backdropFilter: "blur(40px)",
+								WebkitBackdropFilter: "blur(40px)",
+								border: "1px solid rgba(255,255,255,0.08)",
+								boxShadow: "0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
+							}}
+						>
 							<SettingsPanel
 										selected={wallpaper}
 										onWallpaperChange={setWallpaper}

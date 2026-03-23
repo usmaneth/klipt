@@ -614,13 +614,14 @@ export function SettingsPanel({
 			className="flex-[2] min-w-0 flex flex-col h-full overflow-hidden relative bg-transparent"
 		>
 			{/* Top tab navigation — floating glow pills */}
-			<div className="flex-shrink-0 px-4 pt-4 pb-0">
-				<div className="flex items-center justify-between mb-5">
-					<span className="text-[24px] font-semibold tracking-tight text-white/90">Settings</span>
+			<div className="flex-shrink-0">
+				<div className="flex items-center justify-between px-6 py-5 flex-shrink-0 bg-white/[0.02] border-b border-white/[0.04]">
+					<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">Settings</span>
 					<KeyboardShortcutsHelp />
 				</div>
 
-				<div className="flex items-center p-1 bg-black/30 rounded-2xl border border-white/[0.04] shadow-inner mb-6 relative">
+				<div className="px-6 pt-5 pb-1">
+					<div className="flex items-center p-1 bg-black/40 rounded-xl shadow-inner border border-white/[0.05] mb-2 relative">
 					{(["style", "motion", "audio", "export"] as const).map((tab) => {
 						const isActive = activeTab === tab;
 						return (
@@ -628,18 +629,16 @@ export function SettingsPanel({
 								key={tab}
 								onClick={() => setActiveTab(tab)}
 								className={cn(
-									"flex-1 flex items-center justify-center py-2.5 rounded-[12px] transition-all duration-400 cursor-pointer relative",
-									isActive ? "text-white" : "text-white/40 hover:text-white/70"
+									"flex-1 flex items-center justify-center py-1.5 rounded-lg transition-all duration-300 cursor-pointer",
+									isActive
+										? "bg-white/10 text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] scale-100 border border-white/[0.05]"
+										: "bg-transparent text-white/30 hover:text-white/60 scale-95"
 								)}
 							>
-								{isActive && (
-									<div
-										className="absolute inset-0 bg-white/10 border border-white/10 rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-									/>
-								)}
+								
 								<span className="relative z-10 flex items-center gap-2">
 									{TAB_ICONS[tab]}
-									<span className="text-[11px] uppercase tracking-widest font-bold hidden sm:block">
+									<span className="text-[10px] uppercase tracking-[0.1em] font-bold hidden sm:block">
 										{tab}
 									</span>
 								</span>
@@ -651,7 +650,7 @@ export function SettingsPanel({
 
 			{/* Tab content area */}
 			<ScrollArea className="flex-1">
-				<div className="px-4 py-4">
+				<div className="px-6 py-4">
 					<AnimatePresence mode="wait">
 						{/* ===== STYLE TAB ===== */}
 						{activeTab === "style" && (
