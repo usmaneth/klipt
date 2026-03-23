@@ -32,3 +32,9 @@ release/**
 # Native capture build artifacts
 electron/native/wgc-capture/build/
 electron/native/cursor-monitor/build/
+
+# Whisper runtime (built from source via scripts/build-whisper-runtime.mjs)
+electron/native/bin/*/klipt-whisper-cli
+electron/native/bin/*/libwhisper*
+electron/native/bin/*/libggml*
+electron/native/bin/*/whisper-runtime.json

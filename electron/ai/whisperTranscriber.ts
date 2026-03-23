@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
+import { app } from "electron";
 
 export interface TranscriptionWord {
 	text: string;
@@ -15,13 +17,40 @@ export interface TranscriptionResult {
 }
 
 /**
- * Find the whisper-cli binary. Checks:
- * 1. Bundled binary in electron/native/bin/
+ * Find the whisper-cli binary. Checks (in order):
+ * 1. Bundled klipt-whisper-cli next to the app (dev or packaged)
  * 2. Homebrew installation
  * 3. System PATH
  */
 async function findWhisperCli(): Promise<string> {
+	const arch = process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+	const binaryName = "klipt-whisper-cli";
+
+	// Build candidate paths for the bundled binary
+	const bundledCandidates: string[] = [];
+
+	if (app.isPackaged) {
+		// In packaged app, asarUnpacked resources live under Resources/
+		bundledCandidates.push(
+			path.join(
+				app.getAppPath().replace("app.asar", "app.asar.unpacked"),
+				"electron",
+				"native",
+				"bin",
+				arch,
+				binaryName,
+			),
+		);
+	} else {
+		// Development: relative to the project root (app path points to project root)
+		bundledCandidates.push(
+			path.join(app.getAppPath(), "electron", "native", "bin", arch, binaryName),
+		);
+	}
+
 	const candidates = [
+		// Bundled binary (first priority)
+		...bundledCandidates,
 		// Homebrew (Apple Silicon)
 		"/opt/homebrew/bin/whisper-cli",
 		// Homebrew (Intel)
