@@ -30,6 +30,21 @@ const helpers = [
 		source: "NativeCursorMonitor.swift",
 		output: "klipt-native-cursor-monitor",
 	},
+	{
+		source: "AudioProcessor.swift",
+		output: "klipt-audio",
+		extraFlags: ["-framework", "AVFoundation", "-framework", "Accelerate", "-framework", "CoreAudio"],
+	},
+	{
+		source: "VideoToolboxEncoder.swift",
+		output: "klipt-vtenc",
+		extraFlags: [
+			"-framework", "VideoToolbox",
+			"-framework", "CoreMedia",
+			"-framework", "CoreVideo",
+			"-framework", "AVFoundation",
+		],
+	},
 ];
 
 const swiftcCheck = spawnSync("swiftc", ["--version"], { encoding: "utf8" });
@@ -44,12 +59,14 @@ for (const helper of helpers) {
 	const sourcePath = path.join(nativeRoot, helper.source);
 	const outputPath = path.join(outputDir, helper.output);
 
+	const extraFlags = helper.extraFlags ?? [];
 	const result = spawnSync(
 		"swiftc",
 		[
 			"-O",
 			"-target",
 			process.arch === "arm64" ? "arm64-apple-macos14.0" : "x86_64-apple-macos14.0",
+			...extraFlags,
 			sourcePath,
 			"-o",
 			outputPath,

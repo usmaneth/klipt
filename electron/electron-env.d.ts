@@ -247,6 +247,19 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		nativeDenoiseAudio: (inputPath: string) => Promise<{
+			success: boolean;
+			path?: string;
+			error?: string;
+		}>;
+		nativeDetectSilence: (
+			inputPath: string,
+			options?: { threshold?: number; minDuration?: number },
+		) => Promise<{
+			success: boolean;
+			regions: Array<{ start: number; end: number }>;
+			error?: string;
+		}>;
 	};
 }
 

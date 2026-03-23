@@ -352,6 +352,23 @@ function getNativeCursorMonitorBinaryPath() {
 	return path.join(app.getPath("userData"), "native-tools", "klipt-native-cursor-monitor");
 }
 
+function getAudioProcessorSourcePath() {
+	return resolveUnpackedAppPath("electron", "native", "AudioProcessor.swift");
+}
+
+function getAudioProcessorBinaryPath() {
+	return path.join(app.getPath("userData"), "native-tools", "klipt-audio");
+}
+
+async function ensureAudioProcessorBinary() {
+	return ensureSwiftHelperBinary(
+		getAudioProcessorSourcePath(),
+		getAudioProcessorBinaryPath(),
+		"native audio processor",
+		"klipt-audio",
+	);
+}
+
 function getNativeWindowListSourcePath() {
 	return resolveUnpackedAppPath("electron", "native", "ScreenCaptureKitWindowList.swift");
 }
@@ -3674,4 +3691,111 @@ export function registerIpcHandlers(
 			return { success: false, error: message };
 		}
 	});
+
+	// ── Native audio processing handlers ──
+
+	ipcMain.handle("native-denoise-audio", async (_event, inputPath: string) => {
+		if (process.platform !== "darwin") {
+			return { success: false, error: "Native audio processing is only available on macOS" };
+		}
+
+		try {
+			const binaryPath = await ensureAudioProcessorBinary();
+			const outputPath = path.join(
+				os.tmpdir(),
+				`klipt-denoised-${Date.now()}.wav`,
+			);
+
+			// Resolve file:// URLs
+			let resolvedInput = inputPath;
+			if (resolvedInput.startsWith("file://")) {
+				resolvedInput = decodeURIComponent(resolvedInput.replace(/^file:\/\//, ""));
+			}
+
+			const { stdout, stderr } = await execFileAsync(binaryPath, [
+				"denoise",
+				"-i",
+				resolvedInput,
+				"-o",
+				outputPath,
+			], { timeout: 120000 });
+
+			if (stderr) {
+				console.warn("[native-denoise-audio] stderr:", stderr);
+			}
+
+			let result: Record<string, unknown> = {};
+			try {
+				result = JSON.parse(stdout);
+			} catch {
+				// stdout may not be valid JSON if there are warnings
+			}
+
+			return {
+				success: true,
+				path: outputPath,
+				...result,
+			};
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[native-denoise-audio] Failed:", message);
+			return { success: false, error: message };
+		}
+	});
+
+	ipcMain.handle(
+		"native-detect-silence",
+		async (
+			_event,
+			inputPath: string,
+			options?: { threshold?: number; minDuration?: number },
+		) => {
+			if (process.platform !== "darwin") {
+				return {
+					success: false,
+					error: "Native audio processing is only available on macOS",
+					regions: [],
+				};
+			}
+
+			try {
+				const binaryPath = await ensureAudioProcessorBinary();
+				const threshold = options?.threshold ?? -40;
+				const minDuration = options?.minDuration ?? 0.5;
+
+				// Resolve file:// URLs
+				let resolvedInput = inputPath;
+				if (resolvedInput.startsWith("file://")) {
+					resolvedInput = decodeURIComponent(resolvedInput.replace(/^file:\/\//, ""));
+				}
+
+				const { stdout, stderr } = await execFileAsync(binaryPath, [
+					"silence",
+					"-i",
+					resolvedInput,
+					"-threshold",
+					String(threshold),
+					"-min-duration",
+					String(minDuration),
+				], { timeout: 60000 });
+
+				if (stderr) {
+					console.warn("[native-detect-silence] stderr:", stderr);
+				}
+
+				let regions: Array<{ start: number; end: number }> = [];
+				try {
+					regions = JSON.parse(stdout);
+				} catch {
+					console.error("[native-detect-silence] Failed to parse JSON output");
+				}
+
+				return { success: true, regions };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[native-detect-silence] Failed:", message);
+				return { success: false, error: message, regions: [] };
+			}
+		},
+	);
 }

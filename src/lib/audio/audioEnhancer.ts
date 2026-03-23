@@ -166,11 +166,58 @@ function writeString(view: DataView, offset: number, str: string): void {
 }
 
 /**
- * High-level API: enhance audio from a video URL.
- *
- * Returns a WAV Blob with denoised audio at 48 kHz mono.
+ * Try native macOS audio denoising via the klipt-audio binary.
+ * Returns a WAV Blob if the native binary is available, or null to signal fallback.
  */
-export async function enhanceAudio(
+async function tryNativeDenoise(
+	videoUrl: string,
+	onProgress?: (percent: number) => void,
+): Promise<Blob | null> {
+	if (!window.electronAPI?.nativeDenoiseAudio) {
+		return null;
+	}
+
+	try {
+		// The native binary needs a file path. Extract it from the URL.
+		let inputPath = videoUrl;
+		if (videoUrl.startsWith("file://")) {
+			inputPath = decodeURIComponent(videoUrl.replace(/^file:\/\//, ""));
+		} else if (videoUrl.startsWith("blob:")) {
+			// Cannot pass blob URLs to native binary — need a real file path
+			return null;
+		}
+
+		onProgress?.(10);
+		const result = await window.electronAPI.nativeDenoiseAudio(inputPath);
+		onProgress?.(80);
+
+		if (!result.success || !result.path) {
+			console.warn("[audioEnhancer] Native denoise failed:", result.error);
+			return null;
+		}
+
+		// Read the output WAV file back as a Blob
+		const fileResult = await window.electronAPI.readLocalFile(result.path);
+		onProgress?.(90);
+
+		if (!fileResult.success || !fileResult.data) {
+			console.warn("[audioEnhancer] Failed to read native output file");
+			return null;
+		}
+
+		const blob = new Blob([new Uint8Array(fileResult.data)], { type: "audio/wav" });
+		onProgress?.(100);
+		return blob;
+	} catch (err) {
+		console.warn("[audioEnhancer] Native denoise unavailable, will fall back:", err);
+		return null;
+	}
+}
+
+/**
+ * WASM-based audio enhancement using RNNoise (fallback path).
+ */
+async function wasmDenoise(
 	videoUrl: string,
 	onProgress?: (percent: number) => void,
 ): Promise<Blob> {
@@ -203,4 +250,31 @@ export async function enhanceAudio(
 	onProgress?.(100);
 
 	return wavBlob;
+}
+
+/**
+ * High-level API: enhance audio from a video URL.
+ *
+ * Tries native macOS denoising first (klipt-audio binary using Accelerate framework).
+ * Falls back to WASM-based RNNoise if native is unavailable (e.g., binary not built,
+ * blob: URL input, or non-macOS platform).
+ *
+ * Returns a WAV Blob with denoised audio at 48 kHz mono.
+ */
+export async function enhanceAudio(
+	videoUrl: string,
+	onProgress?: (percent: number) => void,
+): Promise<Blob> {
+	onProgress?.(0);
+
+	// Try native binary first
+	const nativeResult = await tryNativeDenoise(videoUrl, onProgress);
+	if (nativeResult) {
+		console.log("[audioEnhancer] Used native denoiser");
+		return nativeResult;
+	}
+
+	// Fall back to WASM
+	console.log("[audioEnhancer] Falling back to WASM denoiser");
+	return wasmDenoise(videoUrl, onProgress);
 }

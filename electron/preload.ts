@@ -278,4 +278,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openSpecificProject: (filePath: string) => {
 		return ipcRenderer.invoke("open-specific-project", filePath);
 	},
+	nativeDenoiseAudio: (inputPath: string) => {
+		return ipcRenderer.invoke("native-denoise-audio", inputPath);
+	},
+	nativeDetectSilence: (
+		inputPath: string,
+		options?: { threshold?: number; minDuration?: number },
+	) => {
+		return ipcRenderer.invoke("native-detect-silence", inputPath, options);
+	},
 });
