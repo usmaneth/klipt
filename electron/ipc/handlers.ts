@@ -3,6 +3,7 @@ import { execFile, spawn, spawnSync } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
 
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -3618,7 +3619,7 @@ export function registerIpcHandlers(
 							let downloadedBytes = 0;
 
 							const tempPath = `${modelPath}.download`;
-							const fileStream = require("node:fs").createWriteStream(
+							const fileStream = fsSync.createWriteStream(
 								tempPath,
 							) as import("node:fs").WriteStream;
 
@@ -3634,7 +3635,7 @@ export function registerIpcHandlers(
 							fileStream.on("finish", () => {
 								fileStream.close(() => {
 									// Rename temp to final
-									require("node:fs").renameSync(tempPath, modelPath);
+									fsSync.renameSync(tempPath, modelPath);
 									resolve();
 								});
 							});
@@ -3642,7 +3643,7 @@ export function registerIpcHandlers(
 							fileStream.on("error", (err: Error) => {
 								// Clean up partial download
 								try {
-									require("node:fs").unlinkSync(tempPath);
+									fsSync.unlinkSync(tempPath);
 								} catch {
 									// Ignore
 								}
