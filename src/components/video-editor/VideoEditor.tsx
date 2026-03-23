@@ -2553,6 +2553,7 @@ export default function VideoEditor() {
 					scratchPadClips={scratchPadClips}
 					onScratchPadClipsChange={setScratchPadClips}
 					onImportVideo={handleImportVideo}
+					hasVideo={!!videoPath}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}
@@ -2902,6 +2903,7 @@ export default function VideoEditor() {
 								onSelectAnnotation={handleSelectAnnotation}
 								aspectRatio={aspectRatio}
 								onAspectRatioChange={setAspectRatio}
+								workspaceNotes={workspaceNotes}
 							/>
 						</div>
 							</Panel>

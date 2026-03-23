@@ -43,6 +43,7 @@ import { formatShortcut } from "@/utils/platformUtils";
 import { loadEditorPreferences, saveEditorPreferences } from "../editorPreferences";
 import { toFileUrl } from "../projectPersistence";
 import { TutorialHelp } from "../TutorialHelp";
+import type { WorkspaceNote } from "../CreativeWorkspace";
 import type {
 	AnnotationRegion,
 	AudioRegion,
@@ -107,6 +108,7 @@ interface TimelineEditorProps {
 	onSelectAudio?: (id: string | null) => void;
 	aspectRatio: AspectRatio;
 	onAspectRatioChange: (aspectRatio: AspectRatio) => void;
+	workspaceNotes?: WorkspaceNote[];
 }
 
 interface TimelineScaleConfig {
@@ -663,6 +665,38 @@ function Timeline({
 }
 
 
+function NoteMarkers({ notes }: { notes: WorkspaceNote[] }) {
+	const { range, valueToPixels, sidebarWidth, direction } = useTimelineContext();
+	const sideProperty = direction === "rtl" ? "right" : "left";
+
+	if (!notes || notes.length === 0) return null;
+
+	return (
+		<div
+			className="absolute top-0 bottom-0 z-40 pointer-events-none"
+			style={{ [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px` }}
+		>
+			{notes.map((note) => {
+				const offset = valueToPixels(note.timeMs - range.start);
+				if (offset < -20 || offset > 5000) return null;
+				return (
+					<div
+						key={note.id}
+						className="absolute top-0 pointer-events-none"
+						style={{ [sideProperty]: `${offset}px` }}
+						title={note.text}
+					>
+						<div
+							className="w-2 h-2 rounded-full -translate-x-1/2"
+							style={{ backgroundColor: note.color, boxShadow: `0 0 4px ${note.color}80` }}
+						/>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function CuttingRoomFloor({ clips, onRestore }: { clips: TrimRegion[]; onRestore: (id: string) => void }) {
 	const { range, valueToPixels } = useTimelineContext();
 	
@@ -732,6 +766,7 @@ const TimelineEditor = memo(function TimelineEditor({
 	onSelectAudio,
 	aspectRatio,
 	onAspectRatioChange,
+	workspaceNotes,
 }: TimelineEditorProps) {
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
@@ -1719,6 +1754,10 @@ const TimelineEditor = memo(function TimelineEditor({
 					allRegionSpans={allRegionSpans}
 				>
 					{isFloorRevealed && <CuttingRoomFloor clips={cuttingRoomFloor} onRestore={onRestoreFromFloor as any} />}
+
+					{workspaceNotes && workspaceNotes.length > 0 && (
+						<NoteMarkers notes={workspaceNotes} />
+					)}
 
 					<KeyframeMarkers
 						keyframes={keyframes}
