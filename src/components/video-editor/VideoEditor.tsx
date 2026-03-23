@@ -202,6 +202,7 @@ export default function VideoEditor() {
 	const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS);
 	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
 	const [captionTranscriptionProgress, setCaptionTranscriptionProgress] = useState<number | null>(null);
+	const [captionTranscriptionLabel, setCaptionTranscriptionLabel] = useState<string | null>(null);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -1379,7 +1380,51 @@ export default function VideoEditor() {
 
 		setIsTranscribingCaptions(true);
 		setCaptionTranscriptionProgress(0);
+		setCaptionTranscriptionLabel(null);
 
+		// ── Auto-download Whisper model if needed ────────────────────────
+		try {
+			const modelStatus = await window.electronAPI.getWhisperModelStatus();
+			if (!modelStatus.downloaded) {
+				setCaptionTranscriptionLabel("Downloading Whisper model...");
+				setCaptionTranscriptionProgress(0);
+
+				const cleanupDownload = window.electronAPI.onWhisperModelDownloadProgress(
+					(progress: { percent: number }) => {
+						setCaptionTranscriptionProgress(progress.percent);
+					},
+				);
+
+				try {
+					const downloadResult = await window.electronAPI.downloadWhisperModel();
+					if (!downloadResult.success) {
+						toast.error(downloadResult.error ?? "Failed to download Whisper model");
+						setIsTranscribingCaptions(false);
+						setCaptionTranscriptionProgress(null);
+						setCaptionTranscriptionLabel(null);
+						cleanupDownload();
+						return;
+					}
+				} catch (downloadErr) {
+					console.error("[VideoEditor] Whisper model download failed:", downloadErr);
+					toast.error("Failed to download Whisper model");
+					setIsTranscribingCaptions(false);
+					setCaptionTranscriptionProgress(null);
+					setCaptionTranscriptionLabel(null);
+					cleanupDownload();
+					return;
+				}
+
+				cleanupDownload();
+				setCaptionTranscriptionLabel(null);
+				setCaptionTranscriptionProgress(0);
+			}
+		} catch (err) {
+			console.error("[VideoEditor] Failed to check Whisper model status:", err);
+			// Continue anyway — transcribeAudio will fail with a clear error if model is missing
+		}
+
+		// ── Transcribe ───────────────────────────────────────────────────
 		const cleanup = window.electronAPI.onTranscriptionProgress(
 			(progress: { percent: number }) => {
 				setCaptionTranscriptionProgress(progress.percent);
@@ -1425,6 +1470,7 @@ export default function VideoEditor() {
 		} finally {
 			setIsTranscribingCaptions(false);
 			setCaptionTranscriptionProgress(null);
+			setCaptionTranscriptionLabel(null);
 			cleanup();
 		}
 	}, [videoPath]);
@@ -3122,6 +3168,7 @@ export default function VideoEditor() {
 										onGenerateCaptions={handleGenerateCaptions}
 										isTranscribing={isTranscribingCaptions}
 										transcriptionProgress={captionTranscriptionProgress}
+										transcriptionLabel={captionTranscriptionLabel}
 									/>
 						</div>
 					</Panel>

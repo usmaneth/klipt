@@ -2834,10 +2834,13 @@ export function registerIpcHandlers(
 	ipcMain.handle("get-asset-base-path", () => {
 		try {
 			if (app.isPackaged) {
-				const assetPath = path.join(process.resourcesPath, "assets");
+				// In packaged app, static assets from public/ are inside the asar at dist/
+				const assetPath = path.join(app.getAppPath(), "dist");
+				console.log("[get-asset-base-path] packaged path:", assetPath);
 				return pathToFileURL(`${assetPath}${path.sep}`).toString();
 			}
 			const assetPath = path.join(app.getAppPath(), "public");
+			console.log("[get-asset-base-path] dev path:", assetPath);
 			return pathToFileURL(`${assetPath}${path.sep}`).toString();
 		} catch (err) {
 			console.error("Failed to resolve asset base path:", err);

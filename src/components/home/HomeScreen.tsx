@@ -71,7 +71,14 @@ export function HomeScreen() {
 
 	useEffect(() => {
 		window.electronAPI?.getVideoAssetPath("veo-bg.mp4").then((p) => {
-			if (p) setVideoPath(p);
+			if (p) {
+				console.log("[HomeScreen] Resolved veo-bg.mp4 path:", p);
+				setVideoPath(p);
+			} else {
+				console.warn("[HomeScreen] getVideoAssetPath returned null for veo-bg.mp4");
+			}
+		}).catch((err) => {
+			console.error("[HomeScreen] Failed to resolve veo-bg.mp4 path:", err);
 		});
 	}, []);
 
@@ -155,6 +162,7 @@ export function HomeScreen() {
 					Drop your Veo-generated video into public/veo-bg.mp4! 
 					We're using a heavy blur and mix-blend-screen to make it feel like an ambient light source.
 				*/}
+				{videoPath && (
 				<video
 					autoPlay
 					loop
@@ -162,9 +170,9 @@ export function HomeScreen() {
 					playsInline
 					className="absolute inset-0 w-[120%] h-[120%] -left-[10%] -top-[10%] object-cover opacity-[0.8] transition-opacity duration-1000"
 					style={{ filter: "blur(20px)" }}
-					src={videoPath || "/veo-bg.mp4"} 
-					// Placeholder. Replace with your Veo generation! -> src="/veo-bg.mp4"
+					src={videoPath}
 				/>
+				)}
 				
 				{/* A deep radial gradient to ensure the center content remains highly legible */}
 				<div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(10,10,10,0.1)_0%,rgba(10,10,10,0.8)_100%)] pointer-events-none" />

@@ -216,6 +216,7 @@ interface SettingsPanelProps {
 	onGenerateCaptions?: () => void;
 	isTranscribing?: boolean;
 	transcriptionProgress?: number | null;
+	transcriptionLabel?: string | null;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -376,6 +377,7 @@ export function SettingsPanel({
 	onGenerateCaptions,
 	isTranscribing = false,
 	transcriptionProgress,
+	transcriptionLabel,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { t } = useI18n();
@@ -1408,7 +1410,7 @@ export function SettingsPanel({
 													>
 														<Mic className="w-3 h-3" />
 														{isTranscribing
-															? `Transcribing${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`
+															? (transcriptionLabel ?? `Transcribing${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`)
 															: "Generate Captions"}
 													</Button>
 												</div>

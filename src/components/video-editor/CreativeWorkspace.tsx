@@ -151,7 +151,8 @@ const TRANSITIONS = [
 
 const SCRATCH_PAD_COLORS = ["#E0000F", "#FF9500", "#30D158", "#0A84FF", "#BF5AF2", "#FF375F"];
 
-const GIPHY_API_KEY = "dc6zaTOxFJmzC";
+const GIPHY_API_KEY = "GlVGYHkr3WSBnllca54iNt0yFbjz7L65";
+const TENOR_API_KEY = "AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -212,6 +213,7 @@ export function CreativeWorkspace({
 		setGiphyLoading(true);
 		setGiphyError(null);
 		try {
+			// Try Giphy first
 			const endpoint = query.trim()
 				? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20`
 				: `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=20`;
@@ -222,9 +224,35 @@ export function CreativeWorkspace({
 			const json = await res.json();
 			setGiphyResults(json.data ?? []);
 		} catch {
-			setGiphyResults([]);
-			setGiphyError("Failed to load — check internet connection");
-			toast.error("Failed to load Giphy clips — check internet connection");
+			// Fallback to Tenor API
+			try {
+				const tenorQ = query.trim() || "trending";
+				const tenorEndpoint = `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(tenorQ)}&key=${TENOR_API_KEY}&limit=20`;
+				const tenorRes = await fetch(tenorEndpoint);
+				if (!tenorRes.ok) {
+					throw new Error(`Tenor API returned ${tenorRes.status}`);
+				}
+				const tenorJson = await tenorRes.json();
+				// Map Tenor results to GiphyClipResult shape
+				const mapped: GiphyClipResult[] = (tenorJson.results ?? []).map((item: { id: string; title?: string; media_formats?: Record<string, { url?: string; dims?: number[] }> }) => {
+					const gifUrl = item.media_formats?.gif?.url ?? item.media_formats?.tinygif?.url ?? "";
+					const mp4Url = item.media_formats?.mp4?.url ?? item.media_formats?.tinymp4?.url ?? "";
+					const dims = item.media_formats?.gif?.dims ?? item.media_formats?.tinygif?.dims ?? [200, 200];
+					return {
+						id: String(item.id),
+						title: item.title ?? "",
+						images: {
+							fixed_width: { url: gifUrl, mp4: mp4Url || undefined, width: String(dims[0] ?? 200), height: String(dims[1] ?? 200) },
+							original: { url: gifUrl, mp4: mp4Url || undefined, width: String(dims[0] ?? 200), height: String(dims[1] ?? 200) },
+						},
+					};
+				});
+				setGiphyResults(mapped);
+			} catch {
+				setGiphyResults([]);
+				setGiphyError("Giphy unavailable — check internet");
+				toast.error("Giphy unavailable — check internet");
+			}
 		} finally {
 			setGiphyLoading(false);
 		}

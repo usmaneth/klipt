@@ -149,7 +149,12 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 		} catch (err) {
 			console.error("[StudioSound] Enhancement failed:", err);
 			setStatus("idle");
-			toast.error("Audio enhancement failed");
+			const errMsg = err instanceof Error ? err.message : String(err);
+			if (errMsg.includes("rnnoise") || errMsg.includes("wasm") || errMsg.includes("WebAssembly") || errMsg.includes("module")) {
+				toast.error("Audio enhancement not available in this build");
+			} else {
+				toast.error("Audio enhancement failed");
+			}
 		} finally {
 			processingRef.current = false;
 		}
