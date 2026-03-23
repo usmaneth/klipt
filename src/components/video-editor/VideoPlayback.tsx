@@ -823,7 +823,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 			const blurFilter = new BlurFilter();
 			blurFilter.quality = 3;
-			blurFilter.resolution = app.renderer.resolution;
+			if (app.renderer?.resolution != null) {
+				blurFilter.resolution = app.renderer.resolution;
+			}
 			blurFilter.blur = 0;
 			const motionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
 			videoContainer.filters = [blurFilter, motionBlurFilter];

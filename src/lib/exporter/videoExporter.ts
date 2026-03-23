@@ -199,25 +199,28 @@ export class VideoExporter {
 					const timestamp = frameIndex * frameDuration;
 					const sourceTimestampUs = sourceTimestampMs * 1000;
 
-					// Update webcam frame if available
-					if (webcamVideo && webcamState && !webcamRemoved) {
-						const timeSeconds = sourceTimestampMs / 1000;
-						if (timeSeconds > webcamVideo.duration) {
-							this.renderer!.removeWebcam();
-							webcamRemoved = true;
-						} else {
-							await seekVideo(webcamVideo, timeSeconds);
-							await this.renderer!.updateWebcamFrameWithBgRemoval(
-								webcamVideo,
-								webcamState,
-								this.config.width,
-								this.config.height,
-							);
+					try {
+						// Update webcam frame if available
+						if (webcamVideo && webcamState && !webcamRemoved) {
+							const timeSeconds = sourceTimestampMs / 1000;
+							if (timeSeconds > webcamVideo.duration) {
+								this.renderer!.removeWebcam();
+								webcamRemoved = true;
+							} else {
+								await seekVideo(webcamVideo, timeSeconds);
+								await this.renderer!.updateWebcamFrameWithBgRemoval(
+									webcamVideo,
+									webcamState,
+									this.config.width,
+									this.config.height,
+								);
+							}
 						}
-					}
 
-					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
-					videoFrame.close();
+						await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
+					} finally {
+						videoFrame.close();
+					}
 
 					// Render captions on the composite canvas after all other layers
 					if (captionPages.length > 0 && this.config.captionSettings) {

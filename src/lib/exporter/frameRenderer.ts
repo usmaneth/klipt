@@ -1,4 +1,4 @@
-import { Application, BlurFilter, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { Application, BlurFilter, Container, Filter, Graphics, Sprite, Texture } from "pixi.js";
 import { DropShadowFilter } from "pixi-filters/drop-shadow";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import type { WebcamState } from "@/components/video-editor/projectPersistence";
@@ -184,7 +184,9 @@ export class FrameRenderer {
 		// Setup blur filter for video container
 		this.blurFilter = new BlurFilter();
 		this.blurFilter.quality = 5;
-		this.blurFilter.resolution = this.app.renderer.resolution;
+		if (this.app.renderer?.resolution != null) {
+			this.blurFilter.resolution = this.app.renderer.resolution;
+		}
 		this.blurFilter.blur = 0;
 		this.motionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
 		this.videoContainer.filters = [this.blurFilter, this.motionBlurFilter];
@@ -439,11 +441,16 @@ export class FrameRenderer {
 			this.resetMotionBlur();
 		}
 
+		// Only apply filters when the video sprite has a valid texture
+		const textureValid = this.videoSprite?.texture != null && (this.videoSprite.texture as any).valid !== false;
+		const safeBlurFilter = textureValid ? this.blurFilter : null;
+		const safeMotionBlurFilter = textureValid ? this.motionBlurFilter : null;
+
 		// Apply transform once with maximum motion intensity from all ticks
 		applyZoomTransform({
 			cameraContainer: this.cameraContainer,
-			blurFilter: this.blurFilter,
-			motionBlurFilter: this.motionBlurFilter,
+			blurFilter: safeBlurFilter,
+			motionBlurFilter: safeMotionBlurFilter,
 			stageSize: this.layoutCache.stageSize,
 			baseMask: this.layoutCache.maskRect,
 			zoomScale: this.animationState.scale,
@@ -463,8 +470,23 @@ export class FrameRenderer {
 			frameTimeMs: timeMs,
 		});
 
+		// Temporarily remove filters if texture is invalid to avoid _resolution null crash
+		const originalFilters = this.videoContainer.filters as Filter[] | null;
+		if (!textureValid && originalFilters && originalFilters.length > 0) {
+			this.videoContainer.filters = [];
+		}
+
 		// Render the PixiJS stage to its canvas (video only, transparent background)
-		this.app.renderer.render(this.app.stage);
+		try {
+			this.app.renderer.render(this.app.stage);
+		} catch (renderError) {
+			console.warn("[FrameRenderer] render() failed, skipping frame:", renderError);
+		}
+
+		// Restore filters if they were temporarily removed
+		if (!textureValid && originalFilters && originalFilters.length > 0) {
+			this.videoContainer.filters = originalFilters;
+		}
 
 		// Composite with shadows to final output canvas
 		this.compositeWithShadows();

@@ -383,6 +383,7 @@ export function SettingsPanel({
 	const { t } = useI18n();
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
 	const [wallpaperPreviewPaths, setWallpaperPreviewPaths] = useState<string[]>([]);
+	const [wallpaperPreviewsLoading, setWallpaperPreviewsLoading] = useState(true);
 	const [customImages, setCustomImages] = useState<string[]>(
 		initialEditorPreferences.customWallpapers,
 	);
@@ -394,6 +395,7 @@ export function SettingsPanel({
 
 	useEffect(() => {
 		let mounted = true;
+		setWallpaperPreviewsLoading(true);
 		(async () => {
 			try {
 				const resolved = await Promise.all(
@@ -403,7 +405,11 @@ export function SettingsPanel({
 				);
 				if (mounted) setWallpaperPreviewPaths(resolved);
 			} catch {
-				if (mounted) setWallpaperPreviewPaths(WALLPAPER_PATHS);
+				// Do NOT fall back to bare WALLPAPER_PATHS — they resolve to filesystem root in packaged apps.
+				// Leave the array empty so placeholders are shown instead of broken images.
+				if (mounted) setWallpaperPreviewPaths([]);
+			} finally {
+				if (mounted) setWallpaperPreviewsLoading(false);
 			}
 		})();
 		return () => {
@@ -755,22 +761,23 @@ export function SettingsPanel({
 														);
 													})}
 
-													{(wallpaperPreviewPaths.length > 0
-														? wallpaperPreviewPaths
-														: WALLPAPER_PATHS
-													).map((previewPath, index) => {
-														const wallpaper = BUILT_IN_WALLPAPERS[index];
-														const wallpaperValue = WALLPAPER_PATHS[index] ?? previewPath;
+													{BUILT_IN_WALLPAPERS.map((wallpaper, index) => {
+														const previewPath = wallpaperPreviewPaths[index];
+														const wallpaperValue = WALLPAPER_PATHS[index];
+														const hasPreview = !wallpaperPreviewsLoading && !!previewPath;
 														const isSelected = (() => {
 															if (!selected) return false;
-															if (selected === wallpaperValue || selected === previewPath) return true;
+															if (selected === wallpaperValue) return true;
+															if (previewPath && selected === previewPath) return true;
 															try {
 																const clean = (s: string) =>
 																	s.replace(/^file:\/\//, "").replace(/^\//, "");
 																if (clean(selected).endsWith(clean(wallpaperValue))) return true;
 																if (clean(wallpaperValue).endsWith(clean(selected))) return true;
-																if (clean(selected).endsWith(clean(previewPath))) return true;
-																if (clean(previewPath).endsWith(clean(selected))) return true;
+																if (previewPath) {
+																	if (clean(selected).endsWith(clean(previewPath))) return true;
+																	if (clean(previewPath).endsWith(clean(selected))) return true;
+																}
 															} catch {
 																return false;
 															}
@@ -784,14 +791,19 @@ export function SettingsPanel({
 																	isSelected
 																		? "border-white ring-1 ring-white/20"
 																		: "border-white/[0.06] hover:border-white/20 opacity-70 hover:opacity-100",
+																	!hasPreview && "bg-white/[0.06] animate-pulse",
 																)}
 																aria-label={wallpaper?.label ?? `Wallpaper ${index + 1}`}
 																title={wallpaper?.label ?? `Wallpaper ${index + 1}`}
-																style={{
-																	backgroundImage: `url(${previewPath})`,
-																	backgroundSize: "cover",
-																	backgroundPosition: "center",
-																}}
+																style={
+																	hasPreview
+																		? {
+																				backgroundImage: `url(${previewPath})`,
+																				backgroundSize: "cover",
+																				backgroundPosition: "center",
+																			}
+																		: undefined
+																}
 																onClick={() => onWallpaperChange(wallpaperValue)}
 																role="button"
 															/>
