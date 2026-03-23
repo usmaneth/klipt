@@ -2533,7 +2533,7 @@ export default function VideoEditor() {
 
 	return (
 		<TooltipProvider delayDuration={300}>
-			<div className="flex h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans">
+			<div className="flex h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans" style={{ perspective: "2000px" }}>
 				<CreativeWorkspace
 					activePanel={activeWorkspacePanel}
 					onPanelChange={setActiveWorkspacePanel}
