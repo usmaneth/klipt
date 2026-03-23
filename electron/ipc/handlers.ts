@@ -3931,163 +3931,61 @@ export function registerIpcHandlers(
 
 				sendProgress("generating", 55, "Generating dubbed audio...");
 
-				// Phase 4: Generate TTS audio
-				// Priority: voice clone (Chatterbox) → edge-tts → macOS say
-				const { DUBBING_VOICES } = await import("../../src/lib/ai/voiceDubbing");
-				const voiceConfig = DUBBING_VOICES[targetLanguage];
-				const voiceName = voiceConfig?.voice ?? "en-US-AriaNeural";
+				// Phase 4: Generate TTS audio — voice clone ONLY, no fallbacks
+				const voiceCloneStatus = await getVoiceCloneModelStatus();
+				if (!voiceCloneStatus.installed) {
+					return {
+						success: false,
+						error: "Voice clone model not installed. Download the voice clone model first (Settings → Voice Clone).",
+					};
+				}
 
 				const dubbedAudioPath = path.join(
 					os.tmpdir(),
 					`klipt-dubbed-${targetLanguage}-${Date.now()}.mp3`,
 				);
 
-				let ttsSucceeded = false;
+				sendProgress("generating", 58, "Cloning your voice...");
 
-				// Try voice cloning first (Chatterbox-Turbo)
-				const voiceCloneStatus = await getVoiceCloneModelStatus();
-				if (voiceCloneStatus.installed) {
-					try {
-						sendProgress("generating", 58, "Cloning your voice...");
+				// Extract voice reference from original video
+				const refAudioPath = await extractVoiceReference(videoPath, ffmpegPath);
 
-						// Extract voice reference from original video
-						const refAudioPath = await extractVoiceReference(videoPath, ffmpegPath);
+				// Generate cloned speech as WAV, then convert to MP3
+				const clonedWavPath = path.join(
+					os.tmpdir(),
+					`klipt-vc-raw-${Date.now()}.wav`,
+				);
 
-						// Generate cloned speech as WAV, then convert to MP3
-						const clonedWavPath = path.join(
-							os.tmpdir(),
-							`klipt-vc-raw-${Date.now()}.wav`,
-						);
+				await generateClonedSpeech({
+					referenceAudioPath: refAudioPath,
+					text: translatedText,
+					outputPath: clonedWavPath,
+					ffmpegPath,
+					onProgress: (fraction) => {
+						const percent = 58 + Math.round(fraction * 25);
+						sendProgress("generating", percent, "Cloning your voice...");
+					},
+				});
 
-						await generateClonedSpeech({
-							referenceAudioPath: refAudioPath,
-							text: translatedText,
-							outputPath: clonedWavPath,
-							ffmpegPath,
-							onProgress: (fraction) => {
-								const percent = 58 + Math.round(fraction * 25);
-								sendProgress("generating", percent, "Cloning your voice...");
-							},
-						});
+				// Convert WAV → MP3
+				await new Promise<void>((resolve, reject) => {
+					const proc = spawn(
+						ffmpegPath,
+						["-i", clonedWavPath, "-ar", "48000", "-y", dubbedAudioPath],
+						{ stdio: "pipe" },
+					);
+					proc.on("close", (code) => {
+						if (code === 0) resolve();
+						else reject(new Error(`ffmpeg WAV->MP3 conversion failed (code ${code})`));
+					});
+					proc.on("error", reject);
+				});
 
-						// Convert WAV → MP3
-						await new Promise<void>((resolve, reject) => {
-							const proc = spawn(
-								ffmpegPath,
-								["-i", clonedWavPath, "-ar", "48000", "-y", dubbedAudioPath],
-								{ stdio: "pipe" },
-							);
-							proc.on("close", (code) => {
-								if (code === 0) resolve();
-								else reject(new Error(`ffmpeg WAV->MP3 conversion failed (code ${code})`));
-							});
-							proc.on("error", reject);
-						});
+				// Clean up temp files
+				try { await fs.unlink(refAudioPath); } catch {}
+				try { await fs.unlink(clonedWavPath); } catch {}
 
-						// Clean up temp files
-						try { await fs.unlink(refAudioPath); } catch {}
-						try { await fs.unlink(clonedWavPath); } catch {}
-
-						ttsSucceeded = true;
-						console.log("[dub-video] Voice clone succeeded");
-					} catch (vcErr) {
-						const vcMsg = vcErr instanceof Error ? vcErr.stack ?? vcErr.message : String(vcErr);
-						console.error("[dub-video] Voice clone FAILED:", vcMsg);
-						sendProgress("generating", 58, `Voice clone error: ${vcErr instanceof Error ? vcErr.message : "unknown"}. Falling back...`);
-					}
-				}
-
-				// Fallback: edge-tts
-				if (!ttsSucceeded) {
-					try {
-						const edgeTts = await import("edge-tts");
-						const ttsFunc = edgeTts.ttsSave ?? (edgeTts as any).default?.ttsSave;
-						if (!ttsFunc) {
-							throw new Error("edge-tts ttsSave function not found");
-						}
-						await ttsFunc(translatedText, dubbedAudioPath, { voice: voiceName });
-						ttsSucceeded = true;
-					} catch (edgeTtsErr) {
-						console.warn(
-							"[dub-video] edge-tts failed, trying macOS say fallback:",
-							edgeTtsErr instanceof Error ? edgeTtsErr.message : String(edgeTtsErr),
-						);
-					}
-				}
-
-				// macOS say voice map for fallback
-				const macSayVoices: Record<string, string> = {
-					es: "Paulina",
-					fr: "Thomas",
-					de: "Anna",
-					pt: "Luciana",
-					ja: "Kyoko",
-					ko: "Yuna",
-					zh: "Ting-Ting",
-					it: "Alice",
-					ru: "Milena",
-					ar: "Maged",
-					hi: "Lekha",
-					en: "Samantha",
-				};
-
-				// Fallback: macOS say command
-				if (!ttsSucceeded && process.platform === "darwin") {
-					try {
-						const sayVoice = macSayVoices[targetLanguage] ?? "Samantha";
-						const tempAiffPath = path.join(
-							os.tmpdir(),
-							`klipt-dub-say-${Date.now()}.aiff`,
-						);
-
-						// Generate AIFF with macOS say
-						await new Promise<void>((resolve, reject) => {
-							const proc = spawn(
-								"say",
-								["-v", sayVoice, "-o", tempAiffPath, translatedText],
-								{ stdio: "pipe" },
-							);
-							proc.on("close", (code) => {
-								if (code === 0) resolve();
-								else reject(new Error(`say exited with code ${code}`));
-							});
-							proc.on("error", reject);
-						});
-
-						// Convert AIFF to MP3 with ffmpeg
-						await new Promise<void>((resolve, reject) => {
-							const proc = spawn(
-								ffmpegPath,
-								["-i", tempAiffPath, "-ar", "48000", "-y", dubbedAudioPath],
-								{ stdio: "pipe" },
-							);
-							proc.on("close", (code) => {
-								if (code === 0) resolve();
-								else reject(new Error(`ffmpeg AIFF->MP3 conversion failed (code ${code})`));
-							});
-							proc.on("error", reject);
-						});
-
-						// Clean up temp AIFF
-						try {
-							await fs.unlink(tempAiffPath);
-						} catch {}
-
-						ttsSucceeded = true;
-					} catch (sayErr) {
-						console.warn(
-							"[dub-video] macOS say fallback also failed:",
-							sayErr instanceof Error ? sayErr.message : String(sayErr),
-						);
-					}
-				}
-
-				if (!ttsSucceeded) {
-					return {
-						success: false,
-						error: "TTS generation failed: voice clone, edge-tts, and macOS say all failed.",
-					};
-				}
+				console.log("[dub-video] Voice clone succeeded");
 
 				sendProgress("syncing", 85, "Finalizing dubbed audio...");
 
