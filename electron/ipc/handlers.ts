@@ -3931,7 +3931,9 @@ export function registerIpcHandlers(
 
 				sendProgress("generating", 55, "Generating dubbed audio...");
 
-				// Phase 4: Generate TTS audio — voice clone ONLY, no fallbacks
+				// Phase 4: Two-stage voice cloning pipeline
+				// Stage 1: Generate TTS audio via macOS `say` in target language
+				// Stage 2: Voice-convert TTS output to sound like the user
 				const voiceCloneStatus = await getVoiceCloneModelStatus();
 				if (!voiceCloneStatus.installed) {
 					return {
@@ -3945,12 +3947,54 @@ export function registerIpcHandlers(
 					`klipt-dubbed-${targetLanguage}-${Date.now()}.mp3`,
 				);
 
+				sendProgress("generating", 56, "Generating TTS audio...");
+
+				// Stage 1: Generate TTS audio via macOS `say`
+				const sayVoices: Record<string, string> = {
+					es: "Paulina", fr: "Thomas", de: "Anna", pt: "Luciana",
+					ja: "Kyoko", ko: "Yuna", zh: "Ting-Ting", it: "Alice",
+					ru: "Milena", ar: "Maged", hi: "Lekha", en: "Samantha",
+				};
+				const sayVoice = sayVoices[targetLanguage] ?? "Samantha";
+				const ttsAiffPath = path.join(os.tmpdir(), `klipt-tts-${Date.now()}.aiff`);
+				const ttsWavPath = path.join(os.tmpdir(), `klipt-tts-${Date.now()}.wav`);
+
+				// Generate speech via macOS `say`
+				await new Promise<void>((resolve, reject) => {
+					const proc = spawn(
+						"say",
+						["-v", sayVoice, "-o", ttsAiffPath, translatedText],
+						{ stdio: "pipe" },
+					);
+					proc.on("close", (code) => {
+						if (code === 0) resolve();
+						else reject(new Error(`macOS say failed (code ${code})`));
+					});
+					proc.on("error", reject);
+				});
+
+				// Convert AIFF → 24kHz mono WAV via ffmpeg
+				await new Promise<void>((resolve, reject) => {
+					const proc = spawn(
+						ffmpegPath,
+						["-i", ttsAiffPath, "-ar", "24000", "-ac", "1", "-f", "wav", "-y", ttsWavPath],
+						{ stdio: "pipe" },
+					);
+					proc.on("close", (code) => {
+						if (code === 0) resolve();
+						else reject(new Error(`ffmpeg AIFF->WAV conversion failed (code ${code})`));
+					});
+					proc.on("error", reject);
+				});
+
+				// Clean up AIFF
+				try { await fs.unlink(ttsAiffPath); } catch {}
+
 				sendProgress("generating", 58, "Cloning your voice...");
 
-				// Extract voice reference from original video
+				// Stage 2: Extract voice reference + voice-convert
 				const refAudioPath = await extractVoiceReference(videoPath, ffmpegPath);
 
-				// Generate cloned speech as WAV, then convert to MP3
 				const clonedWavPath = path.join(
 					os.tmpdir(),
 					`klipt-vc-raw-${Date.now()}.wav`,
@@ -3958,7 +4002,7 @@ export function registerIpcHandlers(
 
 				await generateClonedSpeech({
 					referenceAudioPath: refAudioPath,
-					text: translatedText,
+					sourceAudioPath: ttsWavPath,
 					outputPath: clonedWavPath,
 					ffmpegPath,
 					onProgress: (fraction) => {
@@ -3984,6 +4028,7 @@ export function registerIpcHandlers(
 				// Clean up temp files
 				try { await fs.unlink(refAudioPath); } catch {}
 				try { await fs.unlink(clonedWavPath); } catch {}
+				try { await fs.unlink(ttsWavPath); } catch {}
 
 				console.log("[dub-video] Voice clone succeeded");
 

@@ -2,13 +2,15 @@
  * Chatterbox-Turbo ONNX voice cloning engine.
  *
  * Uses onnxruntime-node to run the Chatterbox-Turbo model (q4f16 quantization)
- * for zero-shot voice cloning from a short reference audio clip.
+ * for zero-shot voice cloning via a two-stage speech-to-speech pipeline.
  *
  * Pipeline:
- *   1. Speech Encoder  – extracts speaker embeddings from reference audio
- *   2. Embed Tokens    – converts tokenised text to embeddings
- *   3. Language Model   – auto-regressive generation of speech tokens
- *   4. Conditional Decoder – converts speech tokens → waveform
+ *   Stage 1 (external): Generate TTS audio from translated text (macOS `say`)
+ *   Stage 2 (this engine):
+ *     1. Speech Encoder  – extract speaker identity from REFERENCE audio (user's voice)
+ *     2. Speech Encoder  – extract audio features from SOURCE audio (TTS output)
+ *     3. Language Model   – auto-regressive generation of speech tokens conditioned on source audio
+ *     4. Conditional Decoder – convert speech tokens → waveform using reference speaker embeddings
  */
 
 import { createRequire } from "node:module";
@@ -134,17 +136,6 @@ function getModelDownloadUrls(): Array<{ url: string; dest: string; size: number
 		files.push({ url: `${base}/${onnxFile}`, dest: path.join(dir, onnxFile), size: 0 });
 		files.push({ url: `${base}/${dataFile}`, dest: path.join(dir, dataFile), size: 0 });
 	}
-	// Also need the tokenizer files
-	files.push({
-		url: `https://huggingface.co/${MODEL_ID}/resolve/main/tokenizer.json`,
-		dest: path.join(dir, "tokenizer.json"),
-		size: 0,
-	});
-	files.push({
-		url: `https://huggingface.co/${MODEL_ID}/resolve/main/tokenizer_config.json`,
-		dest: path.join(dir, "tokenizer_config.json"),
-		size: 0,
-	});
 	return files;
 }
 
@@ -303,163 +294,6 @@ async function downloadFile(
 
 		request(url);
 	});
-}
-
-// ── Tokeniser (minimal BPE from tokenizer.json) ───────────────────────
-
-interface TokenizerData {
-	model: {
-		vocab: Record<string, number>;
-		merges: string[];
-	};
-	added_tokens: Array<{ id: number; content: string }>;
-}
-
-let _cachedTokenizer: { encode: (text: string) => number[] } | null = null;
-
-async function loadTokenizer(): Promise<{ encode: (text: string) => number[] }> {
-	if (_cachedTokenizer) return _cachedTokenizer;
-
-	const tokenizerPath = path.join(getVoiceCloneModelsDir(), "tokenizer.json");
-	const raw = await fs.readFile(tokenizerPath, "utf8");
-	const data: TokenizerData = JSON.parse(raw);
-
-	const vocab = data.model.vocab;
-
-	// Build byte-to-unicode mapping (GPT-2 style)
-	const byteEncoder = bytesToUnicode();
-	// Merges can be either ["a b", ...] (GPT-2 style) or [["a","b"], ...] (HuggingFace style)
-	const merges = data.model.merges.map((m) => {
-		if (Array.isArray(m)) return [m[0], m[1]] as [string, string];
-		if (typeof m === "string") return m.split(" ") as [string, string];
-		return ["", ""] as [string, string];
-	}).filter(([a, b]) => a.length > 0 && b.length > 0);
-	const bpeRanks = new Map<string, number>();
-	for (let i = 0; i < merges.length; i++) {
-		bpeRanks.set(merges[i].join(" "), i);
-	}
-
-	function getPairs(word: string[]): Set<string> {
-		const pairs = new Set<string>();
-		for (let i = 0; i < word.length - 1; i++) {
-			pairs.add(word[i] + " " + word[i + 1]);
-		}
-		return pairs;
-	}
-
-	const bpeCache = new Map<string, string>();
-
-	function bpe(token: string): string {
-		if (bpeCache.has(token)) return bpeCache.get(token)!;
-
-		let word = token.split("");
-		let pairs = getPairs(word);
-
-		if (pairs.size === 0) {
-			bpeCache.set(token, token);
-			return token;
-		}
-
-		// biome-ignore lint/suspicious/noConstantCondition: BPE merge loop
-		while (true) {
-			let minRank = Infinity;
-			let bigram = "";
-			for (const pair of pairs) {
-				const rank = bpeRanks.get(pair);
-				if (rank !== undefined && rank < minRank) {
-					minRank = rank;
-					bigram = pair;
-				}
-			}
-			if (minRank === Infinity) break;
-
-			const [first, second] = bigram.split(" ");
-			const newWord: string[] = [];
-			let i = 0;
-			while (i < word.length) {
-				const j = word.indexOf(first, i);
-				if (j === -1) {
-					newWord.push(...word.slice(i));
-					break;
-				}
-				newWord.push(...word.slice(i, j));
-				if (j < word.length - 1 && word[j] === first && word[j + 1] === second) {
-					newWord.push(first + second);
-					i = j + 2;
-				} else {
-					newWord.push(word[j]);
-					i = j + 1;
-				}
-			}
-			word = newWord;
-			if (word.length === 1) break;
-			pairs = getPairs(word);
-		}
-
-		const result = word.join(" ");
-		bpeCache.set(token, result);
-		return result;
-	}
-
-	// GPT-2 pre-tokenisation regex
-	const pat = /'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+/gu;
-
-	function encode(text: string): number[] {
-		const tokens: number[] = [];
-		const matches = text.match(pat) ?? [];
-		for (const piece of matches) {
-			const encoded = Array.from(piece)
-				.map((b) => {
-					const bytes = new TextEncoder().encode(b);
-					return Array.from(bytes)
-						.map((byte) => byteEncoder[byte])
-						.join("");
-				})
-				.join("");
-			const bpeTokens = bpe(encoded).split(" ");
-			for (const bt of bpeTokens) {
-				const id = vocab[bt];
-				if (id !== undefined) {
-					tokens.push(id);
-				}
-			}
-		}
-		return tokens;
-	}
-
-	_cachedTokenizer = { encode };
-	return _cachedTokenizer;
-}
-
-function bytesToUnicode(): Record<number, string> {
-	const bs: number[] = [];
-	const cs: number[] = [];
-	// printable ASCII ranges
-	for (let i = 33; i <= 126; i++) {
-		bs.push(i);
-		cs.push(i);
-	}
-	for (let i = 161; i <= 172; i++) {
-		bs.push(i);
-		cs.push(i);
-	}
-	for (let i = 174; i <= 255; i++) {
-		bs.push(i);
-		cs.push(i);
-	}
-	let n = 0;
-	for (let b = 0; b < 256; b++) {
-		if (!bs.includes(b)) {
-			bs.push(b);
-			cs.push(256 + n);
-			n++;
-		}
-	}
-	const result: Record<number, string> = {};
-	for (let i = 0; i < bs.length; i++) {
-		result[bs[i]] = String.fromCodePoint(cs[i]);
-	}
-	return result;
 }
 
 // ── ONNX Inference ─────────────────────────────────────────────────────
@@ -624,10 +458,10 @@ function applyRepetitionPenalty(
 // ── Main generation ────────────────────────────────────────────────────
 
 export interface VoiceCloneOptions {
-	/** Path to reference audio (5-15 seconds of the speaker). */
+	/** Path to reference audio — the user's ORIGINAL voice (5-10s for speaker identity). */
 	referenceAudioPath: string;
-	/** Text to synthesise in the cloned voice. */
-	text: string;
+	/** Path to source audio — TTS output in the target language (the words to say). */
+	sourceAudioPath: string;
 	/** Output WAV path. */
 	outputPath: string;
 	/** Path to ffmpeg binary. */
@@ -637,105 +471,105 @@ export interface VoiceCloneOptions {
 }
 
 /**
- * Generate speech in the cloned voice.
+ * Generate speech in the cloned voice using a speech-to-speech pipeline.
  *
- * Runs the full Chatterbox-Turbo pipeline:
- *   encode reference → tokenise text → LM generation → decode to waveform
+ * Two-input approach:
+ *   - referenceAudioPath: user's original voice (provides speaker identity)
+ *   - sourceAudioPath: TTS-generated audio in target language (provides the words)
  *
  * Model I/O (verified against actual ONNX files):
  *   speech_encoder:      in {audio_values}        → out {audio_features, audio_tokens, speaker_embeddings, speaker_features}
- *   embed_tokens:        in {input_ids}            → out {inputs_embeds}
+ *   embed_tokens:        in {input_ids}            → out {inputs_embeds}  (speech token IDs 0-6562 only)
  *   language_model:      in {inputs_embeds(f32), attention_mask, position_ids, past_key_values.N.key/value(f16)} → out {logits, present.N.key/value(f16)}
  *   conditional_decoder: in {speech_tokens, speaker_embeddings, speaker_features} → out {waveform}
  */
 export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<void> {
-	const { referenceAudioPath, text, outputPath, ffmpegPath, onProgress } = opts;
+	const { referenceAudioPath, sourceAudioPath, outputPath, ffmpegPath, onProgress } = opts;
 
 	const ort = nodeRequire("onnxruntime-node") as typeof import("onnxruntime-node");
 	const OrtTensor = ort.Tensor;
 
 	onProgress?.(0.05);
 
-	// 1. Load sessions + tokenizer
-	const [sessions, tokenizer] = await Promise.all([loadSessions(), loadTokenizer()]);
+	// 1. Load ONNX sessions
+	const sessions = await loadSessions();
 
 	onProgress?.(0.1);
 
-	// 2. Read reference audio (mono 24 kHz float32)
-	const audioSamples = await readAudioAsFloat32(referenceAudioPath, ffmpegPath);
-	if (audioSamples.length === 0) {
+	// 2. Read BOTH audio files as float32 (24kHz mono)
+	const [refSamples, srcSamples] = await Promise.all([
+		readAudioAsFloat32(referenceAudioPath, ffmpegPath),
+		readAudioAsFloat32(sourceAudioPath, ffmpegPath),
+	]);
+
+	if (refSamples.length === 0) {
 		throw new Error("[voice-clone] Reference audio is empty — cannot extract speaker embedding");
 	}
-	const audioValues = new OrtTensor("float32", audioSamples, [1, audioSamples.length]);
-	console.log(`[voice-clone] Reference audio: ${audioSamples.length} samples (${(audioSamples.length / SAMPLE_RATE).toFixed(1)}s)`);
+	if (srcSamples.length === 0) {
+		throw new Error("[voice-clone] Source TTS audio is empty — nothing to voice-convert");
+	}
+
+	console.log(`[voice-clone] Reference audio: ${refSamples.length} samples (${(refSamples.length / SAMPLE_RATE).toFixed(1)}s)`);
+	console.log(`[voice-clone] Source TTS audio: ${srcSamples.length} samples (${(srcSamples.length / SAMPLE_RATE).toFixed(1)}s)`);
 
 	onProgress?.(0.15);
 
-	// 3. Encode reference voice
-	// Outputs: audio_features [1,N,1024], audio_tokens [1,M] int64,
-	//          speaker_embeddings [1,192], speaker_features [1,K,80]
-	const speechEncoderResult = await withTimeout(
-		sessions.speechEncoder.run({ audio_values: audioValues }),
+	// 3. Encode REFERENCE audio → speaker identity
+	const refAudioValues = new OrtTensor("float32", refSamples, [1, refSamples.length]);
+	const refEncoderResult = await withTimeout(
+		sessions.speechEncoder.run({ audio_values: refAudioValues }),
 		STEP_TIMEOUT_MS,
-		"speech encoder",
+		"speech encoder (reference)",
 	) as Record<string, OrtTensor>;
 
-	const audioFeatures = speechEncoderResult["audio_features"];
-	const audioTokens = speechEncoderResult["audio_tokens"];
-	const speakerEmbeddings = speechEncoderResult["speaker_embeddings"];
-	const speakerFeatures = speechEncoderResult["speaker_features"];
+	const refSpeakerEmbeddings = refEncoderResult["speaker_embeddings"];
+	const refSpeakerFeatures = refEncoderResult["speaker_features"];
 
-	if (!audioFeatures || !audioTokens || !speakerEmbeddings || !speakerFeatures) {
-		const got = Object.keys(speechEncoderResult).join(", ");
-		throw new Error(`[voice-clone] Speech encoder missing outputs. Got: [${got}]`);
+	if (!refSpeakerEmbeddings || !refSpeakerFeatures) {
+		const got = Object.keys(refEncoderResult).join(", ");
+		throw new Error(`[voice-clone] Speech encoder (reference) missing speaker outputs. Got: [${got}]`);
 	}
 
 	console.log(
-		"[voice-clone] Speech encoder →",
-		`audio_features ${JSON.stringify(audioFeatures.dims)},`,
-		`audio_tokens ${JSON.stringify(audioTokens.dims)},`,
-		`speaker_embeddings ${JSON.stringify(speakerEmbeddings.dims)},`,
-		`speaker_features ${JSON.stringify(speakerFeatures.dims)}`,
+		"[voice-clone] Reference encoder →",
+		`speaker_embeddings ${JSON.stringify(refSpeakerEmbeddings.dims)},`,
+		`speaker_features ${JSON.stringify(refSpeakerFeatures.dims)}`,
 	);
 
-	onProgress?.(0.25);
+	onProgress?.(0.2);
 
-	// 4. Tokenise text
-	const inputIds = tokenizer.encode(text);
-	if (inputIds.length === 0) {
-		throw new Error("[voice-clone] Tokenizer produced no tokens for the input text");
-	}
-	const inputIdsTensor = new OrtTensor("int64", BigInt64Array.from(inputIds.map(BigInt)), [1, inputIds.length]);
-	console.log(`[voice-clone] Tokenised text: ${inputIds.length} tokens`);
-
-	// 5. Get text embeddings → [1, textLen, 1024] float32
-	const embedResult = await withTimeout(
-		sessions.embedTokens.run({ input_ids: inputIdsTensor }),
+	// 4. Encode SOURCE (TTS) audio → audio features + tokens for conditioning
+	const srcAudioValues = new OrtTensor("float32", srcSamples, [1, srcSamples.length]);
+	const srcEncoderResult = await withTimeout(
+		sessions.speechEncoder.run({ audio_values: srcAudioValues }),
 		STEP_TIMEOUT_MS,
-		"embed_tokens",
+		"speech encoder (source)",
 	) as Record<string, OrtTensor>;
-	let inputsEmbeds = embedResult["inputs_embeds"] as OrtTensor;
+
+	const srcAudioFeatures = srcEncoderResult["audio_features"];
+	const srcAudioTokens = srcEncoderResult["audio_tokens"];
+
+	if (!srcAudioFeatures || !srcAudioTokens) {
+		const got = Object.keys(srcEncoderResult).join(", ");
+		throw new Error(`[voice-clone] Speech encoder (source) missing audio outputs. Got: [${got}]`);
+	}
+
+	console.log(
+		"[voice-clone] Source encoder →",
+		`audio_features ${JSON.stringify(srcAudioFeatures.dims)},`,
+		`audio_tokens ${JSON.stringify(srcAudioTokens.dims)}`,
+	);
 
 	onProgress?.(0.3);
 
-	// 6. Concatenate audio_features + text embeddings along sequence dim
-	//    audio_features is the conditioning context from the reference voice
-	const condData = audioFeatures.data as Float32Array;
-	const embedData = inputsEmbeds.data as Float32Array;
-	const hiddenDim = audioFeatures.dims[2] as number;
-	const condSeqLen = audioFeatures.dims[1] as number;
-	const embedSeqLen = inputsEmbeds.dims[1] as number;
-	const totalSeqLen = condSeqLen + embedSeqLen;
+	// 5. Use source audio_features as inputs_embeds conditioning for the LM
+	//    audio_features [1, seqLen, 1024] is already in the right shape for inputs_embeds
+	const inputsEmbeds = srcAudioFeatures;
+	const seqLen = srcAudioFeatures.dims[1] as number;
+	const hiddenDim = srcAudioFeatures.dims[2] as number;
+	console.log(`[voice-clone] LM conditioning: [1, ${seqLen}, ${hiddenDim}]`);
 
-	const concatData = new Float32Array(totalSeqLen * hiddenDim);
-	concatData.set(condData, 0);
-	concatData.set(embedData, condSeqLen * hiddenDim);
-	inputsEmbeds = new OrtTensor("float32", concatData, [1, totalSeqLen, hiddenDim]);
-	console.log(`[voice-clone] Combined embeds: [1, ${totalSeqLen}, ${hiddenDim}]`);
-
-	// 7. Initialise KV cache (float16) and attention mask
-	//    Input names: past_key_values.{0..23}.key / .value
-	//    Output names: present.{0..23}.key / .value
+	// 6. Initialise KV cache (float16) and attention mask
 	const kvCache: Record<string, OrtTensor> = {};
 	for (let layer = 0; layer < NUM_KV_LAYERS; layer++) {
 		kvCache[`past_key_values.${layer}.key`] = new OrtTensor(
@@ -752,18 +586,18 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 
 	let attentionMask = new OrtTensor(
 		"int64",
-		BigInt64Array.from(Array(totalSeqLen).fill(1n)),
-		[1, totalSeqLen],
+		BigInt64Array.from(Array(seqLen).fill(1n)),
+		[1, seqLen],
 	);
 	let positionIds = new OrtTensor(
 		"int64",
-		BigInt64Array.from(Array.from({ length: totalSeqLen }, (_, i) => BigInt(i))),
-		[1, totalSeqLen],
+		BigInt64Array.from(Array.from({ length: seqLen }, (_, i) => BigInt(i))),
+		[1, seqLen],
 	);
 
-	// 8. Auto-regressive generation loop
+	// 7. Auto-regressive generation loop
 	const generatedTokens: number[] = [START_SPEECH_TOKEN];
-	let currentEmbeds = inputsEmbeds;
+	let currentEmbeds: OrtTensor = inputsEmbeds;
 
 	console.log("[voice-clone] Starting LM generation (max", MAX_NEW_TOKENS, "tokens)...");
 
@@ -811,7 +645,7 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 			if (valOut) kvCache[`past_key_values.${layer}.value`] = valOut as OrtTensor;
 		}
 
-		// Prepare next step input: embed the new token
+		// Prepare next step input: embed the newly generated speech token
 		const nextTokenTensor = new OrtTensor(
 			"int64",
 			BigInt64Array.from([BigInt(nextToken)]),
@@ -843,20 +677,20 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 
 	onProgress?.(0.8);
 
-	// 9. Decode speech tokens → waveform
+	// 8. Decode speech tokens → waveform
 	const speechTokens = generatedTokens.slice(1); // remove START token
 	// Remove trailing STOP token if present
 	if (speechTokens[speechTokens.length - 1] === STOP_SPEECH_TOKEN) {
 		speechTokens.pop();
 	}
 
-	// Prepend audio_tokens from speech encoder (prompt context), append silence padding
-	const audioTokenData = audioTokens.data as BigInt64Array;
-	const audioTokenArr = Array.from(audioTokenData).map(Number);
+	// Prepend source audio_tokens (prompt context), append silence padding
+	const srcTokenData = srcAudioTokens.data as BigInt64Array;
+	const srcTokenArr = Array.from(srcTokenData).map(Number);
 	const silencePad = Array(3).fill(SILENCE_TOKEN) as number[];
-	const fullSpeechTokens = [...audioTokenArr, ...speechTokens, ...silencePad];
+	const fullSpeechTokens = [...srcTokenArr, ...speechTokens, ...silencePad];
 
-	console.log(`[voice-clone] Decoder input: ${audioTokenArr.length} prompt + ${speechTokens.length} generated + 3 silence = ${fullSpeechTokens.length} tokens`);
+	console.log(`[voice-clone] Decoder input: ${srcTokenArr.length} source + ${speechTokens.length} generated + 3 silence = ${fullSpeechTokens.length} tokens`);
 
 	const speechTokensTensor = new OrtTensor(
 		"int64",
@@ -864,11 +698,12 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 		[1, fullSpeechTokens.length],
 	);
 
+	// Decode using REFERENCE speaker embeddings (voice identity) + generated speech tokens
 	const decoderResult = await withTimeout(
 		sessions.conditionalDecoder.run({
 			speech_tokens: speechTokensTensor,
-			speaker_embeddings: speakerEmbeddings,
-			speaker_features: speakerFeatures,
+			speaker_embeddings: refSpeakerEmbeddings,
+			speaker_features: refSpeakerFeatures,
 		}),
 		STEP_TIMEOUT_MS,
 		"conditional decoder",
@@ -876,8 +711,7 @@ export async function generateClonedSpeech(opts: VoiceCloneOptions): Promise<voi
 
 	onProgress?.(0.9);
 
-	// 10. Write output WAV
-	// Decoder output name is "waveform" — [1, numSamples]
+	// 9. Write output WAV
 	const waveformTensor = decoderResult["waveform"];
 	if (!waveformTensor) {
 		const got = Object.keys(decoderResult).join(", ");
