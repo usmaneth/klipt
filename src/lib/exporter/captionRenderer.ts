@@ -84,6 +84,8 @@ export function renderCaptions(
 	const lineHeight = fontSize * 1.4;
 	const textStartY = box.y + (box.height - lineCount * lineHeight) / 2;
 
+	const animation = settings.animation ?? "none";
+
 	let wordIdx = 0;
 	for (let li = 0; li < layout.page.lines.length; li++) {
 		const line = layout.page.lines[li];
@@ -100,7 +102,54 @@ export function renderCaptions(
 
 			ctx.globalAlpha = wordOpacity(aw.state);
 			ctx.fillStyle = wordColor(aw.state, settings);
-			ctx.fillText(text, cursorX, cursorY);
+
+			// Draw highlight background behind active words
+			if (aw.state === "active" && settings.highlightColor) {
+				const wordWidth = ctx.measureText(text).width;
+				const highlightPadding = fontSize * 0.15;
+				ctx.save();
+				ctx.globalAlpha = 0.25;
+				ctx.fillStyle = settings.highlightColor;
+				ctx.beginPath();
+				roundRect(
+					ctx,
+					cursorX - highlightPadding / 2,
+					cursorY - highlightPadding / 2,
+					wordWidth + highlightPadding,
+					fontSize * 1.2 + highlightPadding,
+					4,
+				);
+				ctx.fill();
+				ctx.restore();
+				// Restore word style after highlight
+				ctx.globalAlpha = wordOpacity(aw.state);
+				ctx.fillStyle = wordColor(aw.state, settings);
+			}
+
+			// Apply animation transforms for active words
+			if (aw.state === "active" && animation !== "none") {
+				ctx.save();
+				if (animation === "rise") {
+					// Shift active word up slightly
+					ctx.fillText(text, cursorX, cursorY - fontSize * 0.06);
+				} else if (animation === "pop") {
+					// Scale active word up from center
+					const wordWidth = ctx.measureText(text).width;
+					const scale = 1.08;
+					const cx = cursorX + wordWidth / 2;
+					const cy = cursorY + fontSize * 0.6;
+					ctx.translate(cx, cy);
+					ctx.scale(scale, scale);
+					ctx.translate(-cx, -cy);
+					ctx.fillText(text, cursorX, cursorY);
+				} else {
+					ctx.fillText(text, cursorX, cursorY);
+				}
+				ctx.restore();
+			} else {
+				ctx.fillText(text, cursorX, cursorY);
+			}
+
 			cursorX += ctx.measureText(text).width;
 		}
 	}

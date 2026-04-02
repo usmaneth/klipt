@@ -209,6 +209,7 @@ export class AudioProcessor {
 			region: AudioRegion;
 		}[] = [];
 
+		let failedRegionCount = 0;
 		for (const region of audioRegions) {
 			const audioEl = document.createElement("audio");
 			audioEl.src = toFileUrl(region.audioPath);
@@ -217,6 +218,8 @@ export class AudioProcessor {
 				await this.waitForLoadedMetadata(audioEl);
 			} catch {
 				console.warn("[AudioProcessor] Failed to load audio region:", region.audioPath);
+				audioEl.src = "";
+				failedRegionCount++;
 				continue;
 			}
 			if (this.cancelled) throw new Error("Export cancelled");
@@ -228,6 +231,10 @@ export class AudioProcessor {
 			gainNode.connect(destinationNode);
 
 			audioRegionElements.push({ media: audioEl, sourceNode: regionSource, gainNode, region });
+		}
+
+		if (failedRegionCount > 0) {
+			console.warn(`[AudioProcessor] ${failedRegionCount} of ${audioRegions.length} audio region(s) failed to load and will be missing from the export`);
 		}
 
 		const { recorder, recordedBlobPromise } = this.startAudioRecording(destinationNode.stream);

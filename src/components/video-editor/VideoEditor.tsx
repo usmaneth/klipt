@@ -2264,6 +2264,8 @@ export default function VideoEditor() {
 									bgColor: webcamBgColor,
 								}
 							: undefined,
+						captionCues: (translatedCaptionCues ?? captionCues).length > 0 ? (translatedCaptionCues ?? captionCues) : undefined,
+						captionSettings: captionSettings.enabled ? captionSettings : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
