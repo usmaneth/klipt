@@ -71,15 +71,8 @@ export function HomeScreen() {
 
 	useEffect(() => {
 		window.electronAPI?.getVideoAssetPath("veo-bg.mp4").then((p) => {
-			if (p) {
-				console.log("[HomeScreen] Resolved veo-bg.mp4 path:", p);
-				setVideoPath(p);
-			} else {
-				console.warn("[HomeScreen] getVideoAssetPath returned null for veo-bg.mp4");
-			}
-		}).catch((err) => {
-			console.error("[HomeScreen] Failed to resolve veo-bg.mp4 path:", err);
-		});
+			if (p) setVideoPath(p);
+		}).catch(() => {/* bg video not available */});
 	}, []);
 
 	useEffect(() => {

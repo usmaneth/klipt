@@ -1720,7 +1720,18 @@ export default function VideoEditor() {
 				setTrimRegions((prev) => [...prev, newRegion]);
 				setSelectedTrimId(id);
 			} else if (suggestion.type === "best-moment") {
-				// Seek to the best moment
+				// Create a zoom region to highlight the best moment
+				const id = `zoom-${nextZoomIdRef.current++}`;
+				const newRegion: ZoomRegion = {
+					id,
+					startMs: suggestion.startMs,
+					endMs: suggestion.endMs,
+					depth: 2,
+					focus: { cx: 0.5, cy: 0.5 },
+				};
+				setZoomRegions((prev) => [...prev, newRegion]);
+				setSelectedZoomId(id);
+				// Also seek to the start
 				const video = videoPlaybackRef.current?.video;
 				if (video) {
 					video.currentTime = suggestion.startMs / 1000;
