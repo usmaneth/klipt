@@ -69,8 +69,7 @@ import type { CaptionSettings } from "./captionStyle";
 import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
 import { TRANSLATION_LANGUAGES } from "@/lib/ai/translationService";
 import { DUBBING_LANGUAGES } from "@/lib/ai/voiceDubbing";
-// AI Background Removal — shelved, will re-enable in AI features phase
-// import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
+import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
 import { WebcamPanel, type WebcamPanelProps } from "./WebcamPanel";
 
 const GRADIENTS = [
@@ -377,13 +376,12 @@ export function SettingsPanel({
 	onWebcamBorderWidthChange,
 	webcamShadow = 0,
 	onWebcamShadowChange,
-	// AI Background Removal — shelved, will re-enable in AI features phase
-	webcamBgMode: _webcamBgMode = "none",
-	onWebcamBgModeChange: _onWebcamBgModeChange,
-	webcamBgBlur: _webcamBgBlur = 10,
-	onWebcamBgBlurChange: _onWebcamBgBlurChange,
-	webcamBgColor: _webcamBgColor = "#00FF00",
-	onWebcamBgColorChange: _onWebcamBgColorChange,
+	webcamBgMode = "none",
+	onWebcamBgModeChange,
+	webcamBgBlur = 10,
+	onWebcamBgBlurChange,
+	webcamBgColor = "#00FF00",
+	onWebcamBgColorChange,
 	ambilightEnabled = true,
 	onAmbilightEnabledChange,
 	isExporting: _isExporting = false,
@@ -1044,7 +1042,6 @@ export function SettingsPanel({
 											webcamShadow={webcamShadow}
 											onWebcamShadowChange={onWebcamShadowChange}
 										/>
-										{/* AI Background Removal — shelved, will re-enable in AI features phase
 										{onWebcamBgModeChange && (
 											<WebcamBackgroundPanel
 												webcamBgMode={webcamBgMode}
@@ -1055,7 +1052,6 @@ export function SettingsPanel({
 												onWebcamBgColorChange={onWebcamBgColorChange ?? (() => undefined)}
 											/>
 										)}
-										*/}
 									</Accordion>
 								)}
 

@@ -1926,6 +1926,47 @@ export default function VideoEditor() {
 		setSelectedTrimId(null);
 	}, [currentTime, duration]);
 
+	const handleRestoreClipToTimeline = useCallback((clip: ScratchPadClip) => {
+		const gifUrl = clip.thumbnailUrl;
+		if (!gifUrl) {
+			toast.error("Clip has no image to add");
+			return;
+		}
+
+		// Fetch the GIF and convert to data URL for the annotation system
+		fetch(gifUrl)
+			.then((res) => res.blob())
+			.then((blob) => {
+				const reader = new FileReader();
+				reader.onloadend = () => {
+					const dataUrl = reader.result as string;
+					const startMs = Math.round(currentTime * 1000);
+					const endMs = Math.min(startMs + (clip.durationMs || 5000), Math.round(duration * 1000));
+					const id = `annotation-${nextAnnotationIdRef.current++}`;
+					const zIndex = nextAnnotationZIndexRef.current++;
+					const newRegion: AnnotationRegion = {
+						id,
+						startMs,
+						endMs,
+						type: "image",
+						content: dataUrl,
+						imageContent: dataUrl,
+						position: { x: 35, y: 35 },
+						size: { width: 30, height: 30 },
+						style: { ...DEFAULT_ANNOTATION_STYLE },
+						zIndex,
+					};
+					setAnnotationRegions((prev) => [...prev, newRegion]);
+					setSelectedAnnotationId(id);
+					toast.success(`"${clip.label}" added as overlay at ${(startMs / 1000).toFixed(1)}s`);
+				};
+				reader.readAsDataURL(blob);
+			})
+			.catch(() => {
+				toast.error("Failed to fetch clip image");
+			});
+	}, [currentTime, duration]);
+
 	const handleAddSoundEffect = useCallback((soundId: SoundEffectId) => {
 		const startMs = Math.round(currentTime * 1000);
 		const durationMs = Math.round(SFX_DURATIONS[soundId] * 1000);
@@ -2911,6 +2952,7 @@ export default function VideoEditor() {
 					onAddStickerAnnotation={handleStickerAnnotationAdded}
 					onAddSoundEffect={handleAddSoundEffect}
 					onAddTransition={handleAddTransition}
+					onRestoreClipToTimeline={handleRestoreClipToTimeline}
 					hasVideo={!!videoPath}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">

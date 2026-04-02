@@ -103,6 +103,7 @@ interface CreativeWorkspaceProps {
 	onAddStickerAnnotation?: (emoji: string) => void;
 	onAddSoundEffect?: (soundId: SoundEffectId) => void;
 	onAddTransition?: (type: TransitionType) => void;
+	onRestoreClipToTimeline?: (clip: ScratchPadClip) => void;
 	hasVideo: boolean;
 }
 
@@ -198,6 +199,7 @@ export function CreativeWorkspace({
 	onAddStickerAnnotation,
 	onAddSoundEffect,
 	onAddTransition,
+	onRestoreClipToTimeline,
 	hasVideo,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
@@ -306,11 +308,13 @@ export function CreativeWorkspace({
 
 	const handleRestoreScratchPadClip = useCallback((id: string) => {
 		const clip = scratchPadClips.find((c) => c.id === id);
-		if (clip) {
-			toast.success(`"${clip.label}" restored to timeline`);
-			onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
+		if (!clip) return;
+
+		if (onRestoreClipToTimeline) {
+			onRestoreClipToTimeline(clip);
 		}
-	}, [scratchPadClips, onScratchPadClipsChange]);
+		onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
+	}, [scratchPadClips, onScratchPadClipsChange, onRestoreClipToTimeline]);
 
 	// ── Core workspace callbacks ────────────────────────────────────────────
 
