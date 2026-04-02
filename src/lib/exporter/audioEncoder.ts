@@ -349,7 +349,9 @@ export class AudioProcessor {
 							gain.gain.value = Math.max(0, Math.min(1, sfx.region.volume));
 							src.connect(gain).connect(destinationNode);
 							const offsetSec = Math.max(0, (currentTimeMs - sfx.region.startMs) / 1000);
-							src.start(0, offsetSec);
+							const remainingSec = Math.max(0, sfx.buffer.duration - offsetSec);
+							// Start immediately at current context time, from the correct offset
+							src.start(audioContext.currentTime, offsetSec, remainingSec);
 							sfx.sourceNode = src;
 							sfx.gainNode = gain;
 						}

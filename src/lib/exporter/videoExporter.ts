@@ -266,12 +266,12 @@ export class VideoExporter {
 							const halfDur = activeTransition.durationMs / 2;
 							const progress = (sourceTimestampMs - (activeTransition.atMs - halfDur)) / activeTransition.durationMs;
 
-							// The current composite canvas has the "incoming" frame.
-							// Copy it to a temp canvas, then blend outgoing snapshot with incoming.
+							// Copy current (incoming) frame to temp canvas BEFORE blending
 							const tempCanvas = new OffscreenCanvas(this.config.width, this.config.height);
 							const tempCtx = tempCanvas.getContext("2d")!;
 							tempCtx.drawImage(compositeCanvas, 0, 0);
 
+							// Blend: outgoing snapshot (pre-transition) + incoming (current)
 							renderTransitionFrame(
 								compositeCtx,
 								activeTransition.type,
@@ -283,9 +283,17 @@ export class VideoExporter {
 							);
 						}
 
-						// Snapshot current composite for next frame's outgoing reference
-						const snapCtx = transitionSnapshotCanvas.getContext("2d")!;
-						snapCtx.drawImage(compositeCanvas, 0, 0);
+						// Snapshot the UN-BLENDED composite for the next frame's outgoing
+						// reference. We must snapshot BEFORE the transition is applied, so
+						// use the incoming frame copy if we just blended, otherwise the
+						// composite canvas itself (no transition active).
+						if (!activeTransition) {
+							const snapCtx = transitionSnapshotCanvas.getContext("2d")!;
+							snapCtx.drawImage(compositeCanvas, 0, 0);
+						}
+						// When a transition IS active, the snapshot already holds the
+						// correct pre-transition outgoing frame from the previous
+						// non-transition frame — don't overwrite it with the blended result.
 						lastFrameMs = sourceTimestampMs;
 					}
 

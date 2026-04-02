@@ -432,6 +432,8 @@ export default function VideoEditor() {
 		speedRegions,
 		annotationRegions,
 		audioRegions,
+		soundEffectRegions,
+		transitionRegions,
 		selectedZoomId,
 		selectedTrimId,
 		selectedSpeedId,

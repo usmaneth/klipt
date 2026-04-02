@@ -9,8 +9,8 @@ import type { SoundEffectId } from "@/components/video-editor/types";
 
 const SAMPLE_RATE = 44100;
 
-/** Cached decoded AudioBuffers keyed by sound-effect ID. */
-const bufferCache = new Map<SoundEffectId, AudioBuffer>();
+/** Cached synthesis promises keyed by sound-effect ID (prevents concurrent duplicates). */
+const bufferCache = new Map<SoundEffectId, Promise<AudioBuffer>>();
 
 // ── Noise helper ──────────────────────────────────────────────────────────────
 
@@ -300,14 +300,15 @@ export const SFX_DURATIONS: Record<SoundEffectId, number> = {
 /**
  * Get (or synthesise & cache) the AudioBuffer for a given sound effect.
  */
-export async function getSoundEffectBuffer(id: SoundEffectId): Promise<AudioBuffer> {
+export function getSoundEffectBuffer(id: SoundEffectId): Promise<AudioBuffer> {
 	const cached = bufferCache.get(id);
 	if (cached) return cached;
 
 	const synthFn = SYNTH_MAP[id];
-	const buffer = await synthFn();
-	bufferCache.set(id, buffer);
-	return buffer;
+	// Cache the promise immediately to prevent concurrent duplicate synthesis
+	const promise = synthFn();
+	bufferCache.set(id, promise);
+	return promise;
 }
 
 /**
