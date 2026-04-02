@@ -1,4 +1,5 @@
 import type { AnnotationRegion, ArrowDirection } from "@/components/video-editor/types";
+import { isGifDataUrl, decodeGif, getGifFrameAtTime } from "./gifFrameExtractor";
 
 // SVG path data for each arrow direction
 const ARROW_PATHS: Record<ArrowDirection, string[]> = {
@@ -215,6 +216,39 @@ function renderText(
 	ctx.restore();
 }
 
+/**
+ * Helper: draw an image source (Image or ImageBitmap) with aspect-ratio
+ * preservation ("contain" mode) inside the given bounding box.
+ */
+function drawContained(
+	ctx: CanvasRenderingContext2D,
+	source: CanvasImageSource,
+	srcW: number,
+	srcH: number,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+) {
+	const imgAspect = srcW / srcH;
+	const boxAspect = width / height;
+
+	let drawWidth = width;
+	let drawHeight = height;
+	let drawX = x;
+	let drawY = y;
+
+	if (imgAspect > boxAspect) {
+		drawHeight = width / imgAspect;
+		drawY = y + (height - drawHeight) / 2;
+	} else {
+		drawWidth = height * imgAspect;
+		drawX = x + (width - drawWidth) / 2;
+	}
+
+	ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+}
+
 async function renderImage(
 	ctx: CanvasRenderingContext2D,
 	annotation: AnnotationRegion,
@@ -222,32 +256,30 @@ async function renderImage(
 	y: number,
 	width: number,
 	height: number,
+	currentTimeMs: number,
 ): Promise<void> {
 	if (!annotation.content || !annotation.content.startsWith("data:image")) {
 		return;
 	}
 
+	// Animated GIF: decode frames and pick the right one for this timestamp
+	if (isGifDataUrl(annotation.content)) {
+		try {
+			const gif = await decodeGif(annotation.content);
+			const elapsedMs = currentTimeMs - annotation.startMs;
+			const frame = getGifFrameAtTime(gif, elapsedMs);
+			drawContained(ctx, frame, frame.width, frame.height, x, y, width, height);
+			return;
+		} catch {
+			// Fall through to static image rendering
+		}
+	}
+
+	// Static image
 	return new Promise((resolve) => {
 		const img = new Image();
 		img.onload = () => {
-			// Preserve aspect ratio - contain the image within the bounds
-			const imgAspect = img.width / img.height;
-			const boxAspect = width / height;
-
-			let drawWidth = width;
-			let drawHeight = height;
-			let drawX = x;
-			let drawY = y;
-
-			if (imgAspect > boxAspect) {
-				drawHeight = width / imgAspect;
-				drawY = y + (height - drawHeight) / 2;
-			} else {
-				drawWidth = height * imgAspect;
-				drawX = x + (width - drawWidth) / 2;
-			}
-
-			ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+			drawContained(ctx, img, img.width, img.height, x, y, width, height);
 			resolve();
 		};
 		img.onerror = () => {
@@ -286,7 +318,7 @@ export async function renderAnnotations(
 				break;
 
 			case "image":
-				await renderImage(ctx, annotation, x, y, width, height);
+				await renderImage(ctx, annotation, x, y, width, height, currentTimeMs);
 				break;
 
 			case "figure":
