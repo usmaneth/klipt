@@ -108,6 +108,50 @@
 	z-index: 10;
 }
 
+/* Sound effect regions — cyan */
+.glassCyan {
+	position: relative;
+	border-radius: 6px;
+	background: rgba(6, 182, 212, 0.08);
+	border: 1px solid rgba(6, 182, 212, 0.15);
+	margin: 2px 0;
+	transition: all 150ms ease;
+	will-change: transform;
+	contain: layout style paint;
+}
+
+.glassCyan:hover {
+	background: rgba(6, 182, 212, 0.12);
+}
+
+.glassCyan.selected {
+	background: rgba(6, 182, 212, 0.14);
+	border-color: rgba(6, 182, 212, 0.35);
+	z-index: 10;
+}
+
+/* Transition regions — blue */
+.glassBlue {
+	position: relative;
+	border-radius: 6px;
+	background: rgba(96, 165, 250, 0.08);
+	border: 1px solid rgba(96, 165, 250, 0.15);
+	margin: 2px 0;
+	transition: all 150ms ease;
+	will-change: transform;
+	contain: layout style paint;
+}
+
+.glassBlue:hover {
+	background: rgba(96, 165, 250, 0.12);
+}
+
+.glassBlue.selected {
+	background: rgba(96, 165, 250, 0.14);
+	border-color: rgba(96, 165, 250, 0.35);
+	z-index: 10;
+}
+
 /* Resize handle end caps */
 .zoomEndCap {
 	position: absolute;
@@ -130,7 +174,11 @@
 .glassAmber:hover .zoomEndCap,
 .glassAmber.selected .zoomEndCap,
 .glassPurple:hover .zoomEndCap,
-.glassPurple.selected .zoomEndCap {
+.glassPurple.selected .zoomEndCap,
+.glassCyan:hover .zoomEndCap,
+.glassCyan.selected .zoomEndCap,
+.glassBlue:hover .zoomEndCap,
+.glassBlue.selected .zoomEndCap {
 	opacity: 1;
 }
 

@@ -171,6 +171,41 @@ export interface AudioRegion {
 	volume: number;
 }
 
+export type SoundEffectId =
+	| "sfx-click"
+	| "sfx-whoosh"
+	| "sfx-pop"
+	| "sfx-ding"
+	| "sfx-swoosh"
+	| "sfx-thud"
+	| "sfx-rise"
+	| "sfx-fall";
+
+export interface SoundEffectRegion {
+	id: string;
+	startMs: number;
+	endMs: number;
+	soundId: SoundEffectId;
+	volume: number;
+}
+
+export type TransitionType =
+	| "crossfade"
+	| "wipe-left"
+	| "wipe-right"
+	| "zoom-in"
+	| "zoom-out"
+	| "dissolve";
+
+export interface TransitionRegion {
+	id: string;
+	/** The output-timeline timestamp (ms) where the transition is centered */
+	atMs: number;
+	/** Total transition duration in ms (half before, half after) */
+	durationMs: number;
+	type: TransitionType;
+}
+
 export type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1.25 | 1.5 | 1.75 | 2;
 
 export interface SpeedRegion {

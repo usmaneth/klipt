@@ -48,7 +48,9 @@ import type {
 	AnnotationRegion,
 	AudioRegion,
 	CursorTelemetryPoint,
+	SoundEffectRegion,
 	SpeedRegion,
+	TransitionRegion,
 	TrimRegion,
 	ZoomFocus,
 	ZoomRegion,
@@ -64,6 +66,8 @@ const TRIM_ROW_ID = "row-trim";
 const ANNOTATION_ROW_ID = "row-annotation";
 const SPEED_ROW_ID = "row-speed";
 const AUDIO_ROW_ID = "row-audio";
+const SFX_ROW_ID = "row-sfx";
+const TRANSITION_ROW_ID = "row-transition";
 const FALLBACK_RANGE_MS = 1000;
 const TARGET_MARKER_COUNT = 12;
 const SUGGESTION_SPACING_MS = 1800;
@@ -106,6 +110,11 @@ interface TimelineEditorProps {
 	onAudioDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
 	onSelectAudio?: (id: string | null) => void;
+	soundEffectRegions?: SoundEffectRegion[];
+	onSfxSpanChange?: (id: string, span: Span) => void;
+	onSfxDelete?: (id: string) => void;
+	transitionRegions?: TransitionRegion[];
+	onTransitionDelete?: (id: string) => void;
 	aspectRatio: AspectRatio;
 	onAspectRatioChange: (aspectRatio: AspectRatio) => void;
 	workspaceNotes?: WorkspaceNote[];
@@ -124,7 +133,7 @@ interface TimelineRenderItem {
 	label: string;
 	zoomDepth?: number;
 	speedValue?: number;
-	variant: "zoom" | "trim" | "annotation" | "speed" | "audio";
+	variant: "zoom" | "trim" | "annotation" | "speed" | "audio" | "sfx" | "transition";
 }
 
 const SCALE_CANDIDATES = [
@@ -557,6 +566,8 @@ function Timeline({
 	const annotationItems = items.filter((item) => item.rowId === ANNOTATION_ROW_ID);
 	const speedItems = items.filter((item) => item.rowId === SPEED_ROW_ID);
 	const audioItems = items.filter((item) => item.rowId === AUDIO_ROW_ID);
+	const sfxItems = items.filter((item) => item.rowId === SFX_ROW_ID);
+	const transitionItems = items.filter((item) => item.rowId === TRANSITION_ROW_ID);
 
 	return (
 		<div
@@ -660,6 +671,42 @@ function Timeline({
 					</Item>
 				))}
 			</Row>
+
+			{sfxItems.length > 0 && (
+				<Row id={SFX_ROW_ID} isEmpty={false} hint="">
+					{sfxItems.map((item) => (
+						<Item
+							id={item.id}
+							key={item.id}
+							rowId={item.rowId}
+							span={item.span}
+							isSelected={false}
+							onSelect={() => {}}
+							variant="sfx"
+						>
+							{item.label}
+						</Item>
+					))}
+				</Row>
+			)}
+
+			{transitionItems.length > 0 && (
+				<Row id={TRANSITION_ROW_ID} isEmpty={false} hint="">
+					{transitionItems.map((item) => (
+						<Item
+							id={item.id}
+							key={item.id}
+							rowId={item.rowId}
+							span={item.span}
+							isSelected={false}
+							onSelect={() => {}}
+							variant="transition"
+						>
+							{item.label}
+						</Item>
+					))}
+				</Row>
+			)}
 		</div>
 	);
 }
@@ -764,6 +811,11 @@ const TimelineEditor = memo(function TimelineEditor({
 	onAudioDelete,
 	selectedAudioId,
 	onSelectAudio,
+	soundEffectRegions = [],
+	onSfxSpanChange,
+	onSfxDelete: _onSfxDelete,
+	transitionRegions = [],
+	onTransitionDelete: _onTransitionDelete,
 	aspectRatio,
 	onAspectRatioChange,
 	workspaceNotes,
@@ -1467,8 +1519,27 @@ const TimelineEditor = memo(function TimelineEditor({
 			};
 		});
 
-		return [...zooms, ...trims, ...annotations, ...speeds, ...audios];
-	}, [zoomRegions, trimRegions, annotationRegions, speedRegions, audioRegions]);
+		const sfxItems: TimelineRenderItem[] = soundEffectRegions.map((region) => ({
+			id: region.id,
+			rowId: SFX_ROW_ID,
+			span: { start: region.startMs, end: region.endMs },
+			label: region.soundId.replace("sfx-", ""),
+			variant: "sfx",
+		}));
+
+		const transitionItems: TimelineRenderItem[] = transitionRegions.map((region) => ({
+			id: region.id,
+			rowId: TRANSITION_ROW_ID,
+			span: {
+				start: Math.max(0, region.atMs - region.durationMs / 2),
+				end: region.atMs + region.durationMs / 2,
+			},
+			label: region.type,
+			variant: "transition",
+		}));
+
+		return [...zooms, ...trims, ...annotations, ...speeds, ...audios, ...sfxItems, ...transitionItems];
+	}, [zoomRegions, trimRegions, annotationRegions, speedRegions, audioRegions, soundEffectRegions, transitionRegions]);
 
 	// Flat list of all non-annotation region spans for neighbour-clamping during drag/resize
 	const allRegionSpans = useMemo(() => {
@@ -1476,8 +1547,9 @@ const TimelineEditor = memo(function TimelineEditor({
 		const trims = trimRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
 		const speeds = speedRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
 		const audios = audioRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
-		return [...zooms, ...trims, ...speeds, ...audios];
-	}, [zoomRegions, trimRegions, speedRegions, audioRegions]);
+		const sfx = soundEffectRegions.map((r) => ({ id: r.id, start: r.startMs, end: r.endMs }));
+		return [...zooms, ...trims, ...speeds, ...audios, ...sfx];
+	}, [zoomRegions, trimRegions, speedRegions, audioRegions, soundEffectRegions]);
 
 	const handleItemSpanChange = useCallback(
 		(id: string, span: Span) => {
@@ -1492,6 +1564,8 @@ const TimelineEditor = memo(function TimelineEditor({
 				onAnnotationSpanChange?.(id, span);
 			} else if (audioRegions.some((r) => r.id === id)) {
 				onAudioSpanChange?.(id, span);
+			} else if (soundEffectRegions.some((r) => r.id === id)) {
+				onSfxSpanChange?.(id, span);
 			}
 		},
 		[
@@ -1500,11 +1574,13 @@ const TimelineEditor = memo(function TimelineEditor({
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			soundEffectRegions,
 			onZoomSpanChange,
 			onTrimSpanChange,
 			onSpeedSpanChange,
 			onAnnotationSpanChange,
 			onAudioSpanChange,
+			onSfxSpanChange,
 		],
 	);
 

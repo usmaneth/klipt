@@ -6,7 +6,9 @@ import type {
 	AudioRegion,
 	CropRegion,
 	CursorTelemetryPoint,
+	SoundEffectRegion,
 	SpeedRegion,
+	TransitionRegion,
 	TrimRegion,
 	ZoomRegion,
 } from "@/components/video-editor/types";
@@ -15,6 +17,7 @@ import { buildExportCaptionPages, renderCaptions } from "./captionRenderer";
 import { FrameRenderer } from "./frameRenderer";
 import { VideoMuxer } from "./muxer";
 import { StreamingVideoDecoder } from "./streamingDecoder";
+import { renderTransitionFrame } from "./transitionRenderer";
 import type { ExportConfig, ExportProgress, ExportResult } from "./types";
 
 interface VideoExporterConfig extends ExportConfig {
@@ -41,6 +44,8 @@ interface VideoExporterConfig extends ExportConfig {
 	cursorClickBounce?: number;
 	cursorSway?: number;
 	audioRegions?: AudioRegion[];
+	soundEffectRegions?: SoundEffectRegion[];
+	transitionRegions?: TransitionRegion[];
 	enhancedAudioUrl?: string;
 	previewWidth?: number;
 	previewHeight?: number;
@@ -145,7 +150,8 @@ export class VideoExporter {
 			await this.initializeEncoder();
 
 			const hasAudioRegions = (this.config.audioRegions ?? []).length > 0;
-			const hasAudio = videoInfo.hasAudio || hasAudioRegions;
+			const hasSfx = (this.config.soundEffectRegions ?? []).length > 0;
+			const hasAudio = videoInfo.hasAudio || hasAudioRegions || hasSfx;
 
 			// Initialize muxer
 			this.muxer = new VideoMuxer(this.config, hasAudio);
@@ -181,9 +187,16 @@ export class VideoExporter {
 			let frameIndex = 0;
 			let webcamRemoved = false;
 
-			// TODO: Add memory monitoring for large exports (e.g. track VideoFrame / encoder queue memory
-			// pressure and pause decode if memory usage exceeds a threshold). This would prevent OOM
-			// crashes on long or high-resolution recordings.
+			// Transition support: buffer for the "outgoing" frame snapshot
+			const sortedTransitions = [...(this.config.transitionRegions ?? [])].sort(
+				(a, b) => a.atMs - b.atMs,
+			);
+			let transitionSnapshotCanvas: OffscreenCanvas | null = null;
+			let lastFrameMs = -1;
+
+			if (sortedTransitions.length > 0) {
+				transitionSnapshotCanvas = new OffscreenCanvas(this.config.width, this.config.height);
+			}
 
 			// Stream decode and process frames — no seeking!
 			await this.streamingDecoder.decodeAll(
@@ -238,6 +251,44 @@ export class VideoExporter {
 						}
 					}
 
+					// Apply video transitions if any are active at this timestamp
+					if (sortedTransitions.length > 0 && transitionSnapshotCanvas) {
+						const compositeCanvas = this.renderer!.getCanvas();
+						const compositeCtx = compositeCanvas.getContext("2d");
+
+						// Check if we're inside any transition window
+						const activeTransition = sortedTransitions.find((tr) => {
+							const halfDur = tr.durationMs / 2;
+							return sourceTimestampMs >= tr.atMs - halfDur && sourceTimestampMs <= tr.atMs + halfDur;
+						});
+
+						if (activeTransition && compositeCtx && lastFrameMs >= 0) {
+							const halfDur = activeTransition.durationMs / 2;
+							const progress = (sourceTimestampMs - (activeTransition.atMs - halfDur)) / activeTransition.durationMs;
+
+							// The current composite canvas has the "incoming" frame.
+							// Copy it to a temp canvas, then blend outgoing snapshot with incoming.
+							const tempCanvas = new OffscreenCanvas(this.config.width, this.config.height);
+							const tempCtx = tempCanvas.getContext("2d")!;
+							tempCtx.drawImage(compositeCanvas, 0, 0);
+
+							renderTransitionFrame(
+								compositeCtx,
+								activeTransition.type,
+								transitionSnapshotCanvas,
+								tempCanvas,
+								this.config.width,
+								this.config.height,
+								progress,
+							);
+						}
+
+						// Snapshot current composite for next frame's outgoing reference
+						const snapCtx = transitionSnapshotCanvas.getContext("2d")!;
+						snapCtx.drawImage(compositeCanvas, 0, 0);
+						lastFrameMs = sourceTimestampMs;
+					}
+
 					await this.encodeRenderedFrame(timestamp, frameDuration, frameIndex);
 					frameIndex++;
 					this.reportProgress(frameIndex, totalFrames);
@@ -269,7 +320,7 @@ export class VideoExporter {
 					);
 				} else {
 					const demuxer = this.streamingDecoder.getDemuxer();
-					if (demuxer || hasAudioRegions) {
+					if (demuxer || hasAudioRegions || hasSfx) {
 						await this.awaitWithWindowsTimeout(
 							this.audioProcessor.process(
 								demuxer!,
@@ -279,6 +330,7 @@ export class VideoExporter {
 								this.config.speedRegions,
 								undefined,
 								this.config.audioRegions,
+								this.config.soundEffectRegions,
 							),
 							"audio processing",
 						);
