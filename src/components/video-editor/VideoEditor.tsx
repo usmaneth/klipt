@@ -347,6 +347,7 @@ export default function VideoEditor() {
 	);
 	const [exportedFilePath, setExportedFilePath] = useState<string | undefined>(undefined);
 	const [hasPendingExportSave, setHasPendingExportSave] = useState(false);
+	const pendingExportFormatRef = useRef<boolean>(false);
 	const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
 	const [projectName, setProjectName] = useState("Untitled Project");
 	const [isEditingProjectName, setIsEditingProjectName] = useState(false);
@@ -2367,25 +2368,25 @@ export default function VideoEditor() {
 
 						const totalPixels = exportWidth * exportHeight;
 						if (totalPixels <= 1280 * 720) {
-							bitrate = 40_000_000;
+							bitrate = 50_000_000;
 						} else if (totalPixels <= 1920 * 1080) {
-							bitrate = 60_000_000;
+							bitrate = 70_000_000;
 						} else {
-							bitrate = 80_000_000;
+							bitrate = 100_000_000;
 						}
 					} else if (quality === "good") {
-						// Good quality: 1080p target with moderate bitrate
+						// Good quality: 1080p target with high bitrate for sharp output
 						const targetHeight = 1080;
 						exportHeight = Math.floor(targetHeight / 2) * 2;
 						exportWidth = Math.floor((exportHeight * aspectRatioValue) / 2) * 2;
 
 						const totalPixels = exportWidth * exportHeight;
 						if (totalPixels <= 1280 * 720) {
-							bitrate = 25_000_000;
+							bitrate = 35_000_000;
 						} else if (totalPixels <= 1920 * 1080) {
-							bitrate = 40_000_000;
-						} else {
 							bitrate = 50_000_000;
+						} else {
+							bitrate = 65_000_000;
 						}
 					} else {
 						// Medium quality: 720p target
@@ -2395,10 +2396,17 @@ export default function VideoEditor() {
 
 						const totalPixels = exportWidth * exportHeight;
 						if (totalPixels <= 1280 * 720) {
-							bitrate = 10_000_000;
+							bitrate = 18_000_000;
 						} else {
-							bitrate = 15_000_000;
+							bitrate = 25_000_000;
 						}
+					}
+
+					// Boost bitrate when padding is high (zoomed out) to maintain
+					// sharp video content that occupies fewer pixels
+					if (padding > 20) {
+						const paddingBoost = 1 + (padding / 100) * 0.5;
+						bitrate = Math.round(bitrate * paddingBoost);
 					}
 
 					const exporter = new VideoExporter({
@@ -2607,6 +2615,14 @@ export default function VideoEditor() {
 		gifSizePreset,
 		handleExport,
 	]);
+
+	// Trigger export after format change from dropdown
+	useEffect(() => {
+		if (pendingExportFormatRef.current) {
+			pendingExportFormatRef.current = false;
+			handleOpenExportDialog();
+		}
+	}, [exportFormat, handleOpenExportDialog]);
 
 	const handleCancelExport = useCallback(() => {
 		if (exporterRef.current) {
@@ -2960,8 +2976,12 @@ export default function VideoEditor() {
 									<DropdownMenuItem
 										className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
 										onSelect={() => {
-											setExportFormat("mp4");
-											handleOpenExportDialog();
+											if (exportFormat === "mp4") {
+												handleOpenExportDialog();
+											} else {
+												pendingExportFormatRef.current = true;
+												setExportFormat("mp4");
+											}
 										}}
 									>
 										<Download className="w-3 h-3 mr-2" />
@@ -2970,8 +2990,12 @@ export default function VideoEditor() {
 									<DropdownMenuItem
 										className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
 										onSelect={() => {
-											setExportFormat("gif");
-											handleOpenExportDialog();
+											if (exportFormat === "gif") {
+												handleOpenExportDialog();
+											} else {
+												pendingExportFormatRef.current = true;
+												setExportFormat("gif");
+											}
 										}}
 									>
 										<Download className="w-3 h-3 mr-2" />
