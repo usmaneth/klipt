@@ -2,6 +2,7 @@ import Block from "@uiw/react-color-block";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Bug,
+	Clapperboard,
 	Crop,
 	Download,
 	Film,
@@ -10,9 +11,13 @@ import {
 	Image,
 	Mic,
 	Palette,
+	RectangleVertical,
 	Save,
+	Smartphone,
+	Square,
 	Star,
 	Subtitles,
+	Type,
 	Upload,
 	Volume2,
 	X,
@@ -270,7 +275,7 @@ const BLOCK_COLOR_STYLE = {
 const DEFAULT_GIF_OUTPUT_DIMENSIONS = { width: 1280, height: 720 } as const;
 const EMPTY_ANNOTATION_REGIONS: AnnotationRegion[] = [];
 
-type SettingsTab = "style" | "motion" | "audio" | "export";
+type SettingsTab = "style" | "motion" | "audio" | "create" | "export";
 
 const TAB_ANIMATION = {
 	initial: { opacity: 0, y: 4 },
@@ -557,11 +562,11 @@ export function SettingsPanel({
 
 		const file = files[0];
 
-		// Validate file type - only allow JPG/JPEG
-		const validTypes = ["image/jpeg", "image/jpg"];
+		// Validate file type - allow JPG/JPEG, PNG, and WebP
+		const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 		if (!validTypes.includes(file.type)) {
 			toast.error(tSettings("background.uploadError"), {
-				description: tSettings("background.uploadErrorDescription"),
+				description: "Please upload a JPG, PNG, or WebP image file.",
 			});
 			event.target.value = "";
 			return;
@@ -694,6 +699,7 @@ export function SettingsPanel({
 		style: <Palette className="w-3.5 h-3.5" />,
 		motion: <Zap className="w-3.5 h-3.5" />,
 		audio: <Volume2 className="w-3.5 h-3.5" />,
+		create: <Clapperboard className="w-3.5 h-3.5" />,
 		export: <Download className="w-3.5 h-3.5" />,
 	};
 
@@ -710,7 +716,7 @@ export function SettingsPanel({
 
 				<div className="px-6 pt-5 pb-1">
 					<div className="flex items-center p-1 bg-black/40 rounded-xl shadow-inner border border-white/[0.05] mb-2 relative">
-					{(["style", "motion", "audio", "export"] as const).map((tab) => {
+					{(["style", "motion", "audio", "create", "export"] as const).map((tab) => {
 						const isActive = activeTab === tab;
 						return (
 							<button
@@ -779,7 +785,7 @@ export function SettingsPanel({
 													type="file"
 													ref={fileInputRef}
 													onChange={handleImageUpload}
-													accept=".jpg,.jpeg,image/jpeg"
+													accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
 													className="hidden"
 												/>
 												<Button
@@ -1792,6 +1798,243 @@ export function SettingsPanel({
 												</div>
 											)}
 										</div>
+									</div>
+								)}
+							</motion.div>
+						)}
+
+						{/* ===== CREATE TAB (TikTok / Short-form video) ===== */}
+						{activeTab === "create" && (
+							<motion.div key="create" {...TAB_ANIMATION} className="space-y-5">
+								{/* Quick Format Presets */}
+								<div>
+									<SectionHeader>Quick Presets</SectionHeader>
+									<div className="grid grid-cols-3 gap-1.5">
+										{([
+											{ ratio: "9:16" as const, label: "TikTok", icon: <Smartphone className="w-4 h-4" /> },
+											{ ratio: "1:1" as const, label: "Square", icon: <Square className="w-4 h-4" /> },
+											{ ratio: "4:5" as const, label: "Reel", icon: <RectangleVertical className="w-4 h-4" /> },
+										] as const).map((preset) => (
+											<button
+												key={preset.ratio}
+												type="button"
+												onClick={() => {
+													onAspectRatioChange?.(preset.ratio);
+													if (preset.ratio === "9:16" || preset.ratio === "4:5") {
+														onPaddingChange?.(12);
+														onBorderRadiusChange?.(16);
+													}
+												}}
+												className={cn(
+													"flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200",
+													aspectRatio === preset.ratio
+														? "bg-[#E0000F]/10 border border-[#E0000F]/30 text-white shadow-[0_0_12px_rgba(224,0,15,0.15)]"
+														: "bg-white/[0.03] border border-white/[0.06] text-white/40 hover:bg-white/[0.06] hover:text-white/70",
+												)}
+											>
+												{preset.icon}
+												<span className="text-[9px] font-bold uppercase tracking-wider">{preset.label}</span>
+												<span className="text-[8px] text-white/25">{preset.ratio}</span>
+											</button>
+										))}
+									</div>
+								</div>
+
+								{/* Text Style Templates */}
+								<div>
+									<SectionHeader>Caption Styles</SectionHeader>
+									<div className="space-y-1.5">
+										{([
+											{
+												name: "Bold Impact",
+												fontSize: 48,
+												fontFamily: "Impact, sans-serif",
+												backgroundOpacity: 0,
+												animation: "pop" as const,
+											},
+											{
+												name: "Subtitle Classic",
+												fontSize: 28,
+												fontFamily: "Inter, sans-serif",
+												backgroundOpacity: 0.7,
+												animation: "fade" as const,
+											},
+											{
+												name: "Neon Glow",
+												fontSize: 36,
+												fontFamily: "Inter, sans-serif",
+												backgroundOpacity: 0,
+												animation: "rise" as const,
+											},
+											{
+												name: "Minimal",
+												fontSize: 24,
+												fontFamily: "Inter, sans-serif",
+												backgroundOpacity: 0.4,
+												animation: "none" as const,
+											},
+										]).map((template) => (
+											<button
+												key={template.name}
+												type="button"
+												onClick={() => {
+													onCaptionSettingsChange?.({
+														...captionSettings,
+														enabled: true,
+														fontSize: template.fontSize,
+														fontFamily: template.fontFamily,
+														backgroundOpacity: template.backgroundOpacity,
+														animation: template.animation,
+													});
+												}}
+												className={cn(
+													"w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+													"bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1]",
+												)}
+											>
+												<div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center flex-shrink-0">
+													<Type className="w-3.5 h-3.5 text-white/40" />
+												</div>
+												<div className="flex-1 text-left">
+													<span className="text-[11px] font-medium text-white/70 block">{template.name}</span>
+													<span className="text-[9px] text-white/25">{template.fontSize}px {template.animation !== "none" ? `\u00b7 ${template.animation}` : ""}</span>
+												</div>
+											</button>
+										))}
+									</div>
+								</div>
+
+								{/* Short-form Video Tips */}
+								<div>
+									<SectionHeader>Quick Actions</SectionHeader>
+									<div className="space-y-1.5">
+										<button
+											type="button"
+											onClick={() => {
+												onAspectRatioChange?.("9:16");
+												onPaddingChange?.(12);
+												onBorderRadiusChange?.(16);
+												onCaptionSettingsChange?.({
+													...captionSettings,
+													enabled: true,
+													fontSize: 36,
+													animation: "pop",
+													positionOffset: 75,
+													maxRows: 2,
+													backgroundOpacity: 0,
+												});
+											}}
+											className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-[#E0000F]/5 to-purple-500/5 border border-[#E0000F]/10 hover:from-[#E0000F]/10 hover:to-purple-500/10 hover:border-[#E0000F]/20 transition-all duration-200"
+										>
+											<div className="w-8 h-8 rounded-lg bg-[#E0000F]/10 flex items-center justify-center flex-shrink-0">
+												<Smartphone className="w-4 h-4 text-[#E0000F]/70" />
+											</div>
+											<div className="flex-1 text-left">
+												<span className="text-[11px] font-semibold text-white/80 block">TikTok Ready</span>
+												<span className="text-[9px] text-white/30">9:16 + bold captions + pop animation</span>
+											</div>
+										</button>
+
+										<button
+											type="button"
+											onClick={() => {
+												onAspectRatioChange?.("1:1");
+												onPaddingChange?.(8);
+												onBorderRadiusChange?.(12);
+												onCaptionSettingsChange?.({
+													...captionSettings,
+													enabled: true,
+													fontSize: 28,
+													animation: "fade",
+													positionOffset: 85,
+													maxRows: 2,
+													backgroundOpacity: 0.6,
+												});
+											}}
+											className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200"
+										>
+											<div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+												<Square className="w-4 h-4 text-white/40" />
+											</div>
+											<div className="flex-1 text-left">
+												<span className="text-[11px] font-semibold text-white/80 block">Instagram Post</span>
+												<span className="text-[9px] text-white/30">1:1 + subtle captions + fade</span>
+											</div>
+										</button>
+
+										<button
+											type="button"
+											onClick={() => {
+												onAspectRatioChange?.("4:5");
+												onPaddingChange?.(10);
+												onBorderRadiusChange?.(14);
+												onCaptionSettingsChange?.({
+													...captionSettings,
+													enabled: true,
+													fontSize: 32,
+													animation: "rise",
+													positionOffset: 80,
+													maxRows: 3,
+													backgroundOpacity: 0.5,
+												});
+											}}
+											className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200"
+										>
+											<div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+												<RectangleVertical className="w-4 h-4 text-white/40" />
+											</div>
+											<div className="flex-1 text-left">
+												<span className="text-[11px] font-semibold text-white/80 block">Instagram Reel</span>
+												<span className="text-[9px] text-white/30">4:5 + medium captions + rise</span>
+											</div>
+										</button>
+
+										<button
+											type="button"
+											onClick={() => {
+												onAspectRatioChange?.("16:9");
+												onPaddingChange?.(6);
+												onBorderRadiusChange?.(8);
+												onCaptionSettingsChange?.({
+													...captionSettings,
+													enabled: true,
+													fontSize: 24,
+													animation: "fade",
+													positionOffset: 90,
+													maxRows: 2,
+													backgroundOpacity: 0.5,
+												});
+											}}
+											className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200"
+										>
+											<div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+												<Film className="w-4 h-4 text-white/40" />
+											</div>
+											<div className="flex-1 text-left">
+												<span className="text-[11px] font-semibold text-white/80 block">YouTube Short</span>
+												<span className="text-[9px] text-white/30">16:9 + clean captions + fade</span>
+											</div>
+										</button>
+									</div>
+								</div>
+
+								{/* Generate Captions CTA */}
+								{onGenerateCaptions && (
+									<div>
+										<SectionHeader>Auto Captions</SectionHeader>
+										<Button
+											onClick={onGenerateCaptions}
+											disabled={isTranscribing}
+											className="w-full gap-2 bg-[#E0000F] hover:bg-[#E0000F]/90 text-white font-semibold h-10 text-[12px] rounded-xl transition-all duration-150 disabled:opacity-40 shadow-[0_4px_16px_rgba(224,0,15,0.25)]"
+										>
+											<Mic className="w-4 h-4" />
+											{isTranscribing
+												? (transcriptionLabel ?? `Generating${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`)
+												: "Generate Auto Captions"}
+										</Button>
+										<p className="text-[9px] text-white/20 mt-2 text-center">
+											AI-powered captions using local Whisper model
+										</p>
 									</div>
 								)}
 							</motion.div>
