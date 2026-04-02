@@ -1,6 +1,7 @@
 import { WebDemuxer } from "web-demuxer";
 import { toFileUrl } from "@/components/video-editor/projectPersistence";
-import type { AudioRegion, SpeedRegion, TrimRegion } from "@/components/video-editor/types";
+import type { AudioRegion, SoundEffectRegion, SpeedRegion, TrimRegion } from "@/components/video-editor/types";
+import { getSoundEffectBuffer } from "@/lib/audio/soundEffectSynth";
 import type { VideoMuxer } from "./muxer";
 
 const AUDIO_BITRATE = 128_000;
@@ -23,6 +24,7 @@ export class AudioProcessor {
 		speedRegions?: SpeedRegion[],
 		readEndSec?: number,
 		audioRegions?: AudioRegion[],
+		soundEffectRegions?: SoundEffectRegion[],
 	): Promise<void> {
 		const sortedTrims = trimRegions ? [...trimRegions].sort((a, b) => a.startMs - b.startMs) : [];
 		const sortedSpeedRegions = speedRegions
@@ -33,14 +35,18 @@ export class AudioProcessor {
 		const sortedAudioRegions = audioRegions
 			? [...audioRegions].sort((a, b) => a.startMs - b.startMs)
 			: [];
+		const sortedSfx = soundEffectRegions
+			? [...soundEffectRegions].sort((a, b) => a.startMs - b.startMs)
+			: [];
 
-		// When audio regions or speed edits are present, use AudioContext mixing path.
-		if (sortedSpeedRegions.length > 0 || sortedAudioRegions.length > 0) {
+		// When audio regions, speed edits, or sound effects are present, use AudioContext mixing path.
+		if (sortedSpeedRegions.length > 0 || sortedAudioRegions.length > 0 || sortedSfx.length > 0) {
 			const renderedAudioBlob = await this.renderMixedTimelineAudio(
 				videoUrl,
 				sortedTrims,
 				sortedSpeedRegions,
 				sortedAudioRegions,
+				sortedSfx,
 			);
 			if (!this.cancelled) {
 				await this.muxRenderedAudioBlob(renderedAudioBlob, muxer);
@@ -170,6 +176,7 @@ export class AudioProcessor {
 		trimRegions: TrimRegion[],
 		speedRegions: SpeedRegion[],
 		audioRegions: AudioRegion[],
+		soundEffectRegions: SoundEffectRegion[] = [],
 	): Promise<Blob> {
 		const media = document.createElement("audio");
 		media.src = videoUrl;
@@ -209,6 +216,7 @@ export class AudioProcessor {
 			region: AudioRegion;
 		}[] = [];
 
+		let failedRegionCount = 0;
 		for (const region of audioRegions) {
 			const audioEl = document.createElement("audio");
 			audioEl.src = toFileUrl(region.audioPath);
@@ -217,6 +225,8 @@ export class AudioProcessor {
 				await this.waitForLoadedMetadata(audioEl);
 			} catch {
 				console.warn("[AudioProcessor] Failed to load audio region:", region.audioPath);
+				audioEl.src = "";
+				failedRegionCount++;
 				continue;
 			}
 			if (this.cancelled) throw new Error("Export cancelled");
@@ -228,6 +238,27 @@ export class AudioProcessor {
 			gainNode.connect(destinationNode);
 
 			audioRegionElements.push({ media: audioEl, sourceNode: regionSource, gainNode, region });
+		}
+
+		if (failedRegionCount > 0) {
+			console.warn(`[AudioProcessor] ${failedRegionCount} of ${audioRegions.length} audio region(s) failed to load and will be missing from the export`);
+		}
+
+		// Pre-synthesize sound effect buffers and prepare for scheduled playback
+		const sfxEntries: {
+			buffer: AudioBuffer;
+			region: SoundEffectRegion;
+			started: boolean;
+			sourceNode: AudioBufferSourceNode | null;
+			gainNode: GainNode | null;
+		}[] = [];
+		for (const sfxRegion of soundEffectRegions) {
+			try {
+				const buffer = await getSoundEffectBuffer(sfxRegion.soundId);
+				sfxEntries.push({ buffer, region: sfxRegion, started: false, sourceNode: null, gainNode: null });
+			} catch {
+				console.warn("[AudioProcessor] Failed to synthesize SFX:", sfxRegion.soundId);
+			}
 		}
 
 		const { recorder, recordedBlobPromise } = this.startAudioRecording(destinationNode.stream);
@@ -308,6 +339,24 @@ export class AudioProcessor {
 						}
 					}
 
+					// Play sound effects when timeline reaches their start time
+					for (const sfx of sfxEntries) {
+						if (!sfx.started && currentTimeMs >= sfx.region.startMs) {
+							sfx.started = true;
+							const src = audioContext.createBufferSource();
+							src.buffer = sfx.buffer;
+							const gain = audioContext.createGain();
+							gain.gain.value = Math.max(0, Math.min(1, sfx.region.volume));
+							src.connect(gain).connect(destinationNode);
+							const offsetSec = Math.max(0, (currentTimeMs - sfx.region.startMs) / 1000);
+							const remainingSec = Math.max(0, sfx.buffer.duration - offsetSec);
+							// Start immediately at current context time, from the correct offset
+							src.start(audioContext.currentTime, offsetSec, remainingSec);
+							sfx.sourceNode = src;
+							sfx.gainNode = gain;
+						}
+					}
+
 					if (!media.paused && !media.ended) {
 						rafId = requestAnimationFrame(tick);
 					} else {
@@ -331,6 +380,11 @@ export class AudioProcessor {
 				entry.gainNode.disconnect();
 				entry.media.src = "";
 				entry.media.load();
+			}
+			for (const sfx of sfxEntries) {
+				try { sfx.sourceNode?.stop(); } catch { /* may already be stopped */ }
+				sfx.sourceNode?.disconnect();
+				sfx.gainNode?.disconnect();
 			}
 			if (recorder.state !== "inactive") {
 				recorder.stop();

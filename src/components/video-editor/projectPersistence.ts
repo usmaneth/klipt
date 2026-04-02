@@ -18,7 +18,9 @@ import {
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
 	DEFAULT_ZOOM_MOTION_BLUR,
+	type SoundEffectRegion,
 	type SpeedRegion,
+	type TransitionRegion,
 	type TrimRegion,
 	type ZoomRegion,
 } from "./types";
@@ -61,6 +63,8 @@ export interface ProjectEditorState {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
+	soundEffectRegions?: SoundEffectRegion[];
+	transitionRegions?: TransitionRegion[];
 	aspectRatio: AspectRatio;
 	exportQuality: ExportQuality;
 	exportFormat: ExportFormat;
@@ -442,6 +446,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		speedRegions: normalizedSpeedRegions,
 		annotationRegions: normalizedAnnotationRegions,
 		audioRegions: normalizedAudioRegions,
+		soundEffectRegions: Array.isArray((editor as Partial<ProjectEditorState>).soundEffectRegions)
+			? ((editor as Partial<ProjectEditorState>).soundEffectRegions as SoundEffectRegion[])
+			: [],
+		transitionRegions: Array.isArray((editor as Partial<ProjectEditorState>).transitionRegions)
+			? ((editor as Partial<ProjectEditorState>).transitionRegions as TransitionRegion[])
+			: [],
 		aspectRatio:
 			typeof editor.aspectRatio === "string" &&
 			(validAspectRatios.has(editor.aspectRatio as AspectRatio) ||

@@ -9,10 +9,18 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Download,
+	FolderOpen,
+	Gauge,
+	Image,
+	MessageSquare,
 	Mic,
 	Play,
+	Redo2,
 	Save,
 	Scissors,
+	Type,
+	Undo2,
+	Upload,
 	ZoomIn,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -51,11 +59,19 @@ export function CommandPalette({
 	open,
 	onClose,
 	onExportMp4,
+	onExportGif,
 	onAddZoomRegion,
 	onAddTrimRegion,
+	onAddSpeedRegion,
+	onAddAnnotation,
 	onPlayPause,
+	onUndo,
+	onRedo,
 	onEnhanceAudio,
+	onGenerateThumbnails,
 	onSaveProject,
+	onLoadProject,
+	onOpenRecordingsFolder,
 }: CommandPaletteProps) {
 	const [pulse, setPulse] = useState(false);
 
@@ -152,7 +168,15 @@ export function CommandPalette({
 										<span className="flex items-center gap-5">
 											<Download className="w-6 h-6 group-data-[selected=true]:text-[#E0000F] transition-colors" /> Export as MP4
 										</span>
-										<Kbd>{"\u2318"}E</Kbd>
+										<Kbd>&#8984;E</Kbd>
+									</CommandItem>
+									<CommandItem
+										onSelect={() => run(onExportGif)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<Image className="w-6 h-6 group-data-[selected=true]:text-[#F59E0B] transition-colors" /> Export as GIF
+										</span>
 									</CommandItem>
 									<CommandItem
 										onSelect={() => run(onPlayPause)}
@@ -182,6 +206,22 @@ export function CommandPalette({
 										<Kbd>Z</Kbd>
 									</CommandItem>
 									<CommandItem
+										onSelect={() => run(onAddSpeedRegion)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<Gauge className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Add Speed Region
+										</span>
+									</CommandItem>
+									<CommandItem
+										onSelect={() => run(onAddAnnotation)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<Type className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Add Text Annotation
+										</span>
+									</CommandItem>
+									<CommandItem
 										onSelect={() => run(onEnhanceAudio)}
 										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
 									>
@@ -190,13 +230,55 @@ export function CommandPalette({
 										</span>
 									</CommandItem>
 									<CommandItem
+										onSelect={() => run(onGenerateThumbnails)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<MessageSquare className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Generate Thumbnails
+										</span>
+									</CommandItem>
+									<CommandItem
+										onSelect={() => run(onUndo)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<Undo2 className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Undo
+										</span>
+										<Kbd>&#8984;Z</Kbd>
+									</CommandItem>
+									<CommandItem
+										onSelect={() => run(onRedo)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<Redo2 className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Redo
+										</span>
+										<Kbd>&#8984;&#8679;Z</Kbd>
+									</CommandItem>
+									<CommandItem
 										onSelect={() => run(onSaveProject)}
 										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
 									>
 										<span className="flex items-center gap-5">
 											<Save className="w-6 h-6 group-data-[selected=true]:text-[#2563EB] transition-colors" /> Save Project
 										</span>
-										<Kbd>{"\u2318"}S</Kbd>
+										<Kbd>&#8984;S</Kbd>
+									</CommandItem>
+									<CommandItem
+										onSelect={() => run(onLoadProject)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<Upload className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Load Project
+										</span>
+									</CommandItem>
+									<CommandItem
+										onSelect={() => run(onOpenRecordingsFolder)}
+										className="flex items-center justify-between w-full px-6 py-4 rounded-[16px] text-[18px] font-semibold text-white/50 cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white data-[selected=true]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group"
+									>
+										<span className="flex items-center gap-5">
+											<FolderOpen className="w-6 h-6 group-data-[selected=true]:text-white transition-colors" /> Open Recordings Folder
+										</span>
 									</CommandItem>
 								</CommandGroup>
 							</CommandList>

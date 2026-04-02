@@ -1,4 +1,6 @@
 import GIF from "gif.js";
+import type { CaptionCue } from "@/components/video-editor/captionLayout";
+import type { CaptionSettings } from "@/components/video-editor/captionStyle";
 import type { WebcamState } from "@/components/video-editor/projectPersistence";
 import type {
 	AnnotationRegion,
@@ -8,6 +10,7 @@ import type {
 	TrimRegion,
 	ZoomRegion,
 } from "@/components/video-editor/types";
+import { buildExportCaptionPages, renderCaptions } from "./captionRenderer";
 import { FrameRenderer } from "./frameRenderer";
 import { StreamingVideoDecoder } from "./streamingDecoder";
 import type {
@@ -52,6 +55,8 @@ interface GifExporterConfig {
 	previewHeight?: number;
 	webcamVideoPath?: string;
 	webcamState?: WebcamState;
+	captionCues?: CaptionCue[];
+	captionSettings?: CaptionSettings;
 	onProgress?: (progress: ExportProgress) => void;
 }
 
@@ -166,6 +171,20 @@ export class GifExporter {
 				this.renderer.setupWebcam(webcamState);
 			}
 
+			// Pre-build caption layout for the entire export
+			const captionPages =
+				this.config.captionCues &&
+				this.config.captionSettings?.enabled &&
+				this.config.captionCues.length > 0
+					? buildExportCaptionPages(
+							this.config.captionCues,
+							this.config.width,
+							this.config.captionSettings.fontSize,
+							this.config.captionSettings.fontFamily,
+							this.config.captionSettings.maxRows,
+						)
+					: [];
+
 			// Initialize GIF encoder
 			// Loop: 0 = infinite loop, 1 = play once (no loop)
 			const repeat = this.config.loop ? 0 : 1;
@@ -236,6 +255,22 @@ export class GifExporter {
 					const sourceTimestampUs = sourceTimestampMs * 1000;
 					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
 					videoFrame.close();
+
+					// Render captions on the composite canvas after all other layers
+					if (captionPages.length > 0 && this.config.captionSettings) {
+						const compositeCanvas = this.renderer!.getCanvas();
+						const captionCtx = compositeCanvas.getContext("2d");
+						if (captionCtx) {
+							renderCaptions(
+								captionCtx,
+								this.config.width,
+								this.config.height,
+								sourceTimestampMs,
+								captionPages,
+								this.config.captionSettings,
+							);
+						}
+					}
 
 					this.addRenderedGifFrame(frameDelay);
 					frameIndex++;

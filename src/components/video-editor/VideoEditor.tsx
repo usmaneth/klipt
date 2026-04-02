@@ -72,12 +72,17 @@ import {
 	DEFAULT_ZOOM_DEPTH,
 	type FigureData,
 	type PlaybackSpeed,
+	type SoundEffectId,
+	type SoundEffectRegion,
 	type SpeedRegion,
+	type TransitionRegion,
+	type TransitionType,
 	type TrimRegion,
 	type ZoomDepth,
 	type ZoomFocus,
 	type ZoomRegion,
 } from "./types";
+import { SFX_DURATIONS } from "@/lib/audio/soundEffectSynth";
 import type { CaptionCue } from "./captionLayout";
 import type { CaptionSettings } from "./captionStyle";
 import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
@@ -113,6 +118,8 @@ type EditorHistorySnapshot = {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
+	soundEffectRegions: SoundEffectRegion[];
+	transitionRegions: TransitionRegion[];
 	selectedZoomId: string | null;
 	selectedTrimId: string | null;
 	selectedSpeedId: string | null;
@@ -189,6 +196,8 @@ export default function VideoEditor() {
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 	const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
 	const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
+	const [soundEffectRegions, setSoundEffectRegions] = useState<SoundEffectRegion[]>([]);
+	const [transitionRegions, setTransitionRegions] = useState<TransitionRegion[]>([]);
 	const [audioEnhanced, setAudioEnhanced] = useState(false);
 	const [enhancedAudioUrl, setEnhancedAudioUrl] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
@@ -371,6 +380,8 @@ export default function VideoEditor() {
 	const nextTrimIdRef = useRef(1);
 	const nextSpeedIdRef = useRef(1);
 	const nextAudioIdRef = useRef(1);
+	const nextSfxIdRef = useRef(1);
+	const nextTransitionIdRef = useRef(1);
 
 	const { shortcuts, isMac } = useShortcuts();
 	const nextAnnotationIdRef = useRef(1);
@@ -390,6 +401,8 @@ export default function VideoEditor() {
 			speedRegions: JSON.parse(JSON.stringify(snapshot.speedRegions)),
 			annotationRegions: JSON.parse(JSON.stringify(snapshot.annotationRegions)),
 			audioRegions: JSON.parse(JSON.stringify(snapshot.audioRegions)),
+			soundEffectRegions: JSON.parse(JSON.stringify(snapshot.soundEffectRegions)),
+			transitionRegions: JSON.parse(JSON.stringify(snapshot.transitionRegions)),
 			selectedZoomId: snapshot.selectedZoomId,
 			selectedTrimId: snapshot.selectedTrimId,
 			selectedSpeedId: snapshot.selectedSpeedId,
@@ -405,6 +418,8 @@ export default function VideoEditor() {
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			soundEffectRegions,
+			transitionRegions,
 			selectedZoomId,
 			selectedTrimId,
 			selectedSpeedId,
@@ -417,6 +432,8 @@ export default function VideoEditor() {
 		speedRegions,
 		annotationRegions,
 		audioRegions,
+		soundEffectRegions,
+		transitionRegions,
 		selectedZoomId,
 		selectedTrimId,
 		selectedSpeedId,
@@ -433,6 +450,8 @@ export default function VideoEditor() {
 			setSpeedRegions(cloned.speedRegions);
 			setAnnotationRegions(cloned.annotationRegions);
 			setAudioRegions(cloned.audioRegions);
+			setSoundEffectRegions(cloned.soundEffectRegions);
+			setTransitionRegions(cloned.transitionRegions);
 			setSelectedZoomId(cloned.selectedZoomId);
 			setSelectedTrimId(cloned.selectedTrimId);
 			setSelectedSpeedId(cloned.selectedSpeedId);
@@ -532,6 +551,8 @@ export default function VideoEditor() {
 		setSpeedRegions(normalizedEditor.speedRegions);
 		setAnnotationRegions(normalizedEditor.annotationRegions);
 		setAudioRegions(normalizedEditor.audioRegions);
+		setSoundEffectRegions(normalizedEditor.soundEffectRegions ?? []);
+		setTransitionRegions(normalizedEditor.transitionRegions ?? []);
 		setAspectRatio(normalizedEditor.aspectRatio);
 		setExportQuality(normalizedEditor.exportQuality);
 		setExportFormat(normalizedEditor.exportFormat);
@@ -623,6 +644,8 @@ export default function VideoEditor() {
 				speedRegions,
 				annotationRegions,
 				audioRegions,
+				soundEffectRegions,
+				transitionRegions,
 				aspectRatio,
 				exportQuality,
 				exportFormat,
@@ -844,6 +867,8 @@ export default function VideoEditor() {
 				speedRegions,
 				annotationRegions,
 				audioRegions,
+				soundEffectRegions,
+				transitionRegions,
 				aspectRatio,
 				exportQuality,
 				exportFormat,
@@ -1879,6 +1904,57 @@ export default function VideoEditor() {
 		setSelectedTrimId(null);
 	}, []);
 
+	const handleStickerAnnotationAdded = useCallback((emoji: string) => {
+		const startMs = Math.round(currentTime * 1000);
+		const endMs = Math.min(startMs + 5000, Math.round(duration * 1000));
+		const id = `annotation-${nextAnnotationIdRef.current++}`;
+		const zIndex = nextAnnotationZIndexRef.current++;
+		const newRegion: AnnotationRegion = {
+			id,
+			startMs,
+			endMs,
+			type: "text",
+			content: emoji,
+			position: { x: 50, y: 50 },
+			size: { width: 15, height: 15 },
+			style: { ...DEFAULT_ANNOTATION_STYLE, fontSize: 64 },
+			zIndex,
+		};
+		setAnnotationRegions((prev) => [...prev, newRegion]);
+		setSelectedAnnotationId(id);
+		setSelectedZoomId(null);
+		setSelectedTrimId(null);
+	}, [currentTime, duration]);
+
+	const handleAddSoundEffect = useCallback((soundId: SoundEffectId) => {
+		const startMs = Math.round(currentTime * 1000);
+		const durationMs = Math.round(SFX_DURATIONS[soundId] * 1000);
+		const endMs = Math.min(startMs + durationMs, Math.round(duration * 1000));
+		const id = `sfx-${nextSfxIdRef.current++}`;
+		const newRegion: SoundEffectRegion = {
+			id,
+			startMs,
+			endMs,
+			soundId,
+			volume: 0.7,
+		};
+		setSoundEffectRegions((prev) => [...prev, newRegion]);
+		toast.success(`Added "${soundId.replace("sfx-", "")}" at ${(startMs / 1000).toFixed(1)}s`);
+	}, [currentTime, duration]);
+
+	const handleAddTransition = useCallback((type: TransitionType) => {
+		const atMs = Math.round(currentTime * 1000);
+		const id = `tr-${nextTransitionIdRef.current++}`;
+		const newTransition: TransitionRegion = {
+			id,
+			atMs,
+			durationMs: 500,
+			type,
+		};
+		setTransitionRegions((prev) => [...prev, newTransition]);
+		toast.success(`Added "${type}" transition at ${(atMs / 1000).toFixed(1)}s`);
+	}, [currentTime]);
+
 	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
 		setAnnotationRegions((prev) =>
 			prev.map((region) =>
@@ -2156,6 +2232,28 @@ export default function VideoEditor() {
 		}
 	}, [isPlaying, currentTime, audioRegions]);
 
+	// Sound effect preview playback — play each SFX when the playhead enters its region
+	const sfxPlayedRef = useRef<Set<string>>(new Set());
+	useEffect(() => {
+		if (!isPlaying) {
+			sfxPlayedRef.current.clear();
+			return;
+		}
+		const currentTimeMs = currentTime * 1000;
+		for (const sfx of soundEffectRegions) {
+			const isInRegion = currentTimeMs >= sfx.startMs && currentTimeMs < sfx.endMs;
+			if (isInRegion && !sfxPlayedRef.current.has(sfx.id)) {
+				sfxPlayedRef.current.add(sfx.id);
+				// Fire-and-forget preview playback
+				import("@/lib/audio/soundEffectSynth").then(({ previewSoundEffect }) => {
+					previewSoundEffect(sfx.soundId, sfx.volume);
+				});
+			} else if (!isInRegion) {
+				sfxPlayedRef.current.delete(sfx.id);
+			}
+		}
+	}, [isPlaying, currentTime, soundEffectRegions]);
+
 	const showExportSuccessToast = useCallback((filePath: string) => {
 		toast.success(`Exported successfully to ${filePath}`, {
 			action: {
@@ -2264,6 +2362,8 @@ export default function VideoEditor() {
 									bgColor: webcamBgColor,
 								}
 							: undefined,
+						captionCues: (translatedCaptionCues ?? captionCues).length > 0 ? (translatedCaptionCues ?? captionCues) : undefined,
+						captionSettings: captionSettings.enabled ? captionSettings : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -2437,6 +2537,8 @@ export default function VideoEditor() {
 						cursorClickBounce,
 						cursorSway,
 						audioRegions,
+						soundEffectRegions,
+						transitionRegions,
 						enhancedAudioUrl: (useDubbedAudio && dubbedAudioPath)
 							? `file://${dubbedAudioPath}`
 							: (enhancedAudioUrl ?? undefined),
@@ -2806,6 +2908,9 @@ export default function VideoEditor() {
 					scratchPadClips={scratchPadClips}
 					onScratchPadClipsChange={setScratchPadClips}
 					onImportVideo={handleImportVideo}
+					onAddStickerAnnotation={handleStickerAnnotationAdded}
+					onAddSoundEffect={handleAddSoundEffect}
+					onAddTransition={handleAddTransition}
 					hasVideo={!!videoPath}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
@@ -3174,6 +3279,21 @@ export default function VideoEditor() {
 								onAudioDelete={handleAudioDelete}
 								selectedAudioId={selectedAudioId}
 								onSelectAudio={handleSelectAudio}
+								soundEffectRegions={soundEffectRegions}
+								onSfxSpanChange={(id, span) => {
+									setSoundEffectRegions((prev) =>
+										prev.map((r) =>
+											r.id === id ? { ...r, startMs: Math.round(span.start), endMs: Math.round(span.end) } : r,
+										),
+									);
+								}}
+								onSfxDelete={(id) => {
+									setSoundEffectRegions((prev) => prev.filter((r) => r.id !== id));
+								}}
+								transitionRegions={transitionRegions}
+								onTransitionDelete={(id) => {
+									setTransitionRegions((prev) => prev.filter((r) => r.id !== id));
+								}}
 								annotationRegions={annotationRegions}
 								onAnnotationAdded={handleAnnotationAdded}
 								onAnnotationSpanChange={handleAnnotationSpanChange}

@@ -109,6 +109,8 @@ export class FrameRenderer {
 	private webcamSprite: Sprite | null = null;
 	private webcamMask: Graphics | null = null;
 	private webcamBorder: Graphics | null = null;
+	private webcamTempCanvas: HTMLCanvasElement | null = null;
+	private webcamTempCtx: CanvasRenderingContext2D | null = null;
 
 	constructor(config: FrameRenderConfig) {
 		this.config = config;
@@ -895,13 +897,17 @@ export class FrameRenderer {
 
 		if (!this.webcamSprite || !this.webcamMask || !this.webcamBorder) return;
 
-		// Extract frame from video to canvas for processing
+		// Extract frame from video to canvas for processing (reuse canvas to avoid memory leak)
 		const srcW = videoElement.videoWidth || 1;
 		const srcH = videoElement.videoHeight || 1;
-		const tempCanvas = document.createElement("canvas");
-		tempCanvas.width = srcW;
-		tempCanvas.height = srcH;
-		const tempCtx = tempCanvas.getContext("2d", { willReadFrequently: true });
+		if (!this.webcamTempCanvas || this.webcamTempCanvas.width !== srcW || this.webcamTempCanvas.height !== srcH) {
+			this.webcamTempCanvas = document.createElement("canvas");
+			this.webcamTempCanvas.width = srcW;
+			this.webcamTempCanvas.height = srcH;
+			this.webcamTempCtx = this.webcamTempCanvas.getContext("2d", { willReadFrequently: true });
+		}
+		const tempCanvas = this.webcamTempCanvas;
+		const tempCtx = this.webcamTempCtx;
 		if (!tempCtx) return;
 
 		tempCtx.drawImage(videoElement, 0, 0, srcW, srcH);
@@ -1035,5 +1041,7 @@ export class FrameRenderer {
 		this.shadowCtx = null;
 		this.compositeCanvas = null;
 		this.compositeCtx = null;
+		this.webcamTempCanvas = null;
+		this.webcamTempCtx = null;
 	}
 }

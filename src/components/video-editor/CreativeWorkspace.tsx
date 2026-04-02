@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { TrimRegion } from "./types";
+import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
+import type { SoundEffectId, TransitionType, TrimRegion } from "./types";
 
 // ── AI Suggestion type ──────────────────────────────────────────────────────
 
@@ -99,6 +100,9 @@ interface CreativeWorkspaceProps {
 	scratchPadClips: ScratchPadClip[];
 	onScratchPadClipsChange: (clips: ScratchPadClip[]) => void;
 	onImportVideo: () => void;
+	onAddStickerAnnotation?: (emoji: string) => void;
+	onAddSoundEffect?: (soundId: SoundEffectId) => void;
+	onAddTransition?: (type: TransitionType) => void;
 	hasVideo: boolean;
 }
 
@@ -191,6 +195,9 @@ export function CreativeWorkspace({
 	scratchPadClips,
 	onScratchPadClipsChange,
 	onImportVideo,
+	onAddStickerAnnotation,
+	onAddSoundEffect,
+	onAddTransition,
 	hasVideo,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
@@ -615,7 +622,14 @@ export function CreativeWorkspace({
 				<button
 					key={idx}
 					type="button"
-					onClick={() => toast.success(`Sticker "${emoji}" added as annotation overlay`)}
+					onClick={() => {
+						if (onAddStickerAnnotation) {
+							onAddStickerAnnotation(emoji);
+							toast.success(`Sticker "${emoji}" added as annotation overlay`);
+						} else {
+							toast.error("No video loaded to add sticker to");
+						}
+					}}
 					className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/[0.02] hover:bg-white/[0.06] cursor-pointer transition-colors text-lg"
 				>
 					{emoji}
@@ -624,21 +638,54 @@ export function CreativeWorkspace({
 		</div>
 	);
 
+	const handleSoundEffectClick = useCallback(
+		(sfxId: string) => {
+			const id = sfxId as SoundEffectId;
+			// Preview the sound
+			previewSoundEffect(id).catch(() => {});
+			// Add to timeline if handler is available
+			if (onAddSoundEffect) {
+				onAddSoundEffect(id);
+			}
+		},
+		[onAddSoundEffect],
+	);
+
 	const renderAssetSounds = () => (
 		<div className="flex flex-col gap-1">
 			{SOUND_EFFECTS.map((sfx) => (
 				<button
 					key={sfx.id}
 					type="button"
-					onClick={() => toast("Sound effects coming soon")}
-					className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer w-full text-left"
+					onClick={() => handleSoundEffectClick(sfx.id)}
+					className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer w-full text-left group"
 				>
-					<Play className="w-3 h-3 text-white/30 flex-shrink-0" />
+					<Play className="w-3 h-3 text-white/30 group-hover:text-white/60 flex-shrink-0 transition-colors" />
 					<span className="text-[11px] text-white/60 flex-1">{sfx.name}</span>
 					<span className="text-[10px] text-white/25">{sfx.duration}</span>
 				</button>
 			))}
 		</div>
+	);
+
+	const handleTransitionClick = useCallback(
+		(trId: string) => {
+			const typeMap: Record<string, TransitionType> = {
+				"tr-crossfade": "crossfade",
+				"tr-wipe-left": "wipe-left",
+				"tr-wipe-right": "wipe-right",
+				"tr-zoom-in": "zoom-in",
+				"tr-zoom-out": "zoom-out",
+				"tr-dissolve": "dissolve",
+			};
+			const transitionType = typeMap[trId];
+			if (transitionType && onAddTransition) {
+				onAddTransition(transitionType);
+			} else if (!onAddTransition) {
+				toast.error("Load a video first to add transitions");
+			}
+		},
+		[onAddTransition],
 	);
 
 	const renderAssetTransitions = () => (
@@ -647,10 +694,10 @@ export function CreativeWorkspace({
 				<button
 					key={tr.id}
 					type="button"
-					onClick={() => toast("Transitions coming soon")}
-					className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer w-full text-left"
+					onClick={() => handleTransitionClick(tr.id)}
+					className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer w-full text-left group"
 				>
-					<ArrowRightLeft className="w-3 h-3 text-white/30 flex-shrink-0" />
+					<ArrowRightLeft className="w-3 h-3 text-white/30 group-hover:text-white/60 flex-shrink-0 transition-colors" />
 					<span className="text-[11px] text-white/60">{tr.name}</span>
 				</button>
 			))}

@@ -1,6 +1,6 @@
 import type { Span } from "dnd-timeline";
 import { useItem } from "dnd-timeline";
-import { Gauge, MessageSquare, Music, Scissors, ZoomIn } from "lucide-react";
+import { ArrowRightLeft, Gauge, MessageSquare, Music, Scissors, Volume2, ZoomIn } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import glassStyles from "./ItemGlass.module.css";
@@ -14,7 +14,7 @@ interface ItemProps {
 	onSelect?: () => void;
 	zoomDepth?: number;
 	speedValue?: number;
-	variant?: "zoom" | "trim" | "annotation" | "speed" | "audio";
+	variant?: "zoom" | "trim" | "annotation" | "speed" | "audio" | "sfx" | "transition";
 }
 
 // Map zoom depth to multiplier labels
@@ -58,6 +58,8 @@ export default function Item({
 	const isTrim = variant === "trim";
 	const isSpeed = variant === "speed";
 	const isAudio = variant === "audio";
+	const isSfx = variant === "sfx";
+	const isTransition = variant === "transition";
 
 	const glassClass = isZoom
 		? glassStyles.glassGreen
@@ -67,7 +69,11 @@ export default function Item({
 				? glassStyles.glassAmber
 				: isAudio
 					? glassStyles.glassPurple
-					: glassStyles.glassYellow;
+					: isSfx
+						? glassStyles.glassCyan
+						: isTransition
+							? glassStyles.glassBlue
+							: glassStyles.glassYellow;
 
 	const timeLabel = useMemo(
 		() => `${formatMs(span.start)} – ${formatMs(span.end)}`,
@@ -145,6 +151,20 @@ export default function Item({
 								<>
 									<Music className="w-3 h-3 shrink-0 text-purple-500/50" />
 									<span className="text-[8px] font-mono tracking-tight truncate max-w-full text-purple-500/50">
+										{children}
+									</span>
+								</>
+							) : isSfx ? (
+								<>
+									<Volume2 className="w-3 h-3 shrink-0 text-cyan-500/50" />
+									<span className="text-[8px] font-mono tracking-tight truncate max-w-full text-cyan-500/50">
+										{children}
+									</span>
+								</>
+							) : isTransition ? (
+								<>
+									<ArrowRightLeft className="w-3 h-3 shrink-0 text-blue-400/50" />
+									<span className="text-[8px] font-mono tracking-tight truncate max-w-full text-blue-400/50">
 										{children}
 									</span>
 								</>
