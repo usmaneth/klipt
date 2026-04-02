@@ -1879,6 +1879,28 @@ export default function VideoEditor() {
 		setSelectedTrimId(null);
 	}, []);
 
+	const handleStickerAnnotationAdded = useCallback((emoji: string) => {
+		const startMs = Math.round(currentTime * 1000);
+		const endMs = Math.min(startMs + 5000, Math.round(duration * 1000));
+		const id = `annotation-${nextAnnotationIdRef.current++}`;
+		const zIndex = nextAnnotationZIndexRef.current++;
+		const newRegion: AnnotationRegion = {
+			id,
+			startMs,
+			endMs,
+			type: "text",
+			content: emoji,
+			position: { x: 50, y: 50 },
+			size: { width: 15, height: 15 },
+			style: { ...DEFAULT_ANNOTATION_STYLE, fontSize: 64 },
+			zIndex,
+		};
+		setAnnotationRegions((prev) => [...prev, newRegion]);
+		setSelectedAnnotationId(id);
+		setSelectedZoomId(null);
+		setSelectedTrimId(null);
+	}, [currentTime, duration]);
+
 	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
 		setAnnotationRegions((prev) =>
 			prev.map((region) =>
@@ -2808,6 +2830,7 @@ export default function VideoEditor() {
 					scratchPadClips={scratchPadClips}
 					onScratchPadClipsChange={setScratchPadClips}
 					onImportVideo={handleImportVideo}
+					onAddStickerAnnotation={handleStickerAnnotationAdded}
 					hasVideo={!!videoPath}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">

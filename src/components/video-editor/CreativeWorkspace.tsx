@@ -99,6 +99,7 @@ interface CreativeWorkspaceProps {
 	scratchPadClips: ScratchPadClip[];
 	onScratchPadClipsChange: (clips: ScratchPadClip[]) => void;
 	onImportVideo: () => void;
+	onAddStickerAnnotation?: (emoji: string) => void;
 	hasVideo: boolean;
 }
 
@@ -191,6 +192,7 @@ export function CreativeWorkspace({
 	scratchPadClips,
 	onScratchPadClipsChange,
 	onImportVideo,
+	onAddStickerAnnotation,
 	hasVideo,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
@@ -615,7 +617,14 @@ export function CreativeWorkspace({
 				<button
 					key={idx}
 					type="button"
-					onClick={() => toast.success(`Sticker "${emoji}" added as annotation overlay`)}
+					onClick={() => {
+						if (onAddStickerAnnotation) {
+							onAddStickerAnnotation(emoji);
+							toast.success(`Sticker "${emoji}" added as annotation overlay`);
+						} else {
+							toast.error("No video loaded to add sticker to");
+						}
+					}}
 					className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/[0.02] hover:bg-white/[0.06] cursor-pointer transition-colors text-lg"
 				>
 					{emoji}
