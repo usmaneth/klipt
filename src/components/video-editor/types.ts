@@ -238,10 +238,13 @@ export const ZOOM_DEPTH_SCALES: Record<ZoomDepth, number> = {
 
 export const DEFAULT_ZOOM_DEPTH: ZoomDepth = 3;
 
-export function clampFocusToDepth(focus: ZoomFocus, _depth: ZoomDepth): ZoomFocus {
+export function clampFocusToDepth(focus: ZoomFocus, depth: ZoomDepth): ZoomFocus {
+	const zoomScale = ZOOM_DEPTH_SCALES[depth];
+	const marginX = 1 / (2 * zoomScale);
+	const marginY = 1 / (2 * zoomScale);
 	return {
-		cx: clamp(focus.cx, 0, 1),
-		cy: clamp(focus.cy, 0, 1),
+		cx: clamp(focus.cx, marginX, 1 - marginX),
+		cy: clamp(focus.cy, marginY, 1 - marginY),
 	};
 }
 

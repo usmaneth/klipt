@@ -384,7 +384,7 @@ export function SettingsPanel({
 	onWebcamBgColorChange,
 	ambilightEnabled = true,
 	onAmbilightEnabledChange,
-	isExporting: _isExporting = false,
+	isExporting = false,
 	videoUrl,
 	audioEnhanced = false,
 	enhancedAudioUrl,
@@ -2167,15 +2167,18 @@ export function SettingsPanel({
 						<div className="flex mb-2" style={{ gap: "1px" }}>
 							<button
 								onClick={_onExport}
-								className="flex-1 text-white font-semibold text-[13px] active:scale-[0.98] transition-all duration-150"
+								disabled={isExporting}
+								className="flex-1 text-white font-semibold text-[13px] active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
 								style={{
 									padding: "10px",
 									borderRadius: "10px 0 0 10px",
-									background: "linear-gradient(135deg, #E0000F, #FF4500)",
-									boxShadow: "0 4px 16px rgba(224,0,15,0.25)",
+									background: isExporting
+										? "linear-gradient(135deg, #666, #888)"
+										: "linear-gradient(135deg, #E0000F, #FF4500)",
+									boxShadow: isExporting ? "none" : "0 4px 16px rgba(224,0,15,0.25)",
 								}}
 							>
-								Export {exportFormat === "gif" ? "GIF" : "MP4"}
+								{isExporting ? "Exporting…" : `Export ${exportFormat === "gif" ? "GIF" : "MP4"}`}
 							</button>
 							<button
 								onClick={() => setShowExportFormatMenu((prev) => !prev)}

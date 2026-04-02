@@ -686,7 +686,7 @@ export function CreativeWorkspace({
 			if (transitionType && onAddTransition) {
 				onAddTransition(transitionType);
 			} else if (!onAddTransition) {
-				toast.error("Load a video first to add transitions");
+				toast.error("No video loaded — add a video first to use transitions");
 			}
 		},
 		[onAddTransition],

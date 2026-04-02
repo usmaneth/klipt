@@ -54,14 +54,26 @@ function getFocusBoundsForScale(zoomScale: number) {
 export function clampFocusToStage(
 	focus: ZoomFocus,
 	depth: ZoomDepth,
-	_stageSize: StageSize,
+	stageSize: StageSize,
 ): ZoomFocus {
 	const baseFocus = clampFocusToDepth(focus, depth);
 	const bounds = getFocusBounds(depth);
 
+	// Adjust bounds for non-square stages: tighter horizontal clamping on wide
+	// stages, tighter vertical clamping on tall stages.
+	const aspect = stageSize.width && stageSize.height ? stageSize.width / stageSize.height : 1;
+	const hRange = bounds.maxX - bounds.minX;
+	const vRange = bounds.maxY - bounds.minY;
+	const adjustedBounds = {
+		minX: aspect > 1 ? bounds.minX + hRange * 0.05 * Math.min(aspect - 1, 1) : bounds.minX,
+		maxX: aspect > 1 ? bounds.maxX - hRange * 0.05 * Math.min(aspect - 1, 1) : bounds.maxX,
+		minY: aspect < 1 ? bounds.minY + vRange * 0.05 * Math.min(1 / aspect - 1, 1) : bounds.minY,
+		maxY: aspect < 1 ? bounds.maxY - vRange * 0.05 * Math.min(1 / aspect - 1, 1) : bounds.maxY,
+	};
+
 	return {
-		cx: clamp(baseFocus.cx, bounds.minX, bounds.maxX),
-		cy: clamp(baseFocus.cy, bounds.minY, bounds.maxY),
+		cx: clamp(baseFocus.cx, adjustedBounds.minX, adjustedBounds.maxX),
+		cy: clamp(baseFocus.cy, adjustedBounds.minY, adjustedBounds.maxY),
 	};
 }
 
