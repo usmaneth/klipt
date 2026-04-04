@@ -355,4 +355,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	) => {
 		return ipcRenderer.invoke("upload-to-s3", filePath, config);
 	},
+	fastExport: (
+		inputPath: string,
+		outputPath: string,
+		trimRegions: Array<{ startMs: number; endMs: number }>,
+	) => {
+		return ipcRenderer.invoke("fast-export", { inputPath, outputPath, trimRegions });
+	},
+	onFastExportProgress: (callback: (progress: { percent: number }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, payload: { percent: number }) =>
+			callback(payload);
+		ipcRenderer.on("fast-export-progress", listener);
+		return () => ipcRenderer.removeListener("fast-export-progress", listener);
+	},
 });

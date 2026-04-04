@@ -329,6 +329,14 @@ interface Window {
 				pathStyle?: boolean;
 			},
 		) => Promise<{ success: boolean; url?: string; error?: string }>;
+		fastExport: (
+			inputPath: string,
+			outputPath: string,
+			trimRegions: Array<{ startMs: number; endMs: number }>,
+		) => Promise<{ success: boolean; outputPath?: string; error?: string; canceled?: boolean }>;
+		onFastExportProgress: (
+			callback: (progress: { percent: number }) => void,
+		) => () => void;
 	};
 }
 

@@ -34,6 +34,7 @@ import {
 	type GifSizePreset,
 	VideoExporter,
 } from "@/lib/exporter";
+import { canFastExport } from "@/lib/exporter/fastExport";
 import { matchesShortcut } from "@/lib/shortcuts";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
@@ -2968,6 +2969,104 @@ export default function VideoEditor() {
 		],
 	);
 
+	const isFastExportAvailable = useMemo(
+		() =>
+			canFastExport({
+				trimRegions,
+				zoomRegions: effectiveZoomRegions,
+				annotationRegions,
+				audioRegions,
+				soundEffectRegions,
+				transitionRegions,
+				speedRegions,
+				cropRegion,
+				enhancedAudioUrl,
+				webcamPath,
+				captionCues: translatedCaptionCues ?? captionCues,
+				aspectRatio,
+				borderRadius,
+				padding,
+				shadowIntensity,
+				backgroundBlur,
+			}),
+		[
+			trimRegions,
+			effectiveZoomRegions,
+			annotationRegions,
+			audioRegions,
+			soundEffectRegions,
+			transitionRegions,
+			speedRegions,
+			cropRegion,
+			enhancedAudioUrl,
+			webcamPath,
+			translatedCaptionCues,
+			captionCues,
+			aspectRatio,
+			borderRadius,
+			padding,
+			shadowIntensity,
+			backgroundBlur,
+		],
+	);
+
+	const handleFastExport = useCallback(async () => {
+		if (!videoPath) {
+			toast.error("No video loaded");
+			return;
+		}
+
+		const sourcePath = videoSourcePath ?? fromFileUrl(videoPath);
+		if (!sourcePath) {
+			toast.error("Cannot determine video file path");
+			return;
+		}
+
+		setIsExporting(true);
+		setShowExportDialog(true);
+		setExportProgress({ currentFrame: 0, totalFrames: 100, percentage: 0, estimatedTimeRemaining: 0 });
+		setExportError(null);
+
+		const cleanupProgress = window.electronAPI.onFastExportProgress(({ percent }) => {
+			setExportProgress({
+				currentFrame: percent,
+				totalFrames: 100,
+				percentage: percent,
+				estimatedTimeRemaining: 0,
+			});
+		});
+
+		try {
+			const regions = trimRegions.map((r) => ({ startMs: r.startMs, endMs: r.endMs }));
+
+			// Pass empty outputPath so the IPC handler shows a save dialog
+			const result = await window.electronAPI.fastExport(sourcePath, "", regions);
+
+			if (result.canceled) {
+				setShowExportDialog(false);
+				return;
+			}
+
+			if (result.success && result.outputPath) {
+				setExportProgress({ currentFrame: 100, totalFrames: 100, percentage: 100, estimatedTimeRemaining: 0 });
+				showExportSuccessToast(result.outputPath);
+				setExportedFilePath(result.outputPath);
+			} else {
+				setExportError(result.error || "Fast export failed");
+				toast.error(result.error || "Fast export failed");
+			}
+		} catch (error) {
+			console.error("Fast export error:", error);
+			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			setExportError(errorMessage);
+			toast.error(`Fast export failed: ${errorMessage}`);
+		} finally {
+			cleanupProgress();
+			setIsExporting(false);
+			setExportProgress(null);
+		}
+	}, [videoPath, videoSourcePath, trimRegions, showExportSuccessToast]);
+
 	const handleOpenExportDialog = useCallback(() => {
 		if (!videoPath) {
 			toast.error("No video loaded");
@@ -3697,6 +3796,8 @@ export default function VideoEditor() {
 										onGifSizePresetChange={setGifSizePreset}
 										gifOutputDimensions={gifOutputDims}
 										onExport={handleOpenExportDialog}
+										canFastExport={isFastExportAvailable}
+										onFastExport={handleFastExport}
 										selectedAnnotationId={selectedAnnotationId}
 										annotationRegions={annotationRegions}
 										onAnnotationContentChange={handleAnnotationContentChange}

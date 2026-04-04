@@ -4346,6 +4346,7 @@ export function registerIpcHandlers(
 		},
 	);
 
+<<<<<<< HEAD
 	// ── S3 / Cloud Upload ────────────────────────────────────────────────
 
 	type S3Config = {
@@ -4511,6 +4512,150 @@ export function registerIpcHandlers(
 			} catch (err: unknown) {
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[upload-to-s3] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	// ── Fast Export (remux without re-encoding) ──────────────────────────
+
+	ipcMain.handle(
+		"fast-export",
+		async (
+			event,
+			{
+				inputPath,
+				outputPath: providedOutputPath,
+				trimRegions,
+			}: {
+				inputPath: string;
+				outputPath: string;
+				trimRegions: Array<{ startMs: number; endMs: number }>;
+			},
+		) => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+				const sender = event.sender;
+
+				const formatTime = (ms: number): string => {
+					const totalSeconds = ms / 1000;
+					const h = Math.floor(totalSeconds / 3600);
+					const m = Math.floor((totalSeconds % 3600) / 60);
+					const s = totalSeconds % 60;
+					return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
+				};
+
+				// Validate input exists
+				await fs.access(inputPath, fsConstants.R_OK);
+
+				// Show save dialog if no output path was provided
+				let outputPath = providedOutputPath;
+				if (!outputPath) {
+					const defaultName = `export-${Date.now()}.mp4`;
+					const dialogResult = await dialog.showSaveDialog({
+						title: "Save Fast Export",
+						defaultPath: path.join(app.getPath("downloads"), defaultName),
+						filters: [{ name: "MP4 Video", extensions: ["mp4"] }],
+						properties: ["createDirectory", "showOverwriteConfirmation"],
+					});
+
+					if (dialogResult.canceled || !dialogResult.filePath) {
+						return { success: false, canceled: true };
+					}
+					outputPath = dialogResult.filePath;
+				}
+
+				// Use the trim regions or fall back to a full copy
+				const regions =
+					trimRegions.length > 0
+						? trimRegions
+						: [{ startMs: 0, endMs: Number.MAX_SAFE_INTEGER }];
+
+				if (regions.length === 1) {
+					// Single segment -- direct remux
+					const region = regions[0];
+					const args = ["-y", "-i", inputPath];
+
+					if (region.startMs > 0) {
+						args.push("-ss", formatTime(region.startMs));
+					}
+					if (region.endMs < Number.MAX_SAFE_INTEGER) {
+						args.push("-to", formatTime(region.endMs));
+					}
+
+					args.push("-c", "copy", "-map", "0", "-movflags", "+faststart", outputPath);
+
+					sender.send("fast-export-progress", { percent: 10 });
+					await execFileAsync(ffmpegPath, args, { timeout: 300_000 });
+					sender.send("fast-export-progress", { percent: 100 });
+				} else {
+					// Multiple segments -- create temp files, then concat
+					const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "klipt-fast-export-"));
+					const segmentPaths: string[] = [];
+
+					try {
+						// Cut each segment
+						for (let i = 0; i < regions.length; i++) {
+							const region = regions[i];
+							const segPath = path.join(tmpDir, `segment-${i}.mp4`);
+							segmentPaths.push(segPath);
+
+							const args = ["-y", "-i", inputPath];
+
+							if (region.startMs > 0) {
+								args.push("-ss", formatTime(region.startMs));
+							}
+							if (region.endMs < Number.MAX_SAFE_INTEGER) {
+								args.push("-to", formatTime(region.endMs));
+							}
+
+							args.push("-c", "copy", "-map", "0", segPath);
+
+							const percent = Math.round(((i + 1) / (regions.length + 1)) * 80);
+							sender.send("fast-export-progress", { percent });
+							await execFileAsync(ffmpegPath, args, { timeout: 300_000 });
+						}
+
+						// Build concat list file
+						const concatListPath = path.join(tmpDir, "concat.txt");
+						const concatContent = segmentPaths
+							.map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
+							.join("\n");
+						await fs.writeFile(concatListPath, concatContent, "utf-8");
+
+						sender.send("fast-export-progress", { percent: 85 });
+
+						// Concatenate
+						await execFileAsync(
+							ffmpegPath,
+							[
+								"-y",
+								"-f",
+								"concat",
+								"-safe",
+								"0",
+								"-i",
+								concatListPath,
+								"-c",
+								"copy",
+								"-movflags",
+								"+faststart",
+								outputPath,
+							],
+							{ timeout: 300_000 },
+						);
+
+						sender.send("fast-export-progress", { percent: 100 });
+					} finally {
+						// Clean up temp files
+						await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+					}
+				}
+
+				return { success: true, outputPath };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[fast-export] Failed:", message);
 				return { success: false, error: message };
 			}
 		},

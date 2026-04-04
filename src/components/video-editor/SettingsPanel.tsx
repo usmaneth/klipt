@@ -174,6 +174,8 @@ interface SettingsPanelProps {
 	onSaveProject?: () => void;
 	onLoadProject?: () => void;
 	onExport?: () => void;
+	canFastExport?: boolean;
+	onFastExport?: () => void;
 	selectedAnnotationId?: string | null;
 	annotationRegions?: AnnotationRegion[];
 	onAnnotationContentChange?: (id: string, content: string) => void;
@@ -350,6 +352,8 @@ export function SettingsPanel({
 	onSaveProject,
 	onLoadProject,
 	onExport: _onExport,
+	canFastExport: _canFastExport = false,
+	onFastExport: _onFastExport,
 	selectedAnnotationId,
 	annotationRegions = EMPTY_ANNOTATION_REGIONS,
 	onAnnotationContentChange,
@@ -2223,6 +2227,24 @@ export function SettingsPanel({
 							</div>
 						)}
 					</div>
+
+					{/* Fast export button — shown only when no visual edits are applied */}
+					{_canFastExport && _onFastExport && (
+						<button
+							onClick={_onFastExport}
+							disabled={isExporting}
+							className="w-full mb-2 flex items-center justify-center gap-2 text-emerald-300 font-semibold text-[12px] active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+							style={{
+								padding: "8px 10px",
+								borderRadius: "10px",
+								background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.1))",
+								border: "1px solid rgba(16,185,129,0.25)",
+							}}
+						>
+							<Zap className="w-3.5 h-3.5" />
+							{isExporting ? "Exporting…" : "Fast Export (no re-encoding)"}
+						</button>
+					)}
 
 					{/* Load / Save secondary buttons */}
 					<div className="grid grid-cols-2 gap-2">
