@@ -4121,6 +4121,15 @@ export function registerIpcHandlers(
 	let activeShareServer: http.Server | null = null;
 	let shareServerTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	// ── Viewer analytics store ──────────────────────────────────────────
+	interface ViewerAnalytics {
+		totalViews: number;
+		uniqueViewers: number;
+		viewEvents: Array<{ timestamp: number; ip: string; userAgent: string }>;
+	}
+	const shareAnalyticsStore = new Map<string, ViewerAnalytics>();
+	let currentShareFilePath: string | null = null;
+
 	function getLocalIpAddress(): string {
 		const interfaces = os.networkInterfaces();
 		for (const name of Object.keys(interfaces)) {
@@ -4144,6 +4153,7 @@ export function registerIpcHandlers(
 			activeShareServer.close();
 			activeShareServer = null;
 		}
+		currentShareFilePath = null;
 	}
 
 	ipcMain.handle("start-share-server", async (_, filePath: string) => {
@@ -4166,8 +4176,32 @@ export function registerIpcHandlers(
 			const contentType = mimeTypes[ext] || "application/octet-stream";
 			const fileName = path.basename(filePath);
 
+			currentShareFilePath = filePath;
+			if (!shareAnalyticsStore.has(filePath)) {
+				shareAnalyticsStore.set(filePath, {
+					totalViews: 0,
+					uniqueViewers: 0,
+					viewEvents: [],
+				});
+			}
+
 			const server = http.createServer(async (req, res) => {
 				if (req.url === "/video" || req.url === "/") {
+					// Track analytics
+					const analytics = shareAnalyticsStore.get(filePath);
+					if (analytics) {
+						const ip = req.socket.remoteAddress || "unknown";
+						const userAgent = req.headers["user-agent"] || "unknown";
+						analytics.totalViews++;
+						analytics.viewEvents.push({
+							timestamp: Date.now(),
+							ip,
+							userAgent,
+						});
+						const uniqueIps = new Set(analytics.viewEvents.map((e) => e.ip));
+						analytics.uniqueViewers = uniqueIps.size;
+					}
+
 					try {
 						const fileStat = await fs.stat(filePath);
 						res.writeHead(200, {
@@ -4233,6 +4267,23 @@ export function registerIpcHandlers(
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : String(err);
 			console.error("[stop-share-server] Failed:", message);
+			return { success: false, error: message };
+		}
+	});
+
+	ipcMain.handle("get-share-analytics", async () => {
+		try {
+			if (!currentShareFilePath) {
+				return { success: false, error: "No active share server" };
+			}
+			const analytics = shareAnalyticsStore.get(currentShareFilePath);
+			if (!analytics) {
+				return { success: false, error: "No analytics available" };
+			}
+			return { success: true, analytics };
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[get-share-analytics] Failed:", message);
 			return { success: false, error: message };
 		}
 	});

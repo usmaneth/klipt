@@ -304,6 +304,11 @@ interface Window {
 			filePath: string,
 		) => Promise<{ success: boolean; url?: string; port?: number; error?: string }>;
 		stopShareServer: () => Promise<{ success: boolean; error?: string }>;
+		getShareAnalytics: () => Promise<{
+			success: boolean;
+			analytics?: ViewerAnalytics;
+			error?: string;
+		}>;
 		encryptExportedFile: (
 			filePath: string,
 			password: string,
@@ -362,4 +367,10 @@ interface SystemCursorAsset {
 	hotspotY: number;
 	width: number;
 	height: number;
+}
+
+interface ViewerAnalytics {
+	totalViews: number;
+	uniqueViewers: number;
+	viewEvents: Array<{ timestamp: number; ip: string; userAgent: string }>;
 }

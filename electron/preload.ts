@@ -333,6 +333,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	stopShareServer: () => {
 		return ipcRenderer.invoke("stop-share-server");
 	},
+	getShareAnalytics: () => {
+		return ipcRenderer.invoke("get-share-analytics");
+	},
 	encryptExportedFile: (filePath: string, password: string) => {
 		return ipcRenderer.invoke("encrypt-exported-file", filePath, password);
 	},

@@ -1,5 +1,5 @@
-import { Check, ClipboardCopy, Cloud, Copy, Download, Globe, Loader2, Lock, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { BarChart3, Check, ClipboardCopy, Cloud, Copy, Download, Eye, Globe, Loader2, Lock, Users, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ExportProgress } from "@/lib/exporter";
@@ -63,7 +63,40 @@ export function ExportDialog({
 			pathStyle: false,
 		};
 	});
+	const [analytics, setAnalytics] = useState<ViewerAnalytics | null>(null);
 	const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const analyticsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	const fetchAnalytics = useCallback(async () => {
+		try {
+			const result = await window.electronAPI.getShareAnalytics();
+			if (result.success && result.analytics) {
+				setAnalytics(result.analytics);
+			}
+		} catch {
+			// Silently ignore analytics fetch errors
+		}
+	}, []);
+
+	// Poll analytics every 5 seconds when share is active
+	useEffect(() => {
+		if (shareUrl) {
+			fetchAnalytics();
+			analyticsIntervalRef.current = setInterval(fetchAnalytics, 5000);
+		} else {
+			setAnalytics(null);
+			if (analyticsIntervalRef.current) {
+				clearInterval(analyticsIntervalRef.current);
+				analyticsIntervalRef.current = null;
+			}
+		}
+		return () => {
+			if (analyticsIntervalRef.current) {
+				clearInterval(analyticsIntervalRef.current);
+				analyticsIntervalRef.current = null;
+			}
+		};
+	}, [shareUrl, fetchAnalytics]);
 
 	// Reset showSuccess when a new export starts or dialog reopens
 	useEffect(() => {
@@ -381,6 +414,53 @@ export function ExportDialog({
 											>
 												<ClipboardCopy className="w-3.5 h-3.5" />
 											</button>
+										</div>
+									)}
+									{shareUrl && analytics && (
+										<div className="mt-2 rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
+											<div className="flex items-center gap-1.5 mb-2">
+												<BarChart3 className="w-3 h-3 text-white/40" />
+												<span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">
+													Viewer Analytics
+												</span>
+											</div>
+											<div className="grid grid-cols-2 gap-2 mb-2">
+												<div className="flex items-center gap-1.5 bg-white/[0.03] rounded-md px-2 py-1.5 border border-white/[0.05]">
+													<Eye className="w-3 h-3 text-white/30" />
+													<div>
+														<div className="text-xs font-medium text-white/70">{analytics.totalViews}</div>
+														<div className="text-[9px] text-white/30">Total Views</div>
+													</div>
+												</div>
+												<div className="flex items-center gap-1.5 bg-white/[0.03] rounded-md px-2 py-1.5 border border-white/[0.05]">
+													<Users className="w-3 h-3 text-white/30" />
+													<div>
+														<div className="text-xs font-medium text-white/70">{analytics.uniqueViewers}</div>
+														<div className="text-[9px] text-white/30">Unique Viewers</div>
+													</div>
+												</div>
+											</div>
+											{analytics.viewEvents.length > 0 && (
+												<div className="space-y-1 max-h-24 overflow-y-auto">
+													{analytics.viewEvents
+														.slice(-5)
+														.reverse()
+														.map((event, i) => {
+															const time = new Date(event.timestamp);
+															const timeStr = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+															const truncatedIp = event.ip.replace(/^::ffff:/, "").replace(/\.\d+$/, ".*");
+															return (
+																<div
+																	key={`${event.timestamp}-${i}`}
+																	className="flex items-center justify-between text-[10px] text-white/40 px-1.5 py-0.5 rounded bg-white/[0.02]"
+																>
+																	<span className="font-mono">{timeStr}</span>
+																	<span className="font-mono">{truncatedIp}</span>
+																</div>
+															);
+														})}
+												</div>
+											)}
 										</div>
 									)}
 									{showS3Form && !uploadedUrl && (
