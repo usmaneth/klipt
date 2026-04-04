@@ -310,3 +310,93 @@ function classifyPostClickBehavior(
 
 	return "click-like";
 }
+
+// ── Click-specific auto-zoom generation ─────────────────────────────────────
+
+/** Duration of each click-triggered zoom region in milliseconds. */
+export const CLICK_ZOOM_DURATION_MS = 1000;
+/** How far before the click the zoom region starts. */
+export const CLICK_ZOOM_LEAD_MS = 200;
+/** Minimum spacing between click-zoom centers to avoid overlap. */
+export const CLICK_ZOOM_MIN_SPACING_MS = 1200;
+
+export interface ClickZoomCandidate {
+	startMs: number;
+	endMs: number;
+	focus: ZoomFocus;
+}
+
+/**
+ * Detects explicit mouse-click events in cursor telemetry and returns zoom
+ * candidates.  Each click produces a 1-second span (200 ms before the click
+ * through 800 ms after), focused on the normalized click position.
+ *
+ * Clicks that fall within `reservedSpans` or are too close to a
+ * previously-accepted click are skipped.
+ *
+ * Callers are responsible for creating `ZoomRegion` objects with IDs (via
+ * `onZoomSuggested` or equivalent).
+ */
+export function detectClickZoomCandidates(
+	samples: CursorTelemetryPoint[],
+	totalMs: number,
+	reservedSpans: Array<{ start: number; end: number }>,
+): ClickZoomCandidate[] {
+	if (samples.length < 2 || totalMs <= 0) {
+		return [];
+	}
+
+	const normalized = normalizeCursorTelemetry(samples, totalMs);
+
+	// Extract only explicit click / double-click events
+	const clickSamples = normalized.filter(
+		(s) =>
+			s.interactionType === "click" ||
+			s.interactionType === "double-click",
+	);
+
+	if (clickSamples.length === 0) {
+		return [];
+	}
+
+	// Sort by time
+	const sortedClicks = [...clickSamples].sort((a, b) => a.timeMs - b.timeMs);
+
+	const spans = [...reservedSpans].sort((a, b) => a.start - b.start);
+	const acceptedCenters: number[] = [];
+	const candidates: ClickZoomCandidate[] = [];
+
+	for (const click of sortedClicks) {
+		const clickTimeMs = click.timeMs;
+
+		// Skip if too close to an already-accepted click
+		const tooClose = acceptedCenters.some(
+			(center) => Math.abs(center - clickTimeMs) < CLICK_ZOOM_MIN_SPACING_MS,
+		);
+		if (tooClose) {
+			continue;
+		}
+
+		const startMs = Math.max(0, Math.round(clickTimeMs - CLICK_ZOOM_LEAD_MS));
+		const endMs = Math.min(totalMs, startMs + CLICK_ZOOM_DURATION_MS);
+
+		// Skip if it overlaps any reserved span
+		const hasOverlap = spans.some(
+			(span) => endMs > span.start && startMs < span.end,
+		);
+		if (hasOverlap) {
+			continue;
+		}
+
+		candidates.push({
+			startMs,
+			endMs,
+			focus: { cx: click.cx, cy: click.cy },
+		});
+
+		spans.push({ start: startMs, end: endMs });
+		acceptedCenters.push(clickTimeMs);
+	}
+
+	return candidates;
+}

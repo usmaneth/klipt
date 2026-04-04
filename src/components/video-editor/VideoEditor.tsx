@@ -1800,6 +1800,69 @@ export default function VideoEditor() {
 				}
 			}
 
+			// Generate title and summary from transcription
+			if (words.length > 0) {
+				const STOPWORDS = new Set(["the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall", "can", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "into", "through", "during", "before", "after", "above", "below", "between", "out", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "each", "every", "both", "few", "more", "most", "other", "some", "such", "no", "not", "only", "own", "same", "so", "than", "too", "very", "just", "because", "but", "and", "or", "if", "while", "about", "up", "it", "its", "i", "me", "my", "we", "our", "you", "your", "he", "him", "his", "she", "her", "they", "them", "their", "this", "that", "these", "those", "what", "which", "who", "whom"]);
+
+				const fullText = words.map((w) => w.text).join(" ");
+				const firstWord = words[0];
+				const lastWord = words[words.length - 1];
+				const totalDurationMs = firstWord && lastWord ? Math.round(lastWord.end * 1000) : 0;
+
+				// --- Title generation ---
+				// Build title from the first sentence or first few words (max 60 chars)
+				const sentences = fullText.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+				let titleText = sentences[0]?.trim() ?? fullText.trim();
+				if (titleText.length > 60) {
+					titleText = `${titleText.slice(0, 57).trim()}...`;
+				}
+				// Capitalize first letter
+				titleText = titleText.charAt(0).toUpperCase() + titleText.slice(1);
+
+				suggestions.push({
+					id: `ai-${suggestionId++}`,
+					type: "title",
+					label: titleText,
+					startMs: 0,
+					endMs: totalDurationMs,
+				});
+
+				// --- Summary generation ---
+				// Take first 3 sentences or first ~200 words
+				const first3Sentences = sentences.slice(0, 3).join(". ").trim();
+				const first200Words = words.slice(0, 200).map((w) => w.text).join(" ");
+				let summarySource = first3Sentences.length > 0 ? first3Sentences : first200Words;
+				if (!summarySource.endsWith(".")) {
+					summarySource += ".";
+				}
+
+				// Extract key phrases by finding top frequent meaningful words
+				const wordFreq = new Map<string, number>();
+				for (const w of words) {
+					const lower = w.text.toLowerCase().replace(/[.,!?;:'"]/g, "");
+					if (lower.length > 2 && !STOPWORDS.has(lower)) {
+						wordFreq.set(lower, (wordFreq.get(lower) ?? 0) + 1);
+					}
+				}
+				const topWords = [...wordFreq.entries()]
+					.sort((a, b) => b[1] - a[1])
+					.slice(0, 8)
+					.map(([word]) => word);
+
+				const keyPhraseSuffix = topWords.length > 0 ? ` Key topics: ${topWords.join(", ")}.` : "";
+				const summaryText = summarySource.length > 300
+					? `${summarySource.slice(0, 297).trim()}...${keyPhraseSuffix}`
+					: `${summarySource}${keyPhraseSuffix}`;
+
+				suggestions.push({
+					id: `ai-${suggestionId++}`,
+					type: "summary",
+					label: summaryText,
+					startMs: 0,
+					endMs: totalDurationMs,
+				});
+			}
+
 			// Sort by startMs
 			suggestions.sort((a, b) => a.startMs - b.startMs);
 			setAiSuggestions(suggestions);
@@ -1841,6 +1904,17 @@ export default function VideoEditor() {
 				if (video) {
 					video.currentTime = suggestion.startMs / 1000;
 				}
+			} else if (suggestion.type === "title" || suggestion.type === "summary") {
+				// Copy the text to clipboard
+				navigator.clipboard.writeText(suggestion.label).then(() => {
+					toast.success(
+						suggestion.type === "title"
+							? "Title copied to clipboard"
+							: "Summary copied to clipboard",
+					);
+				}).catch(() => {
+					toast.error("Failed to copy to clipboard");
+				});
 			} else if (suggestion.type === "chapter") {
 				// Create a text annotation on the timeline showing the chapter title
 				const id = `annotation-${nextAnnotationIdRef.current++}`;

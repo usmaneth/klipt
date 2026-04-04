@@ -4,6 +4,7 @@ import {
 	BookOpen,
 	Check,
 	Clipboard,
+	FileText,
 	History,
 	LayoutGrid,
 	Loader2,
@@ -14,6 +15,7 @@ import {
 	Search,
 	Sparkles,
 	Trash2,
+	Type,
 	X,
 } from "lucide-react";
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
@@ -25,7 +27,7 @@ import type { SoundEffectId, TransitionType, TrimRegion } from "./types";
 
 export interface AISuggestion {
 	id: string;
-	type: "silence" | "filler" | "best-moment" | "chapter";
+	type: "silence" | "filler" | "best-moment" | "chapter" | "title" | "summary";
 	label: string;
 	startMs: number;
 	endMs: number;
@@ -490,12 +492,16 @@ export function CreativeWorkspace({
 			filler: "filler",
 			"best-moment": "moment",
 			chapter: "chapter",
+			title: "title",
+			summary: "summary",
 		};
 		const typeColor: Record<AISuggestion["type"], string> = {
 			silence: "#FF9500",
 			filler: "#E0000F",
 			"best-moment": "#30D158",
 			chapter: "#BF5AF2",
+			title: "#FBBF24",
+			summary: "#60A5FA",
 		};
 
 		return (
@@ -511,6 +517,16 @@ export function CreativeWorkspace({
 										className="w-3 h-3 flex-shrink-0"
 										style={{ color: typeColor[s.type] }}
 									/>
+								) : s.type === "title" ? (
+									<Type
+										className="w-3 h-3 flex-shrink-0"
+										style={{ color: typeColor[s.type] }}
+									/>
+								) : s.type === "summary" ? (
+									<FileText
+										className="w-3 h-3 flex-shrink-0"
+										style={{ color: typeColor[s.type] }}
+									/>
 								) : (
 									<Sparkles
 										className="w-3 h-3 flex-shrink-0"
@@ -519,11 +535,17 @@ export function CreativeWorkspace({
 								)}
 							<span className="text-[11px] text-white/70">{s.label}</span>
 						</div>
-						<span className="text-[10px] text-white/30 ml-5">
-							{formatMs(s.startMs)}
-							{s.endMs !== s.startMs ? ` - ${formatMs(s.endMs)}` : ""}
-							{s.word ? ` "${s.word}"` : ""}
-						</span>
+						{s.type === "title" || s.type === "summary" ? (
+							<span className="text-[10px] text-white/30 ml-5">
+								{s.type === "title" ? "Generated title" : "Generated summary"}
+							</span>
+						) : (
+							<span className="text-[10px] text-white/30 ml-5">
+								{formatMs(s.startMs)}
+								{s.endMs !== s.startMs ? ` - ${formatMs(s.endMs)}` : ""}
+								{s.word ? ` "${s.word}"` : ""}
+							</span>
+						)}
 						<div className="flex items-center gap-1 ml-5">
 							<span className="text-[9px] text-white/20 mr-1 uppercase tracking-wider">
 								{typeIcon[s.type]}

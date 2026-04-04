@@ -5,6 +5,7 @@ import {
 	ChevronDown,
 	Gauge,
 	MessageSquare,
+	MousePointerClick,
 	Music,
 	Plus,
 	Scissors,
@@ -59,7 +60,7 @@ import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import Row from "./Row";
 import TimelineWrapper from "./TimelineWrapper";
-import { detectInteractionCandidates, normalizeCursorTelemetry } from "./zoomSuggestionUtils";
+import { detectClickZoomCandidates, detectInteractionCandidates, normalizeCursorTelemetry } from "./zoomSuggestionUtils";
 
 const ZOOM_ROW_ID = "row-zoom";
 const TRIM_ROW_ID = "row-trim";
@@ -1207,6 +1208,54 @@ const TimelineEditor = memo(function TimelineEditor({
 		cursorTelemetry,
 	]);
 
+	const handleAutoZoomClicks = useCallback(() => {
+		if (!videoDuration || videoDuration === 0 || totalMs === 0) {
+			return;
+		}
+
+		if (!onZoomSuggested) {
+			toast.error("Zoom suggestion handler unavailable");
+			return;
+		}
+
+		if (!cursorTelemetry || cursorTelemetry.length < 2) {
+			toast.info("No cursor telemetry available", {
+				description: "Record a screencast first to detect click locations.",
+			});
+			return;
+		}
+
+		const reservedSpans = [...zoomRegions]
+			.map((region) => ({ start: region.startMs, end: region.endMs }))
+			.sort((a, b) => a.start - b.start);
+
+		const candidates = detectClickZoomCandidates(cursorTelemetry, totalMs, reservedSpans);
+
+		if (candidates.length === 0) {
+			toast.info("No click events found", {
+				description: "The recording contains no usable mouse clicks, or all click locations overlap existing zooms.",
+			});
+			return;
+		}
+
+		for (const candidate of candidates) {
+			onZoomSuggested(
+				{ start: candidate.startMs, end: candidate.endMs },
+				candidate.focus,
+			);
+		}
+
+		toast.success(
+			`Added ${candidates.length} click-based zoom${candidates.length === 1 ? "" : "s"}`,
+		);
+	}, [
+		videoDuration,
+		totalMs,
+		zoomRegions,
+		onZoomSuggested,
+		cursorTelemetry,
+	]);
+
 	const handleAddTrim = useCallback(() => {
 		if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onTrimAdded) {
 			return;
@@ -1684,6 +1733,15 @@ const TimelineEditor = memo(function TimelineEditor({
 						title="Suggest Zooms from Cursor"
 					>
 						<WandSparkles className="w-3 h-3" />
+					</Button>
+					<Button
+						onClick={handleAutoZoomClicks}
+						variant="ghost"
+						size="icon"
+						className="h-6 w-6 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md"
+						title="Auto-Zoom Clicks"
+					>
+						<MousePointerClick className="w-3 h-3" />
 					</Button>
 					<Button
 						onClick={handleAddTrim}
