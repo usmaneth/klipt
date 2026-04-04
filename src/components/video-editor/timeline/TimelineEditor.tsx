@@ -51,6 +51,7 @@ import type {
 	CursorTelemetryPoint,
 	SoundEffectRegion,
 	SpeedRegion,
+	TimelineComment,
 	TransitionRegion,
 	TrimRegion,
 	ZoomFocus,
@@ -121,6 +122,7 @@ interface TimelineEditorProps {
 	aspectRatio: AspectRatio;
 	onAspectRatioChange: (aspectRatio: AspectRatio) => void;
 	workspaceNotes?: WorkspaceNote[];
+	timelineComments?: TimelineComment[];
 }
 
 interface TimelineScaleConfig {
@@ -759,6 +761,44 @@ function NoteMarkers({ notes }: { notes: WorkspaceNote[] }) {
 	);
 }
 
+function CommentMarkers({ comments }: { comments: TimelineComment[] }) {
+	const { range, valueToPixels, sidebarWidth, direction } = useTimelineContext();
+	const sideProperty = direction === "rtl" ? "right" : "left";
+
+	if (!comments || comments.length === 0) return null;
+
+	return (
+		<div
+			className="absolute top-0 bottom-0 z-40 pointer-events-none"
+			style={{ [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px` }}
+		>
+			{comments.map((comment) => {
+				const offset = valueToPixels(comment.timeMs - range.start);
+				if (offset < -20 || offset > 5000) return null;
+				const color = comment.color || "#0A84FF";
+				return (
+					<div
+						key={comment.id}
+						className="absolute top-0 pointer-events-none"
+						style={{ [sideProperty]: `${offset}px` }}
+						title={comment.text}
+					>
+						<div
+							className="w-0 h-0 -translate-x-1/2"
+							style={{
+								borderLeft: "4px solid transparent",
+								borderRight: "4px solid transparent",
+								borderBottom: `7px solid ${color}`,
+								filter: `drop-shadow(0 0 3px ${color}80)`,
+							}}
+						/>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function CuttingRoomFloor({ clips, onRestore }: { clips: TrimRegion[]; onRestore: (id: string) => void }) {
 	const { range, valueToPixels } = useTimelineContext();
 	
@@ -836,6 +876,7 @@ const TimelineEditor = memo(function TimelineEditor({
 	aspectRatio,
 	onAspectRatioChange,
 	workspaceNotes,
+	timelineComments,
 }: TimelineEditorProps) {
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
@@ -1910,6 +1951,10 @@ const TimelineEditor = memo(function TimelineEditor({
 
 					{workspaceNotes && workspaceNotes.length > 0 && (
 						<NoteMarkers notes={workspaceNotes} />
+					)}
+
+					{timelineComments && timelineComments.length > 0 && (
+						<CommentMarkers comments={timelineComments} />
 					)}
 
 					<KeyframeMarkers

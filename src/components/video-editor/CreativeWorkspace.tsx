@@ -8,6 +8,7 @@ import {
 	History,
 	LayoutGrid,
 	Loader2,
+	MessageCircle,
 	MessageSquare,
 	Music,
 	Play,
@@ -21,7 +22,8 @@ import {
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
-import type { SoundEffectId, TransitionType, TrimRegion } from "./types";
+import type { SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
+import { CommentsPanel } from "./CommentsPanel";
 
 // ── AI Suggestion type ──────────────────────────────────────────────────────
 
@@ -42,7 +44,8 @@ export type WorkspacePanel =
 	| "ai"
 	| "assets"
 	| "scratchpad"
-	| "notes";
+	| "notes"
+	| "comments";
 
 export interface WorkspaceNote {
 	id: string;
@@ -108,6 +111,10 @@ interface CreativeWorkspaceProps {
 	onAddTransition?: (type: TransitionType) => void;
 	onRestoreClipToTimeline?: (clip: ScratchPadClip) => void;
 	hasVideo: boolean;
+	timelineComments: TimelineComment[];
+	onAddComment: (comment: TimelineComment) => void;
+	onDeleteComment: (id: string) => void;
+	onSeekToComment: (timeMs: number) => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -121,6 +128,7 @@ const PANELS: { id: WorkspacePanel; icon: typeof LayoutGrid; label: string }[] =
 	{ id: "assets", icon: Music, label: "Assets" },
 	{ id: "scratchpad", icon: Clipboard, label: "Scratch Pad" },
 	{ id: "notes", icon: MessageSquare, label: "Notes" },
+	{ id: "comments", icon: MessageCircle, label: "Comments" },
 ];
 
 const ASSET_SUB_TABS: { id: AssetSubTab; label: string }[] = [
@@ -204,6 +212,10 @@ export function CreativeWorkspace({
 	onAddTransition,
 	onRestoreClipToTimeline,
 	hasVideo,
+	timelineComments,
+	onAddComment,
+	onDeleteComment,
+	onSeekToComment,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
 	const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
@@ -953,6 +965,16 @@ export function CreativeWorkspace({
 		</div>
 	);
 
+	const renderComments = () => (
+		<CommentsPanel
+			comments={timelineComments}
+			currentTimeMs={currentTime * 1000}
+			onAddComment={onAddComment}
+			onDeleteComment={onDeleteComment}
+			onSeek={onSeekToComment}
+		/>
+	);
+
 	const panelContentMap: Record<WorkspacePanel, () => React.ReactNode> = {
 		clips: renderClips,
 		history: renderHistory,
@@ -960,6 +982,7 @@ export function CreativeWorkspace({
 		assets: renderAssets,
 		scratchpad: renderScratchPad,
 		notes: renderNotes,
+		comments: renderComments,
 	};
 
 	const activePanelConfig = activePanel

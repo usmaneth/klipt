@@ -75,6 +75,7 @@ import {
 	type SoundEffectId,
 	type SoundEffectRegion,
 	type SpeedRegion,
+	type TimelineComment,
 	type TransitionRegion,
 	type TransitionType,
 	type TrimRegion,
@@ -204,6 +205,7 @@ export default function VideoEditor() {
 	const [isMouseMoving, setIsMouseMoving] = useState(true);
 	const [activeWorkspacePanel, setActiveWorkspacePanel] = useState<WorkspacePanel | null>(null);
 	const [workspaceNotes, setWorkspaceNotes] = useState<WorkspaceNote[]>([]);
+	const [timelineComments, setTimelineComments] = useState<TimelineComment[]>([]);
 	const [scratchPadClips, setScratchPadClips] = useState<ScratchPadClip[]>([]);
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
 	const [aiAnalysisProgress, setAiAnalysisProgress] = useState<number | null>(null);
@@ -553,6 +555,7 @@ export default function VideoEditor() {
 		setAudioRegions(normalizedEditor.audioRegions);
 		setSoundEffectRegions(normalizedEditor.soundEffectRegions ?? []);
 		setTransitionRegions(normalizedEditor.transitionRegions ?? []);
+		setTimelineComments(normalizedEditor.timelineComments ?? []);
 		setAspectRatio(normalizedEditor.aspectRatio);
 		setExportQuality(normalizedEditor.exportQuality);
 		setExportFormat(normalizedEditor.exportFormat);
@@ -646,6 +649,7 @@ export default function VideoEditor() {
 				audioRegions,
 				soundEffectRegions,
 				transitionRegions,
+				timelineComments,
 				aspectRatio,
 				exportQuality,
 				exportFormat,
@@ -690,6 +694,7 @@ export default function VideoEditor() {
 		speedRegions,
 		audioRegions,
 		annotationRegions,
+		timelineComments,
 		aspectRatio,
 		exportQuality,
 		exportFormat,
@@ -869,6 +874,7 @@ export default function VideoEditor() {
 				audioRegions,
 				soundEffectRegions,
 				transitionRegions,
+				timelineComments,
 				aspectRatio,
 				exportQuality,
 				exportFormat,
@@ -1960,6 +1966,21 @@ export default function VideoEditor() {
 	}, []);
 
 	const handleJumpToTime = useCallback((timeMs: number) => {
+		const video = videoPlaybackRef.current?.video;
+		if (video) {
+			video.currentTime = timeMs / 1000;
+		}
+	}, []);
+
+	const handleAddComment = useCallback((comment: TimelineComment) => {
+		setTimelineComments((prev) => [...prev, comment]);
+	}, []);
+
+	const handleDeleteComment = useCallback((id: string) => {
+		setTimelineComments((prev) => prev.filter((c) => c.id !== id));
+	}, []);
+
+	const handleSeekToComment = useCallback((timeMs: number) => {
 		const video = videoPlaybackRef.current?.video;
 		if (video) {
 			video.currentTime = timeMs / 1000;
@@ -3201,6 +3222,10 @@ export default function VideoEditor() {
 					onAddTransition={handleAddTransition}
 					onRestoreClipToTimeline={handleRestoreClipToTimeline}
 					hasVideo={!!videoPath}
+					timelineComments={timelineComments}
+					onAddComment={handleAddComment}
+					onDeleteComment={handleDeleteComment}
+					onSeekToComment={handleSeekToComment}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}
@@ -3594,6 +3619,7 @@ export default function VideoEditor() {
 								aspectRatio={aspectRatio}
 								onAspectRatioChange={setAspectRatio}
 								workspaceNotes={workspaceNotes}
+								timelineComments={timelineComments}
 							/>
 						</div>
 							</Panel>

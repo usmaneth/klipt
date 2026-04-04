@@ -20,6 +20,7 @@ import {
 	DEFAULT_ZOOM_MOTION_BLUR,
 	type SoundEffectRegion,
 	type SpeedRegion,
+	type TimelineComment,
 	type TransitionRegion,
 	type TrimRegion,
 	type ZoomRegion,
@@ -65,6 +66,7 @@ export interface ProjectEditorState {
 	audioRegions: AudioRegion[];
 	soundEffectRegions?: SoundEffectRegion[];
 	transitionRegions?: TransitionRegion[];
+	timelineComments?: TimelineComment[];
 	aspectRatio: AspectRatio;
 	exportQuality: ExportQuality;
 	exportFormat: ExportFormat;
@@ -463,6 +465,21 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			: [],
 		transitionRegions: Array.isArray((editor as Partial<ProjectEditorState>).transitionRegions)
 			? ((editor as Partial<ProjectEditorState>).transitionRegions as TransitionRegion[])
+			: [],
+		timelineComments: Array.isArray((editor as Partial<ProjectEditorState>).timelineComments)
+			? ((editor as Partial<ProjectEditorState>).timelineComments as TimelineComment[])
+					.filter(
+						(c): c is TimelineComment =>
+							Boolean(c && typeof c.id === "string" && typeof c.text === "string"),
+					)
+					.map((c) => ({
+						id: c.id,
+						timeMs: isFiniteNumber(c.timeMs) ? Math.max(0, c.timeMs) : 0,
+						text: c.text,
+						author: typeof c.author === "string" ? c.author : undefined,
+						createdAt: isFiniteNumber(c.createdAt) ? c.createdAt : Date.now(),
+						color: typeof c.color === "string" ? c.color : undefined,
+					}))
 			: [],
 		aspectRatio:
 			typeof editor.aspectRatio === "string" &&

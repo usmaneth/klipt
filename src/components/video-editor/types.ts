@@ -1,3 +1,12 @@
+export interface TimelineComment {
+	id: string;
+	timeMs: number;
+	text: string;
+	author?: string;
+	createdAt: number; // unix timestamp
+	color?: string;
+}
+
 export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface ZoomFocus {
