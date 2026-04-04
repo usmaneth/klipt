@@ -1,4 +1,4 @@
-import { ClipboardCopy, Copy, Download, Globe, Loader2, X } from "lucide-react";
+import { ClipboardCopy, Copy, Download, Globe, Loader2, Lock, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,12 +35,19 @@ export function ExportDialog({
 	const [isCopying, setIsCopying] = useState(false);
 	const [shareUrl, setShareUrl] = useState<string | null>(null);
 	const [isStartingShare, setIsStartingShare] = useState(false);
+	const [showPasswordInput, setShowPasswordInput] = useState(false);
+	const [password, setPassword] = useState("");
+	const [isEncrypting, setIsEncrypting] = useState(false);
+	const [encryptedFilePath, setEncryptedFilePath] = useState<string | null>(null);
 	const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Reset showSuccess when a new export starts or dialog reopens
 	useEffect(() => {
 		if (isExporting) {
 			setShowSuccess(false);
+			setShowPasswordInput(false);
+			setPassword("");
+			setEncryptedFilePath(null);
 		}
 	}, [isExporting]);
 
@@ -168,6 +175,29 @@ export function ExportDialog({
 		}
 	};
 
+	const handleEncrypt = async () => {
+		if (!exportedFilePath || !password) return;
+		setIsEncrypting(true);
+		// Keep dialog open while encrypting
+		if (successTimerRef.current) {
+			clearTimeout(successTimerRef.current);
+			successTimerRef.current = null;
+		}
+		try {
+			const result = await window.electronAPI.encryptExportedFile(exportedFilePath, password);
+			if (result.success && result.encryptedPath) {
+				setEncryptedFilePath(result.encryptedPath);
+				toast.success("File encrypted successfully");
+			} else {
+				toast.error(result.error || "Failed to encrypt file");
+			}
+		} catch (err) {
+			toast.error(`Failed to encrypt: ${String(err)}`);
+		} finally {
+			setIsEncrypting(false);
+		}
+	};
+
 	const handleClickShowInFolder = async () => {
 		if (exportedFilePath) {
 			try {
@@ -269,7 +299,60 @@ export function ExportDialog({
 											</button>
 										</div>
 									)}
-									{exportedFilePath && !shareUrl && (
+									{exportedFilePath && !encryptedFilePath && (
+										<div className="mt-2">
+											{!showPasswordInput ? (
+												<Button
+													variant="secondary"
+													onClick={() => {
+														setShowPasswordInput(true);
+														if (successTimerRef.current) {
+															clearTimeout(successTimerRef.current);
+															successTimerRef.current = null;
+														}
+													}}
+													className="w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
+												>
+													<Lock className="w-3 h-3 mr-1" />
+													Protect with Password
+												</Button>
+											) : (
+												<div className="flex items-center gap-2">
+													<input
+														type="password"
+														value={password}
+														onChange={(e) => setPassword(e.target.value)}
+														onKeyDown={(e) => {
+															if (e.key === "Enter" && password) handleEncrypt();
+														}}
+														placeholder="Enter password"
+														className="flex-1 px-2 py-1 text-xs rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/80 placeholder:text-white/30 outline-none focus:border-white/20"
+													/>
+													<Button
+														variant="secondary"
+														onClick={handleEncrypt}
+														disabled={isEncrypting || !password}
+														className="w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
+													>
+														{isEncrypting ? (
+															<Loader2 className="w-3 h-3 animate-spin" />
+														) : (
+															"Encrypt"
+														)}
+													</Button>
+												</div>
+											)}
+										</div>
+									)}
+									{encryptedFilePath && (
+										<div className="mt-2 flex items-center gap-2 bg-emerald-500/[0.06] rounded-lg px-2 py-1.5 border border-emerald-500/15">
+											<Lock className="w-3 h-3 text-emerald-400/70 shrink-0" />
+											<span className="text-[11px] text-emerald-300/70 truncate">
+												{encryptedFilePath.split("/").pop() ?? encryptedFilePath.split("\\").pop()}
+											</span>
+										</div>
+									)}
+									{exportedFilePath && !shareUrl && !encryptedFilePath && (
 										<span className="text-[11px] text-white/25 break-all max-w-xs mt-1">
 											{exportedFilePath.split("/").pop()}
 										</span>

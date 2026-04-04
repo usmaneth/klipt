@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import crypto from "node:crypto";
 import http from "node:http";
 import {
 	app,
@@ -4234,4 +4235,62 @@ export function registerIpcHandlers(
 			return { success: false, error: message };
 		}
 	});
+
+	// ── Password-protected export (AES-256 encryption) ─────────────────
+
+	const KLPT_MAGIC = Buffer.from("KLPT", "ascii");
+
+	ipcMain.handle(
+		"encrypt-exported-file",
+		async (_, filePath: string, password: string) => {
+			try {
+				const fileData = await fs.readFile(filePath);
+				const salt = crypto.randomBytes(16);
+				const iv = crypto.randomBytes(16);
+				const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+				const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+				const encrypted = Buffer.concat([cipher.update(fileData), cipher.final()]);
+
+				const encryptedPath = filePath.replace(/\.[^.]+$/, ".klpt");
+				const output = Buffer.concat([KLPT_MAGIC, salt, iv, encrypted]);
+				await fs.writeFile(encryptedPath, output);
+
+				return { success: true, encryptedPath };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[encrypt-exported-file] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle(
+		"decrypt-exported-file",
+		async (_, filePath: string, password: string, outputPath: string) => {
+			try {
+				const fileData = await fs.readFile(filePath);
+
+				// Validate magic header
+				const magic = fileData.subarray(0, 4);
+				if (!magic.equals(KLPT_MAGIC)) {
+					return { success: false, error: "Invalid .klpt file format" };
+				}
+
+				const salt = fileData.subarray(4, 20);
+				const iv = fileData.subarray(20, 36);
+				const encrypted = fileData.subarray(36);
+
+				const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+				const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+				const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+
+				await fs.writeFile(outputPath, decrypted);
+				return { success: true, decryptedPath: outputPath };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[decrypt-exported-file] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
 }

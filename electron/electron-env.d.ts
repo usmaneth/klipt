@@ -304,6 +304,15 @@ interface Window {
 			filePath: string,
 		) => Promise<{ success: boolean; url?: string; port?: number; error?: string }>;
 		stopShareServer: () => Promise<{ success: boolean; error?: string }>;
+		encryptExportedFile: (
+			filePath: string,
+			password: string,
+		) => Promise<{ success: boolean; encryptedPath?: string; error?: string }>;
+		decryptExportedFile: (
+			filePath: string,
+			password: string,
+			outputPath: string,
+		) => Promise<{ success: boolean; decryptedPath?: string; error?: string }>;
 	};
 }
 
