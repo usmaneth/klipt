@@ -339,4 +339,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	decryptExportedFile: (filePath: string, password: string, outputPath: string) => {
 		return ipcRenderer.invoke("decrypt-exported-file", filePath, password, outputPath);
 	},
+	uploadToS3: (
+		filePath: string,
+		config: {
+			endpoint: string;
+			bucket: string;
+			accessKeyId: string;
+			secretAccessKey: string;
+			region?: string;
+			pathStyle?: boolean;
+		},
+	) => {
+		return ipcRenderer.invoke("upload-to-s3", filePath, config);
+	},
 });

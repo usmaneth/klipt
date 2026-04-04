@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import crypto from "node:crypto";
 import http from "node:http";
+import https from "node:https";
 import {
 	app,
 	BrowserWindow,
@@ -4289,6 +4290,176 @@ export function registerIpcHandlers(
 			} catch (err: unknown) {
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[decrypt-exported-file] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	// ── S3 / Cloud Upload ────────────────────────────────────────────────
+
+	type S3Config = {
+		endpoint: string;
+		bucket: string;
+		accessKeyId: string;
+		secretAccessKey: string;
+		region?: string;
+		pathStyle?: boolean;
+	};
+
+	function hmacSHA256(key: Buffer | string, data: string): Buffer {
+		return crypto.createHmac("sha256", key).update(data, "utf8").digest();
+	}
+
+	function sha256Hex(data: Buffer): string {
+		return crypto.createHash("sha256").update(data).digest("hex");
+	}
+
+	function getSignatureKey(
+		secretKey: string,
+		dateStamp: string,
+		region: string,
+		service: string,
+	): Buffer {
+		const kDate = hmacSHA256(`AWS4${secretKey}`, dateStamp);
+		const kRegion = hmacSHA256(kDate, region);
+		const kService = hmacSHA256(kRegion, service);
+		return hmacSHA256(kService, "aws4_request");
+	}
+
+	ipcMain.handle(
+		"upload-to-s3",
+		async (
+			_,
+			filePath: string,
+			config: S3Config,
+		): Promise<{ success: boolean; url?: string; error?: string }> => {
+			try {
+				const fileBuffer = await fs.readFile(filePath);
+				const fileName = path.basename(filePath);
+				const region = config.region || "us-east-1";
+				const service = "s3";
+
+				// Parse endpoint URL
+				const endpointUrl = new URL(config.endpoint);
+				const useHttps = endpointUrl.protocol === "https:";
+				const host = endpointUrl.host;
+
+				// Determine object key and request path
+				const objectKey = fileName;
+				const requestPath = config.pathStyle
+					? `/${config.bucket}/${encodeURIComponent(objectKey)}`
+					: `/${encodeURIComponent(objectKey)}`;
+				const effectiveHost = config.pathStyle
+					? host
+					: `${config.bucket}.${host}`;
+
+				// Determine content type
+				const ext = path.extname(filePath).toLowerCase();
+				const mimeTypes: Record<string, string> = {
+					".mp4": "video/mp4",
+					".gif": "image/gif",
+					".webm": "video/webm",
+					".mov": "video/quicktime",
+				};
+				const contentType = mimeTypes[ext] || "application/octet-stream";
+
+				// Build date strings
+				const now = new Date();
+				const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+				const dateStamp = amzDate.slice(0, 8);
+
+				// Payload hash
+				const payloadHash = sha256Hex(fileBuffer);
+
+				// Canonical headers
+				const canonicalHeaders =
+					`content-type:${contentType}\n` +
+					`host:${effectiveHost}\n` +
+					`x-amz-content-sha256:${payloadHash}\n` +
+					`x-amz-date:${amzDate}\n`;
+				const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+
+				// Canonical request
+				const canonicalRequest = [
+					"PUT",
+					requestPath,
+					"", // no query string
+					canonicalHeaders,
+					signedHeaders,
+					payloadHash,
+				].join("\n");
+
+				const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+				const stringToSign = [
+					"AWS4-HMAC-SHA256",
+					amzDate,
+					credentialScope,
+					sha256Hex(Buffer.from(canonicalRequest, "utf8")),
+				].join("\n");
+
+				const signingKey = getSignatureKey(config.secretAccessKey, dateStamp, region, service);
+				const signature = hmacSHA256(signingKey, stringToSign).toString("hex");
+
+				const authorization =
+					`AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, ` +
+					`SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+				// Determine port
+				const defaultPort = useHttps ? 443 : 80;
+				const port = endpointUrl.port ? Number(endpointUrl.port) : defaultPort;
+
+				const requestOptions = {
+					hostname: config.pathStyle
+						? endpointUrl.hostname
+						: `${config.bucket}.${endpointUrl.hostname}`,
+					port,
+					path: requestPath,
+					method: "PUT",
+					headers: {
+						"Content-Type": contentType,
+						"Content-Length": fileBuffer.length,
+						Host: effectiveHost,
+						"x-amz-content-sha256": payloadHash,
+						"x-amz-date": amzDate,
+						Authorization: authorization,
+					},
+				};
+
+				const httpModule = useHttps ? https : http;
+
+				const responseCode = await new Promise<number>((resolve, reject) => {
+					const req = httpModule.request(requestOptions, (res) => {
+						let body = "";
+						res.on("data", (chunk: Buffer) => {
+							body += chunk.toString();
+						});
+						res.on("end", () => {
+							if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+								resolve(res.statusCode);
+							} else {
+								reject(
+									new Error(
+										`S3 upload failed with status ${res.statusCode}: ${body}`,
+									),
+								);
+							}
+						});
+					});
+					req.on("error", reject);
+					req.write(fileBuffer);
+					req.end();
+				});
+
+				// Build public URL
+				const publicUrl = config.pathStyle
+					? `${endpointUrl.origin}/${config.bucket}/${encodeURIComponent(objectKey)}`
+					: `${endpointUrl.protocol}//${config.bucket}.${host}/${encodeURIComponent(objectKey)}`;
+
+				console.log(`[upload-to-s3] Upload succeeded (HTTP ${responseCode}): ${publicUrl}`);
+				return { success: true, url: publicUrl };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[upload-to-s3] Failed:", message);
 				return { success: false, error: message };
 			}
 		},

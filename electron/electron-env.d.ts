@@ -313,6 +313,17 @@ interface Window {
 			password: string,
 			outputPath: string,
 		) => Promise<{ success: boolean; decryptedPath?: string; error?: string }>;
+		uploadToS3: (
+			filePath: string,
+			config: {
+				endpoint: string;
+				bucket: string;
+				accessKeyId: string;
+				secretAccessKey: string;
+				region?: string;
+				pathStyle?: boolean;
+			},
+		) => Promise<{ success: boolean; url?: string; error?: string }>;
 	};
 }
 

@@ -1,4 +1,4 @@
-import { ClipboardCopy, Copy, Download, Globe, Loader2, Lock, X } from "lucide-react";
+import { Check, ClipboardCopy, Cloud, Copy, Download, Globe, Loader2, Lock, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,30 @@ export function ExportDialog({
 	const [password, setPassword] = useState("");
 	const [isEncrypting, setIsEncrypting] = useState(false);
 	const [encryptedFilePath, setEncryptedFilePath] = useState<string | null>(null);
+	const [showS3Form, setShowS3Form] = useState(false);
+	const [isUploading, setIsUploading] = useState(false);
+	const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+	const [s3Config, setS3Config] = useState(() => {
+		try {
+			const saved = localStorage.getItem("klipt-s3-config");
+			if (saved) return JSON.parse(saved) as {
+				endpoint: string;
+				bucket: string;
+				accessKeyId: string;
+				secretAccessKey: string;
+				region: string;
+				pathStyle: boolean;
+			};
+		} catch { /* ignore */ }
+		return {
+			endpoint: "",
+			bucket: "",
+			accessKeyId: "",
+			secretAccessKey: "",
+			region: "us-east-1",
+			pathStyle: false,
+		};
+	});
 	const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Reset showSuccess when a new export starts or dialog reopens
@@ -48,6 +72,9 @@ export function ExportDialog({
 			setShowPasswordInput(false);
 			setPassword("");
 			setEncryptedFilePath(null);
+			setShowS3Form(false);
+			setIsUploading(false);
+			setUploadedUrl(null);
 		}
 	}, [isExporting]);
 
@@ -70,8 +97,8 @@ export function ExportDialog({
 		if (!isExporting && progress && progress.percentage >= 100 && !error) {
 			setShowSuccess(true);
 			const timer = setTimeout(() => {
-				// Don't auto-close if user has started sharing
-				if (!shareUrl) {
+				// Don't auto-close if user has started sharing or cloud upload
+				if (!shareUrl && !showS3Form && !uploadedUrl) {
 					setShowSuccess(false);
 					onClose();
 				}
@@ -198,6 +225,47 @@ export function ExportDialog({
 		}
 	};
 
+	const handleUploadToS3 = async () => {
+		if (!exportedFilePath) return;
+		if (!s3Config.endpoint || !s3Config.bucket || !s3Config.accessKeyId || !s3Config.secretAccessKey) {
+			toast.error("Please fill in all required S3 fields");
+			return;
+		}
+		setIsUploading(true);
+		if (successTimerRef.current) {
+			clearTimeout(successTimerRef.current);
+			successTimerRef.current = null;
+		}
+		try {
+			// Save config (without secret key) to localStorage for reuse
+			localStorage.setItem(
+				"klipt-s3-config",
+				JSON.stringify(s3Config),
+			);
+			const result = await window.electronAPI.uploadToS3(exportedFilePath, s3Config);
+			if (result.success && result.url) {
+				setUploadedUrl(result.url);
+				toast.success("Uploaded to cloud storage");
+			} else {
+				toast.error(result.error || "Upload failed");
+			}
+		} catch (err) {
+			toast.error(`Upload failed: ${String(err)}`);
+		} finally {
+			setIsUploading(false);
+		}
+	};
+
+	const handleCopyUploadedUrl = async () => {
+		if (!uploadedUrl) return;
+		try {
+			await navigator.clipboard.writeText(uploadedUrl);
+			toast.success("URL copied to clipboard");
+		} catch (err) {
+			toast.error(`Failed to copy URL: ${String(err)}`);
+		}
+	};
+
 	const handleClickShowInFolder = async () => {
 		if (exportedFilePath) {
 			try {
@@ -282,6 +350,22 @@ export function ExportDialog({
 													Stop Sharing
 												</Button>
 											)}
+											{!uploadedUrl && (
+												<Button
+													variant="secondary"
+													onClick={() => {
+														setShowS3Form((v) => !v);
+														if (successTimerRef.current) {
+															clearTimeout(successTimerRef.current);
+															successTimerRef.current = null;
+														}
+													}}
+													className="w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
+												>
+													<Cloud className="w-3 h-3 mr-1" />
+													Upload to Cloud
+												</Button>
+											)}
 										</div>
 									)}
 									{shareUrl && (
@@ -294,6 +378,111 @@ export function ExportDialog({
 												onClick={handleCopyShareLink}
 												className="text-white/40 hover:text-white/70 transition-colors shrink-0"
 												title="Copy link"
+											>
+												<ClipboardCopy className="w-3.5 h-3.5" />
+											</button>
+										</div>
+									)}
+									{showS3Form && !uploadedUrl && (
+										<div className="mt-2 space-y-2 bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
+											<div className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-1">
+												S3-Compatible Storage
+											</div>
+											<input
+												type="text"
+												value={s3Config.endpoint}
+												onChange={(e) =>
+													setS3Config((c) => ({ ...c, endpoint: e.target.value }))
+												}
+												placeholder="Endpoint (e.g. https://s3.amazonaws.com)"
+												className="w-full px-2 py-1 text-xs rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/80 placeholder:text-white/30 outline-none focus:border-white/20"
+											/>
+											<input
+												type="text"
+												value={s3Config.bucket}
+												onChange={(e) =>
+													setS3Config((c) => ({ ...c, bucket: e.target.value }))
+												}
+												placeholder="Bucket name"
+												className="w-full px-2 py-1 text-xs rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/80 placeholder:text-white/30 outline-none focus:border-white/20"
+											/>
+											<input
+												type="text"
+												value={s3Config.accessKeyId}
+												onChange={(e) =>
+													setS3Config((c) => ({ ...c, accessKeyId: e.target.value }))
+												}
+												placeholder="Access Key ID"
+												className="w-full px-2 py-1 text-xs rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/80 placeholder:text-white/30 outline-none focus:border-white/20"
+											/>
+											<input
+												type="password"
+												value={s3Config.secretAccessKey}
+												onChange={(e) =>
+													setS3Config((c) => ({
+														...c,
+														secretAccessKey: e.target.value,
+													}))
+												}
+												placeholder="Secret Access Key"
+												className="w-full px-2 py-1 text-xs rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/80 placeholder:text-white/30 outline-none focus:border-white/20"
+											/>
+											<div className="flex gap-2">
+												<input
+													type="text"
+													value={s3Config.region}
+													onChange={(e) =>
+														setS3Config((c) => ({ ...c, region: e.target.value }))
+													}
+													placeholder="Region (us-east-1)"
+													className="flex-1 px-2 py-1 text-xs rounded-lg bg-white/[0.06] border border-white/[0.1] text-white/80 placeholder:text-white/30 outline-none focus:border-white/20"
+												/>
+												<label className="flex items-center gap-1 text-[10px] text-white/40 whitespace-nowrap cursor-pointer">
+													<input
+														type="checkbox"
+														checked={s3Config.pathStyle}
+														onChange={(e) =>
+															setS3Config((c) => ({
+																...c,
+																pathStyle: e.target.checked,
+															}))
+														}
+														className="rounded"
+													/>
+													Path style
+												</label>
+											</div>
+											<Button
+												variant="secondary"
+												onClick={handleUploadToS3}
+												disabled={isUploading}
+												className="w-full px-3 py-1.5 text-xs rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300/80 border border-sky-500/15"
+											>
+												{isUploading ? (
+													<>
+														<Loader2 className="w-3 h-3 animate-spin mr-1" />
+														Uploading...
+													</>
+												) : (
+													<>
+														<Cloud className="w-3 h-3 mr-1" />
+														Upload
+													</>
+												)}
+											</Button>
+										</div>
+									)}
+									{uploadedUrl && (
+										<div className="mt-2 flex items-center gap-2 bg-sky-500/[0.06] rounded-lg px-2 py-1.5 border border-sky-500/15">
+											<Check className="w-3 h-3 text-sky-400/70 shrink-0" />
+											<span className="text-[11px] text-sky-300/70 font-mono truncate flex-1">
+												{uploadedUrl}
+											</span>
+											<button
+												type="button"
+												onClick={handleCopyUploadedUrl}
+												className="text-white/40 hover:text-white/70 transition-colors shrink-0"
+												title="Copy URL"
 											>
 												<ClipboardCopy className="w-3.5 h-3.5" />
 											</button>
