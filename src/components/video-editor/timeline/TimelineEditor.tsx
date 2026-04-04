@@ -1201,7 +1201,7 @@ const TimelineEditor = memo(function TimelineEditor({
 		}
 
 		if (cursorTelemetry.length < 2) {
-			toast.info("No cursor telemetry available", {
+			toast.info("No cursor data found. Record a screencast with cursor tracking enabled first.", {
 				description: "Record a screencast first to generate cursor-based suggestions.",
 			});
 			return;
@@ -1295,7 +1295,7 @@ const TimelineEditor = memo(function TimelineEditor({
 		}
 
 		if (!cursorTelemetry || cursorTelemetry.length < 2) {
-			toast.info("No cursor telemetry available", {
+			toast.info("No cursor data found. Record a screencast with cursor tracking enabled first.", {
 				description: "Record a screencast first to detect click locations.",
 			});
 			return;
@@ -1308,7 +1308,7 @@ const TimelineEditor = memo(function TimelineEditor({
 		const candidates = detectClickZoomCandidates(cursorTelemetry, totalMs, reservedSpans);
 
 		if (candidates.length === 0) {
-			toast.info("No click events found", {
+			toast.info("No mouse clicks detected in this recording.", {
 				description: "The recording contains no usable mouse clicks, or all click locations overlap existing zooms.",
 			});
 			return;
@@ -1807,20 +1807,20 @@ const TimelineEditor = memo(function TimelineEditor({
 					<Button
 						onClick={handleSuggestZooms}
 						variant="ghost"
-						size="icon"
-						className="h-6 w-6 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md"
+						className="h-6 px-2 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md flex items-center gap-1"
 						title="Suggest Zooms from Cursor"
 					>
 						<WandSparkles className="w-3 h-3" />
+						<span className="text-[10px]">Suggest</span>
 					</Button>
 					<Button
 						onClick={handleAutoZoomClicks}
 						variant="ghost"
-						size="icon"
-						className="h-6 w-6 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md"
+						className="h-6 px-2 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md flex items-center gap-1"
 						title="Auto-Zoom Clicks"
 					>
 						<MousePointerClick className="w-3 h-3" />
+						<span className="text-[10px]">Clicks</span>
 					</Button>
 					<Button
 						onClick={handleAddTrim}
