@@ -9,12 +9,15 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import http from "node:http";
 import {
 	app,
 	BrowserWindow,
+	clipboard,
 	desktopCapturer,
 	dialog,
 	ipcMain,
+	nativeImage,
 	shell,
 	systemPreferences,
 } from "electron";
@@ -4074,6 +4077,160 @@ export function registerIpcHandlers(
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : String(err);
 			console.error("[setup-voice-clone] Failed:", message);
+			return { success: false, error: message };
+		}
+	});
+
+	// ── Copy file to clipboard ──────────────────────────────────────────
+	ipcMain.handle("copy-file-to-clipboard", async (_, filePath: string) => {
+		try {
+			const ext = path.extname(filePath).toLowerCase();
+
+			if (ext === ".gif" || ext === ".png" || ext === ".jpg" || ext === ".jpeg") {
+				const image = nativeImage.createFromPath(filePath);
+				if (image.isEmpty()) {
+					return { success: false, error: "Failed to load image from file" };
+				}
+				clipboard.writeImage(image);
+				return { success: true };
+			}
+
+			// For video files (mp4, etc.), copy as file reference
+			if (process.platform === "darwin") {
+				// macOS: write file URL to pasteboard so Finder/apps can paste it
+				const fileUrl = `file://${filePath}`;
+				clipboard.writeBuffer(
+					"public.file-url",
+					Buffer.from(fileUrl, "utf-8"),
+				);
+			} else {
+				// Linux/Windows: copy the file path as text (best cross-platform fallback)
+				clipboard.writeText(filePath);
+			}
+			return { success: true };
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[copy-file-to-clipboard] Failed:", message);
+			return { success: false, error: message };
+		}
+	});
+
+	// ── Local share server ──────────────────────────────────────────────
+	let activeShareServer: http.Server | null = null;
+	let shareServerTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function getLocalIpAddress(): string {
+		const interfaces = os.networkInterfaces();
+		for (const name of Object.keys(interfaces)) {
+			const ifaceList = interfaces[name];
+			if (!ifaceList) continue;
+			for (const iface of ifaceList) {
+				if (iface.family === "IPv4" && !iface.internal) {
+					return iface.address;
+				}
+			}
+		}
+		return "127.0.0.1";
+	}
+
+	function stopShareServer() {
+		if (shareServerTimeout) {
+			clearTimeout(shareServerTimeout);
+			shareServerTimeout = null;
+		}
+		if (activeShareServer) {
+			activeShareServer.close();
+			activeShareServer = null;
+		}
+	}
+
+	ipcMain.handle("start-share-server", async (_, filePath: string) => {
+		try {
+			// Stop any existing server first
+			stopShareServer();
+
+			const stat = await fs.stat(filePath);
+			if (!stat.isFile()) {
+				return { success: false, error: "Path is not a file" };
+			}
+
+			const ext = path.extname(filePath).toLowerCase();
+			const mimeTypes: Record<string, string> = {
+				".mp4": "video/mp4",
+				".gif": "image/gif",
+				".webm": "video/webm",
+				".mov": "video/quicktime",
+			};
+			const contentType = mimeTypes[ext] || "application/octet-stream";
+			const fileName = path.basename(filePath);
+
+			const server = http.createServer(async (req, res) => {
+				if (req.url === "/video" || req.url === "/") {
+					try {
+						const fileStat = await fs.stat(filePath);
+						res.writeHead(200, {
+							"Content-Type": contentType,
+							"Content-Length": fileStat.size,
+							"Content-Disposition": `inline; filename="${fileName}"`,
+							"Access-Control-Allow-Origin": "*",
+						});
+						const stream = fsSync.createReadStream(filePath);
+						stream.pipe(res);
+					} catch {
+						res.writeHead(404);
+						res.end("File not found");
+					}
+				} else {
+					res.writeHead(404);
+					res.end("Not found");
+				}
+			});
+
+			return new Promise<{
+				success: boolean;
+				url?: string;
+				port?: number;
+				error?: string;
+			}>((resolve) => {
+				server.listen(0, () => {
+					const addr = server.address();
+					if (!addr || typeof addr === "string") {
+						server.close();
+						resolve({ success: false, error: "Failed to start server" });
+						return;
+					}
+					const port = addr.port;
+					const localIP = getLocalIpAddress();
+					const url = `http://${localIP}:${port}/video`;
+
+					activeShareServer = server;
+
+					// Auto-close after 1 hour
+					shareServerTimeout = setTimeout(() => {
+						stopShareServer();
+					}, 60 * 60 * 1000);
+
+					resolve({ success: true, url, port });
+				});
+
+				server.on("error", (err) => {
+					resolve({ success: false, error: err.message });
+				});
+			});
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[start-share-server] Failed:", message);
+			return { success: false, error: message };
+		}
+	});
+
+	ipcMain.handle("stop-share-server", async () => {
+		try {
+			stopShareServer();
+			return { success: true };
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[stop-share-server] Failed:", message);
 			return { success: false, error: message };
 		}
 	});

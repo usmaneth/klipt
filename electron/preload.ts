@@ -324,4 +324,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("voice-clone-download-progress", listener);
 		return () => ipcRenderer.removeListener("voice-clone-download-progress", listener);
 	},
+	copyFileToClipboard: (filePath: string) => {
+		return ipcRenderer.invoke("copy-file-to-clipboard", filePath);
+	},
+	startShareServer: (filePath: string) => {
+		return ipcRenderer.invoke("start-share-server", filePath);
+	},
+	stopShareServer: () => {
+		return ipcRenderer.invoke("stop-share-server");
+	},
 });

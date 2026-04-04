@@ -1695,6 +1695,111 @@ export default function VideoEditor() {
 				}
 			}
 
+			// Detect chapter boundaries
+			if (words.length > 0) {
+				const firstWord = words[0];
+				const lastWord = words[words.length - 1];
+				if (firstWord && lastWord) {
+					const totalDurationSec = lastWord.end - firstWord.start;
+					// Only generate chapters if the video is long enough (>60s)
+					if (totalDurationSec > 60) {
+						const chapterBreaks: number[] = [0]; // indices into words array where chapters start
+
+						// Find long pauses (>2 seconds) as natural chapter boundaries
+						for (let i = 1; i < words.length; i++) {
+							const prev = words[i - 1];
+							const curr = words[i];
+							if (!prev || !curr) continue;
+							const gapSec = curr.start - prev.end;
+							if (gapSec > 2) {
+								chapterBreaks.push(i);
+							}
+						}
+
+						// If we didn't find enough natural breaks, segment by word density changes
+						// Ensure segments are roughly 30-60 seconds
+						const MIN_CHAPTER_SEC = 30;
+						const MAX_CHAPTER_SEC = 60;
+						const refinedBreaks: number[] = [0];
+
+						for (let b = 1; b < chapterBreaks.length; b++) {
+							const breakIdx = chapterBreaks[b];
+							if (breakIdx === undefined) continue;
+							const breakWord = words[breakIdx];
+							const lastBreakIdx = refinedBreaks[refinedBreaks.length - 1];
+							if (lastBreakIdx === undefined || !breakWord) continue;
+							const lastBreakWord = words[lastBreakIdx];
+							if (!lastBreakWord) continue;
+							const elapsed = breakWord.start - lastBreakWord.start;
+							if (elapsed >= MIN_CHAPTER_SEC) {
+								refinedBreaks.push(breakIdx);
+							}
+						}
+
+						// If segments are too long (>MAX_CHAPTER_SEC), split them further
+						const finalBreaks: number[] = [];
+						for (let b = 0; b < refinedBreaks.length; b++) {
+							const startIdx = refinedBreaks[b];
+							if (startIdx === undefined) continue;
+							finalBreaks.push(startIdx);
+							const nextBreakIdx = b + 1 < refinedBreaks.length ? refinedBreaks[b + 1] : words.length;
+							if (nextBreakIdx === undefined) continue;
+							const startWord = words[startIdx];
+							const endWord = words[nextBreakIdx - 1];
+							if (!startWord || !endWord) continue;
+							const segDuration = endWord.end - startWord.start;
+							if (segDuration > MAX_CHAPTER_SEC) {
+								// Find a midpoint word to split
+								const midTime = startWord.start + segDuration / 2;
+								for (let i = startIdx + 1; i < nextBreakIdx; i++) {
+									const w = words[i];
+									if (w && w.start >= midTime) {
+										finalBreaks.push(i);
+										break;
+									}
+								}
+							}
+						}
+
+						// Sort and deduplicate
+						const uniqueBreaks = [...new Set(finalBreaks)].sort((a, b) => a - b);
+
+						// Generate chapter suggestions
+						for (let c = 0; c < uniqueBreaks.length; c++) {
+							const chapterStartIdx = uniqueBreaks[c];
+							if (chapterStartIdx === undefined) continue;
+							const chapterEndIdx = c + 1 < uniqueBreaks.length ? uniqueBreaks[c + 1] : words.length;
+							if (chapterEndIdx === undefined) continue;
+
+							const chapterWords = words.slice(chapterStartIdx, chapterEndIdx);
+							if (chapterWords.length === 0) continue;
+
+							const chapterStartWord = chapterWords[0];
+							const chapterEndWord = chapterWords[chapterWords.length - 1];
+							if (!chapterStartWord || !chapterEndWord) continue;
+
+							// Generate title from first few meaningful words (up to 6)
+							const titleWords = chapterWords
+								.slice(0, 8)
+								.map((w) => w.text.replace(/[.,!?;:]/g, ""))
+								.filter((t) => t.length > 0)
+								.slice(0, 6);
+							const title = titleWords.join(" ") || `Chapter ${c + 1}`;
+							// Capitalize first letter
+							const capitalizedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+
+							suggestions.push({
+								id: `ai-${suggestionId++}`,
+								type: "chapter",
+								label: `Chapter ${c + 1}: ${capitalizedTitle}`,
+								startMs: Math.round(chapterStartWord.start * 1000),
+								endMs: Math.round(chapterEndWord.end * 1000),
+							});
+						}
+					}
+				}
+			}
+
 			// Sort by startMs
 			suggestions.sort((a, b) => a.startMs - b.startMs);
 			setAiSuggestions(suggestions);
@@ -1732,6 +1837,39 @@ export default function VideoEditor() {
 				setZoomRegions((prev) => [...prev, newRegion]);
 				setSelectedZoomId(id);
 				// Also seek to the start
+				const video = videoPlaybackRef.current?.video;
+				if (video) {
+					video.currentTime = suggestion.startMs / 1000;
+				}
+			} else if (suggestion.type === "chapter") {
+				// Create a text annotation on the timeline showing the chapter title
+				const id = `annotation-${nextAnnotationIdRef.current++}`;
+				const zIndex = nextAnnotationZIndexRef.current++;
+				// Extract chapter title from label (format: "Chapter N: Title")
+				const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
+				const chapterTitle = titleMatch?.[1] ?? suggestion.label;
+				const newRegion: AnnotationRegion = {
+					id,
+					startMs: suggestion.startMs,
+					endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
+					type: "text",
+					content: chapterTitle,
+					position: { x: 50, y: 10 },
+					size: { width: 60, height: 12 },
+					style: {
+						...DEFAULT_ANNOTATION_STYLE,
+						fontSize: 48,
+						fontWeight: "bold",
+						color: "#ffffff",
+						backgroundColor: "rgba(0, 0, 0, 0.6)",
+					},
+					zIndex,
+				};
+				setAnnotationRegions((prev) => [...prev, newRegion]);
+				setSelectedAnnotationId(id);
+				setSelectedZoomId(null);
+				setSelectedTrimId(null);
+				// Seek to the chapter start
 				const video = videoPlaybackRef.current?.video;
 				if (video) {
 					video.currentTime = suggestion.startMs / 1000;

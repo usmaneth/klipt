@@ -1,6 +1,6 @@
-import { Download, Loader2, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner"; // Add this import
+import { ClipboardCopy, Copy, Download, Globe, Loader2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ExportProgress } from "@/lib/exporter";
 import { useScopedT } from "../../contexts/I18nContext";
@@ -32,6 +32,10 @@ export function ExportDialog({
 }: ExportDialogProps) {
 	const t = useScopedT("dialogs");
 	const [showSuccess, setShowSuccess] = useState(false);
+	const [isCopying, setIsCopying] = useState(false);
+	const [shareUrl, setShareUrl] = useState<string | null>(null);
+	const [isStartingShare, setIsStartingShare] = useState(false);
+	const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Reset showSuccess when a new export starts or dialog reopens
 	useEffect(() => {
@@ -47,16 +51,28 @@ export function ExportDialog({
 		}
 	}, [isOpen, isExporting, progress]);
 
+	// Clean up share server when dialog closes
+	useEffect(() => {
+		if (!isOpen && shareUrl) {
+			window.electronAPI.stopShareServer();
+			setShareUrl(null);
+		}
+	}, [isOpen, shareUrl]);
+
 	useEffect(() => {
 		if (!isExporting && progress && progress.percentage >= 100 && !error) {
 			setShowSuccess(true);
 			const timer = setTimeout(() => {
-				setShowSuccess(false);
-				onClose();
+				// Don't auto-close if user has started sharing
+				if (!shareUrl) {
+					setShowSuccess(false);
+					onClose();
+				}
 			}, 2000);
+			successTimerRef.current = timer;
 			return () => clearTimeout(timer);
 		}
-	}, [isExporting, progress, error, onClose]);
+	}, [isExporting, progress, error, onClose, shareUrl]);
 
 	if (!isOpen) return null;
 
@@ -85,6 +101,71 @@ export function ExportDialog({
 		if (error) return t("export.exportFailed");
 		if (isCompiling || isFinalizing) return t("export.compilingGifTitle");
 		return t("export.exportingFormat", undefined, { format: formatLabel });
+	};
+
+	const handleCopyToClipboard = async () => {
+		if (!exportedFilePath) return;
+		setIsCopying(true);
+		// Keep dialog open while user interacts
+		if (successTimerRef.current) {
+			clearTimeout(successTimerRef.current);
+			successTimerRef.current = null;
+		}
+		try {
+			const result = await window.electronAPI.copyFileToClipboard(exportedFilePath);
+			if (result.success) {
+				toast.success("Copied to clipboard");
+			} else {
+				toast.error(result.error || "Failed to copy to clipboard");
+			}
+		} catch (err) {
+			toast.error(`Failed to copy: ${String(err)}`);
+		} finally {
+			setIsCopying(false);
+		}
+	};
+
+	const handleStartShare = async () => {
+		if (!exportedFilePath) return;
+		setIsStartingShare(true);
+		// Keep dialog open while user interacts
+		if (successTimerRef.current) {
+			clearTimeout(successTimerRef.current);
+			successTimerRef.current = null;
+		}
+		try {
+			const result = await window.electronAPI.startShareServer(exportedFilePath);
+			if (result.success && result.url) {
+				setShareUrl(result.url);
+				toast.success("Share server started");
+			} else {
+				toast.error(result.error || "Failed to start share server");
+			}
+		} catch (err) {
+			toast.error(`Failed to start sharing: ${String(err)}`);
+		} finally {
+			setIsStartingShare(false);
+		}
+	};
+
+	const handleStopShare = async () => {
+		try {
+			await window.electronAPI.stopShareServer();
+			setShareUrl(null);
+			toast.success("Sharing stopped");
+		} catch (err) {
+			toast.error(`Failed to stop sharing: ${String(err)}`);
+		}
+	};
+
+	const handleCopyShareLink = async () => {
+		if (!shareUrl) return;
+		try {
+			await navigator.clipboard.writeText(shareUrl);
+			toast.success("Link copied to clipboard");
+		} catch (err) {
+			toast.error(`Failed to copy link: ${String(err)}`);
+		}
 	};
 
 	const handleClickShowInFolder = async () => {
@@ -126,15 +207,69 @@ export function ExportDialog({
 										{t("export.formatReady", undefined, { format: formatLabel.toLowerCase() })}
 									</span>
 									{exportedFilePath && (
-										<Button
-											variant="secondary"
-											onClick={handleClickShowInFolder}
-											className="mt-2 w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
-										>
-											{t("export.showInFolder")}
-										</Button>
+										<div className="flex flex-wrap gap-2 mt-2">
+											<Button
+												variant="secondary"
+												onClick={handleClickShowInFolder}
+												className="w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
+											>
+												{t("export.showInFolder")}
+											</Button>
+											<Button
+												variant="secondary"
+												onClick={handleCopyToClipboard}
+												disabled={isCopying}
+												className="w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
+											>
+												{isCopying ? (
+													<Loader2 className="w-3 h-3 animate-spin mr-1" />
+												) : (
+													<Copy className="w-3 h-3 mr-1" />
+												)}
+												Copy File
+											</Button>
+											{!shareUrl ? (
+												<Button
+													variant="secondary"
+													onClick={handleStartShare}
+													disabled={isStartingShare}
+													className="w-fit px-3 py-1 text-xs rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/60 border-0"
+												>
+													{isStartingShare ? (
+														<Loader2 className="w-3 h-3 animate-spin mr-1" />
+													) : (
+														<Globe className="w-3 h-3 mr-1" />
+													)}
+													Share Link
+												</Button>
+											) : (
+												<Button
+													variant="secondary"
+													onClick={handleStopShare}
+													className="w-fit px-3 py-1 text-xs rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400/80 border-0"
+												>
+													<X className="w-3 h-3 mr-1" />
+													Stop Sharing
+												</Button>
+											)}
+										</div>
 									)}
-									{exportedFilePath && (
+									{shareUrl && (
+										<div className="mt-2 flex items-center gap-2 bg-white/[0.04] rounded-lg px-2 py-1.5 border border-white/[0.06]">
+											<span className="text-[11px] text-white/50 font-mono truncate flex-1">
+												{shareUrl}
+											</span>
+											<button
+												type="button"
+												onClick={handleCopyShareLink}
+												className="text-white/40 hover:text-white/70 transition-colors shrink-0"
+												title="Copy link"
+											>
+												<ClipboardCopy className="w-3.5 h-3.5" />
+											</button>
+										</div>
+									)}
+									{exportedFilePath && !shareUrl && (
 										<span className="text-[11px] text-white/25 break-all max-w-xs mt-1">
 											{exportedFilePath.split("/").pop()}
 										</span>

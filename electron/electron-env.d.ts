@@ -297,6 +297,13 @@ interface Window {
 				file: string;
 			}) => void,
 		) => () => void;
+		copyFileToClipboard: (
+			filePath: string,
+		) => Promise<{ success: boolean; error?: string }>;
+		startShareServer: (
+			filePath: string,
+		) => Promise<{ success: boolean; url?: string; port?: number; error?: string }>;
+		stopShareServer: () => Promise<{ success: boolean; error?: string }>;
 	};
 }
 

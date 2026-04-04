@@ -1,6 +1,7 @@
 import {
 	ArrowRight,
 	ArrowRightLeft,
+	BookOpen,
 	Check,
 	Clipboard,
 	History,
@@ -24,7 +25,7 @@ import type { SoundEffectId, TransitionType, TrimRegion } from "./types";
 
 export interface AISuggestion {
 	id: string;
-	type: "silence" | "filler" | "best-moment";
+	type: "silence" | "filler" | "best-moment" | "chapter";
 	label: string;
 	startMs: number;
 	endMs: number;
@@ -488,11 +489,13 @@ export function CreativeWorkspace({
 			silence: "silence",
 			filler: "filler",
 			"best-moment": "moment",
+			chapter: "chapter",
 		};
 		const typeColor: Record<AISuggestion["type"], string> = {
 			silence: "#FF9500",
 			filler: "#E0000F",
 			"best-moment": "#30D158",
+			chapter: "#BF5AF2",
 		};
 
 		return (
@@ -503,10 +506,17 @@ export function CreativeWorkspace({
 						className="rounded-lg bg-white/[0.04] p-3 flex flex-col gap-2"
 					>
 						<div className="flex items-center gap-2">
-							<Sparkles
-								className="w-3 h-3 flex-shrink-0"
-								style={{ color: typeColor[s.type] }}
-							/>
+							{s.type === "chapter" ? (
+									<BookOpen
+										className="w-3 h-3 flex-shrink-0"
+										style={{ color: typeColor[s.type] }}
+									/>
+								) : (
+									<Sparkles
+										className="w-3 h-3 flex-shrink-0"
+										style={{ color: typeColor[s.type] }}
+									/>
+								)}
 							<span className="text-[11px] text-white/70">{s.label}</span>
 						</div>
 						<span className="text-[10px] text-white/30 ml-5">
