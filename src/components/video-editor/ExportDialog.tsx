@@ -438,7 +438,7 @@ export function ExportDialog({
 										? t("export.compiling")
 										: t("export.renderingFrames")}
 								</span>
-								<span className="font-mono text-white/50">
+								<span className="font-mono text-white/50 tabular-nums">
 									{isCompiling || isFinalizing ? (
 										renderProgress !== undefined && renderProgress > 0 ? (
 											`${renderProgress}%`

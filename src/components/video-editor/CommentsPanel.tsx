@@ -108,7 +108,7 @@ export function CommentsPanel({
 							className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 group cursor-pointer hover:bg-white/[0.06] transition-colors"
 						>
 							<span className="text-2xl leading-none">{comment.emoji}</span>
-							<span className="text-[10px] text-white/30">
+							<span className="text-[10px] text-white/30 tabular-nums">
 								{formatMs(comment.timeMs)}
 							</span>
 							<button
@@ -141,7 +141,7 @@ export function CommentsPanel({
 							/>
 							<div className="flex-1 min-w-0">
 								<div className="flex items-center gap-1.5">
-									<span className="text-[10px] text-white/30">
+									<span className="text-[10px] text-white/30 tabular-nums">
 										{formatMs(comment.timeMs)}
 									</span>
 									{comment.author && (
