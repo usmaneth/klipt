@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -98,10 +99,15 @@ export function CommentsPanel({
 						No comments yet. Add a comment at the current timestamp below.
 					</p>
 				)}
-				{sortedComments.map((comment) =>
+				<AnimatePresence>
+				{sortedComments.map((comment, index) =>
 					comment.type === "emoji" ? (
-						<div
+						<motion.div
 							key={comment.id}
+							initial={{ opacity: 0, y: 8 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -8 }}
+							transition={{ duration: 0.2, delay: index * 0.05 }}
 							onClick={() => {
 								onSeek(comment.timeMs);
 							}}
@@ -122,10 +128,14 @@ export function CommentsPanel({
 							>
 								<Trash2 className="w-3 h-3" />
 							</button>
-						</div>
+						</motion.div>
 					) : (
-						<div
+						<motion.div
 							key={comment.id}
+							initial={{ opacity: 0, y: 8 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -8 }}
+							transition={{ duration: 0.2, delay: index * 0.05 }}
 							onClick={() => {
 								onSeek(comment.timeMs);
 							}}
@@ -165,15 +175,21 @@ export function CommentsPanel({
 							>
 								<Trash2 className="w-3 h-3" />
 							</button>
-						</div>
+						</motion.div>
 					),
 				)}
+				</AnimatePresence>
 			</div>
 
 			{/* Add comment area */}
 			<div className="flex flex-col gap-3 mt-auto pt-4 border-t border-white/[0.04]">
 				{/* Emoji reaction bar */}
-				<div className="flex items-center gap-1.5">
+				<motion.div
+					initial={{ opacity: 0, y: 4 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.15 }}
+					className="flex items-center gap-1.5"
+				>
 					{EMOJI_REACTIONS.map((emoji) => (
 						<button
 							key={emoji}
@@ -188,7 +204,7 @@ export function CommentsPanel({
 							{emoji}
 						</button>
 					))}
-				</div>
+				</motion.div>
 
 				{/* Divider */}
 				<div className="border-t border-white/[0.06]" />

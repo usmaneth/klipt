@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from "framer-motion";
 import {
 	ArrowRight,
 	ArrowRightLeft,
@@ -518,9 +519,12 @@ export function CreativeWorkspace({
 
 		return (
 			<div className="flex flex-col gap-2">
-				{aiSuggestions.map((s) => (
-					<div
+				{aiSuggestions.map((s, index) => (
+					<motion.div
 						key={s.id}
+						initial={{ opacity: 0, x: -10 }}
+						animate={{ opacity: 1, x: 0 }}
+						transition={{ duration: 0.2, delay: index * 0.06 }}
 						className="rounded-lg bg-white/[0.04] p-3 flex flex-col gap-2"
 					>
 						<div className="flex items-center gap-2">
@@ -603,7 +607,7 @@ export function CreativeWorkspace({
 								Jump
 							</button>
 						</div>
-					</div>
+					</motion.div>
 				))}
 				<button
 					type="button"
@@ -1072,9 +1076,18 @@ export function CreativeWorkspace({
 								</button>
 							</div>
 							{/* Content */}
-							<div className="flex-1 overflow-y-auto px-3 pb-3">
-								{panelContentMap[activePanelConfig.id]()}
-							</div>
+							<AnimatePresence mode="wait">
+								<motion.div
+									key={activePanelConfig.id}
+									initial={{ opacity: 0, x: 10 }}
+									animate={{ opacity: 1, x: 0 }}
+									exit={{ opacity: 0, x: -10 }}
+									transition={{ duration: 0.15 }}
+									className="flex-1 overflow-y-auto px-3 pb-3"
+								>
+									{panelContentMap[activePanelConfig.id]()}
+								</motion.div>
+							</AnimatePresence>
 						</>
 					)}
 				</div>
