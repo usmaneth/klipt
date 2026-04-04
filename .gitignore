@@ -28,6 +28,7 @@ release/**
 # npx electron-builder --mac --win
 .tmp/
 .history/
+.claude/
 
 # Native capture build artifacts
 electron/native/wgc-capture/build/
