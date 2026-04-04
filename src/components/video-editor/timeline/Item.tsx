@@ -14,6 +14,11 @@ interface ItemProps {
 	onSelect?: () => void;
 	zoomDepth?: number;
 	speedValue?: number;
+	audioVolume?: number;
+	audioFadeInMs?: number;
+	audioFadeOutMs?: number;
+	onAudioVolumeChange?: (id: string, volume: number) => void;
+	onAudioFadeChange?: (id: string, fadeInMs: number, fadeOutMs: number) => void;
 	variant?: "zoom" | "trim" | "annotation" | "speed" | "audio" | "sfx" | "transition";
 }
 
@@ -37,6 +42,13 @@ function formatMs(ms: number): string {
 	return `${seconds.toFixed(1)}s`;
 }
 
+const FADE_PRESETS = [
+	{ label: "0s", value: 0 },
+	{ label: "0.5s", value: 500 },
+	{ label: "1s", value: 1000 },
+	{ label: "2s", value: 2000 },
+];
+
 export default function Item({
 	id,
 	span,
@@ -45,6 +57,11 @@ export default function Item({
 	onSelect,
 	zoomDepth = 1,
 	speedValue,
+	audioVolume,
+	audioFadeInMs = 0,
+	audioFadeOutMs = 0,
+	onAudioVolumeChange,
+	onAudioFadeChange,
 	variant = "zoom",
 	children,
 }: ItemProps) {
@@ -153,6 +170,11 @@ export default function Item({
 									<span className="text-[8px] font-mono tracking-tight truncate max-w-full text-purple-500/50">
 										{children}
 									</span>
+									{audioVolume !== undefined && (
+										<span className="text-[7px] font-mono text-purple-400/60 ml-0.5">
+											{Math.round(audioVolume * 100)}%
+										</span>
+									)}
 								</>
 							) : isSfx ? (
 								<>
@@ -185,6 +207,75 @@ export default function Item({
 							{timeLabel}
 						</span>
 					</div>
+					{isAudio && isSelected && (
+						<div
+							className="absolute left-0 right-0 top-full z-50 mt-0.5 bg-zinc-900/95 border border-purple-500/30 rounded-md p-1.5 flex flex-col gap-1 shadow-lg"
+							style={{ minWidth: 180 }}
+							onClick={(e) => e.stopPropagation()}
+							onPointerDown={(e) => e.stopPropagation()}
+						>
+							{/* Volume slider */}
+							<div className="flex items-center gap-1.5">
+								<Volume2 className="w-3 h-3 text-purple-400/70 shrink-0" />
+								<input
+									type="range"
+									min={0}
+									max={100}
+									step={1}
+									value={Math.round((audioVolume ?? 1) * 100)}
+									onChange={(e) => {
+										onAudioVolumeChange?.(id, Number(e.target.value) / 100);
+									}}
+									className="flex-1 h-1 accent-purple-500 cursor-pointer"
+									style={{ minWidth: 60 }}
+								/>
+								<span className="text-[8px] font-mono text-purple-300/70 w-7 text-right tabular-nums">
+									{Math.round((audioVolume ?? 1) * 100)}%
+								</span>
+							</div>
+							{/* Fade in/out presets */}
+							<div className="flex items-center gap-1">
+								<span className="text-[7px] text-purple-400/60 w-6 shrink-0">In:</span>
+								{FADE_PRESETS.map((preset) => (
+									<button
+										key={`fi-${preset.value}`}
+										type="button"
+										className={cn(
+											"text-[7px] px-1 py-0 rounded border cursor-pointer",
+											audioFadeInMs === preset.value
+												? "bg-purple-600/40 border-purple-500/60 text-purple-200"
+												: "bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:bg-zinc-700/60",
+										)}
+										onClick={() =>
+											onAudioFadeChange?.(id, preset.value, audioFadeOutMs)
+										}
+									>
+										{preset.label}
+									</button>
+								))}
+							</div>
+							<div className="flex items-center gap-1">
+								<span className="text-[7px] text-purple-400/60 w-6 shrink-0">Out:</span>
+								{FADE_PRESETS.map((preset) => (
+									<button
+										key={`fo-${preset.value}`}
+										type="button"
+										className={cn(
+											"text-[7px] px-1 py-0 rounded border cursor-pointer",
+											audioFadeOutMs === preset.value
+												? "bg-purple-600/40 border-purple-500/60 text-purple-200"
+												: "bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:bg-zinc-700/60",
+										)}
+										onClick={() =>
+											onAudioFadeChange?.(id, audioFadeInMs, preset.value)
+										}
+									>
+										{preset.label}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

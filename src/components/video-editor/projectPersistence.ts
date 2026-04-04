@@ -347,12 +347,19 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 					const startMs = Math.max(0, Math.min(rawStart, rawEnd));
 					const endMs = Math.max(startMs + 1, rawEnd);
 
+					const regionDurationMs = endMs - startMs;
 					return {
 						id: region.id,
 						startMs,
 						endMs,
 						audioPath: typeof region.audioPath === "string" ? region.audioPath : "",
 						volume: isFiniteNumber(region.volume) ? clamp(region.volume, 0, 1) : 1,
+						fadeInMs: isFiniteNumber(region.fadeInMs)
+							? clamp(region.fadeInMs, 0, regionDurationMs)
+							: 0,
+						fadeOutMs: isFiniteNumber(region.fadeOutMs)
+							? clamp(region.fadeOutMs, 0, regionDurationMs)
+							: 0,
 					};
 				})
 		: [];

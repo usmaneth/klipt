@@ -169,6 +169,8 @@ export interface AudioRegion {
 	endMs: number;
 	audioPath: string;
 	volume: number;
+	fadeInMs?: number;
+	fadeOutMs?: number;
 }
 
 export type SoundEffectId =

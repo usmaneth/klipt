@@ -2097,6 +2097,30 @@ export default function VideoEditor() {
 		[selectedAudioId],
 	);
 
+	const handleAudioVolumeChange = useCallback((id: string, volume: number) => {
+		setAudioRegions((prev) =>
+			prev.map((region) =>
+				region.id === id
+					? { ...region, volume: Math.max(0, Math.min(1, volume)) }
+					: region,
+			),
+		);
+	}, []);
+
+	const handleAudioFadeChange = useCallback((id: string, fadeInMs: number, fadeOutMs: number) => {
+		setAudioRegions((prev) =>
+			prev.map((region) => {
+				if (region.id !== id) return region;
+				const duration = region.endMs - region.startMs;
+				return {
+					...region,
+					fadeInMs: Math.max(0, Math.min(fadeInMs, duration)),
+					fadeOutMs: Math.max(0, Math.min(fadeOutMs, duration)),
+				};
+			}),
+		);
+	}, []);
+
 	const handleSpeedChange = useCallback(
 		(speed: PlaybackSpeed) => {
 			if (!selectedSpeedId) return;
@@ -3542,6 +3566,8 @@ export default function VideoEditor() {
 								onAudioAdded={handleAudioAdded}
 								onAudioSpanChange={handleAudioSpanChange}
 								onAudioDelete={handleAudioDelete}
+								onAudioVolumeChange={handleAudioVolumeChange}
+								onAudioFadeChange={handleAudioFadeChange}
 								selectedAudioId={selectedAudioId}
 								onSelectAudio={handleSelectAudio}
 								soundEffectRegions={soundEffectRegions}

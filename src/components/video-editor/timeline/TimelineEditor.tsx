@@ -109,6 +109,8 @@ interface TimelineEditorProps {
 	onAudioAdded?: (span: Span, audioPath: string) => void;
 	onAudioSpanChange?: (id: string, span: Span) => void;
 	onAudioDelete?: (id: string) => void;
+	onAudioVolumeChange?: (id: string, volume: number) => void;
+	onAudioFadeChange?: (id: string, fadeInMs: number, fadeOutMs: number) => void;
 	selectedAudioId?: string | null;
 	onSelectAudio?: (id: string | null) => void;
 	soundEffectRegions?: SoundEffectRegion[];
@@ -134,6 +136,9 @@ interface TimelineRenderItem {
 	label: string;
 	zoomDepth?: number;
 	speedValue?: number;
+	audioVolume?: number;
+	audioFadeInMs?: number;
+	audioFadeOutMs?: number;
 	variant: "zoom" | "trim" | "annotation" | "speed" | "audio" | "sfx" | "transition";
 }
 
@@ -491,6 +496,8 @@ function Timeline({
 	onSelectAnnotation,
 	onSelectSpeed,
 	onSelectAudio,
+	onAudioVolumeChange,
+	onAudioFadeChange,
 	selectedZoomId,
 	selectedTrimId,
 	selectedAnnotationId,
@@ -507,6 +514,8 @@ function Timeline({
 	onSelectAnnotation?: (id: string | null) => void;
 	onSelectSpeed?: (id: string | null) => void;
 	onSelectAudio?: (id: string | null) => void;
+	onAudioVolumeChange?: (id: string, volume: number) => void;
+	onAudioFadeChange?: (id: string, fadeInMs: number, fadeOutMs: number) => void;
 	selectedZoomId: string | null;
 	selectedTrimId?: string | null;
 	selectedAnnotationId?: string | null;
@@ -667,6 +676,11 @@ function Timeline({
 						isSelected={item.id === selectedAudioId}
 						onSelect={() => onSelectAudio?.(item.id)}
 						variant="audio"
+						audioVolume={item.audioVolume}
+						audioFadeInMs={item.audioFadeInMs}
+						audioFadeOutMs={item.audioFadeOutMs}
+						onAudioVolumeChange={onAudioVolumeChange}
+						onAudioFadeChange={onAudioFadeChange}
 					>
 						{item.label}
 					</Item>
@@ -810,6 +824,8 @@ const TimelineEditor = memo(function TimelineEditor({
 	onAudioAdded,
 	onAudioSpanChange,
 	onAudioDelete,
+	onAudioVolumeChange,
+	onAudioFadeChange,
 	selectedAudioId,
 	onSelectAudio,
 	soundEffectRegions = [],
@@ -1564,6 +1580,9 @@ const TimelineEditor = memo(function TimelineEditor({
 				rowId: AUDIO_ROW_ID,
 				span: { start: region.startMs, end: region.endMs },
 				label: fileName,
+				audioVolume: region.volume,
+				audioFadeInMs: region.fadeInMs ?? 0,
+				audioFadeOutMs: region.fadeOutMs ?? 0,
 				variant: "audio",
 			};
 		});
@@ -1911,6 +1930,8 @@ const TimelineEditor = memo(function TimelineEditor({
 						onSelectAnnotation={onSelectAnnotation}
 						onSelectSpeed={onSelectSpeed}
 						onSelectAudio={onSelectAudio}
+						onAudioVolumeChange={onAudioVolumeChange}
+						onAudioFadeChange={onAudioFadeChange}
 						selectedZoomId={selectedZoomId}
 						selectedTrimId={selectedTrimId}
 						selectedAnnotationId={selectedAnnotationId}

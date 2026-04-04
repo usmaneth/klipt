@@ -233,7 +233,10 @@ export class AudioProcessor {
 
 			const regionSource = audioContext.createMediaElementSource(audioEl);
 			const gainNode = audioContext.createGain();
-			gainNode.gain.value = Math.max(0, Math.min(1, region.volume));
+			// Start with 0 gain if fade-in is configured, otherwise use region volume
+			const baseVolume = Math.max(0, Math.min(1, region.volume));
+			const fadeInMs = region.fadeInMs ?? 0;
+			gainNode.gain.value = fadeInMs > 0 ? 0 : baseVolume;
 			regionSource.connect(gainNode);
 			gainNode.connect(destinationNode);
 
@@ -321,7 +324,7 @@ export class AudioProcessor {
 
 					// Sync external audio regions with the video timeline position
 					for (const entry of audioRegionElements) {
-						const { media: audioEl, region } = entry;
+						const { media: audioEl, gainNode, region } = entry;
 						const isInRegion = currentTimeMs >= region.startMs && currentTimeMs < region.endMs;
 
 						if (isInRegion) {
@@ -332,6 +335,23 @@ export class AudioProcessor {
 							} else if (Math.abs(audioEl.currentTime - audioOffset) > 0.3) {
 								audioEl.currentTime = audioOffset;
 							}
+
+							// Apply fade in/out gain envelope
+							const regionBaseVolume = Math.max(0, Math.min(1, region.volume));
+							const fadeInMs = region.fadeInMs ?? 0;
+							const fadeOutMs = region.fadeOutMs ?? 0;
+							const elapsedMs = currentTimeMs - region.startMs;
+							const remainingMs = region.endMs - currentTimeMs;
+							let fadeMultiplier = 1;
+
+							if (fadeInMs > 0 && elapsedMs < fadeInMs) {
+								fadeMultiplier = Math.min(fadeMultiplier, elapsedMs / fadeInMs);
+							}
+							if (fadeOutMs > 0 && remainingMs < fadeOutMs) {
+								fadeMultiplier = Math.min(fadeMultiplier, remainingMs / fadeOutMs);
+							}
+
+							gainNode.gain.value = regionBaseVolume * Math.max(0, fadeMultiplier);
 						} else {
 							if (!audioEl.paused) {
 								audioEl.pause();
