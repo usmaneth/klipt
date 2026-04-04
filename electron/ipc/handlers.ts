@@ -4516,6 +4516,105 @@ export function registerIpcHandlers(
 		},
 	);
 
+	// ── Test S3 Connection ──────────────────────────────────────────────
+	ipcMain.handle(
+		"test-s3-connection",
+		async (
+			_,
+			config: {
+				endpoint: string;
+				bucket: string;
+				accessKeyId: string;
+				secretAccessKey: string;
+				region?: string;
+				pathStyle?: boolean;
+			},
+		) => {
+			try {
+				const endpointUrl = new URL(config.endpoint);
+				const region = config.region || "us-east-1";
+				const host = endpointUrl.host;
+				const bucketPath = config.pathStyle
+					? `/${config.bucket}/`
+					: "/";
+				const bucketHost = config.pathStyle
+					? host
+					: `${config.bucket}.${host}`;
+
+				const now = new Date();
+				const dateStamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+				const shortDate = dateStamp.slice(0, 8);
+
+				const method = "GET";
+				const queryString = "list-type=2&max-keys=1";
+
+				const headers: Record<string, string> = {
+					host: bucketHost,
+					"x-amz-date": dateStamp,
+					"x-amz-content-sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				};
+
+				const signedHeaderKeys = Object.keys(headers).sort();
+				const signedHeaders = signedHeaderKeys.join(";");
+				const canonicalHeaders = signedHeaderKeys
+					.map((k) => `${k}:${headers[k]}\n`)
+					.join("");
+
+				const canonicalRequest = [
+					method,
+					bucketPath,
+					queryString,
+					canonicalHeaders,
+					signedHeaders,
+					"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				].join("\n");
+
+				const { createHmac, createHash } = await import("node:crypto");
+				const sha256 = (data: string) =>
+					createHash("sha256").update(data).digest("hex");
+				const hmacSha256 = (key: Buffer | string, data: string) =>
+					createHmac("sha256", key).update(data).digest();
+
+				const credentialScope = `${shortDate}/${region}/s3/aws4_request`;
+				const stringToSign = [
+					"AWS4-HMAC-SHA256",
+					dateStamp,
+					credentialScope,
+					sha256(canonicalRequest),
+				].join("\n");
+
+				const kDate = hmacSha256(`AWS4${config.secretAccessKey}`, shortDate);
+				const kRegion = hmacSha256(kDate, region);
+				const kService = hmacSha256(kRegion, "s3");
+				const kSigning = hmacSha256(kService, "aws4_request");
+				const signature = createHmac("sha256", kSigning)
+					.update(stringToSign)
+					.digest("hex");
+
+				const authorization = `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+				const url = `${endpointUrl.protocol}//${bucketHost}${bucketPath}?${queryString}`;
+
+				const response = await fetch(url, {
+					method,
+					headers: {
+						...headers,
+						Authorization: authorization,
+					},
+				});
+
+				if (response.ok) {
+					return { success: true };
+				}
+				const body = await response.text();
+				return { success: false, error: `HTTP ${response.status}: ${body.slice(0, 200)}` };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				return { success: false, error: message };
+			}
+		},
+	);
+
 	// ── Fast Export (remux without re-encoding) ──────────────────────────
 
 	ipcMain.handle(

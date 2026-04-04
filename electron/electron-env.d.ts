@@ -329,6 +329,16 @@ interface Window {
 				pathStyle?: boolean;
 			},
 		) => Promise<{ success: boolean; url?: string; error?: string }>;
+		testS3Connection: (
+			config: {
+				endpoint: string;
+				bucket: string;
+				accessKeyId: string;
+				secretAccessKey: string;
+				region?: string;
+				pathStyle?: boolean;
+			},
+		) => Promise<{ success: boolean; error?: string }>;
 		fastExport: (
 			inputPath: string,
 			outputPath: string,

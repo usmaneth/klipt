@@ -355,6 +355,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	) => {
 		return ipcRenderer.invoke("upload-to-s3", filePath, config);
 	},
+	testS3Connection: (
+		config: {
+			endpoint: string;
+			bucket: string;
+			accessKeyId: string;
+			secretAccessKey: string;
+			region?: string;
+			pathStyle?: boolean;
+		},
+	) => {
+		return ipcRenderer.invoke("test-s3-connection", config);
+	},
 	fastExport: (
 		inputPath: string,
 		outputPath: string,
