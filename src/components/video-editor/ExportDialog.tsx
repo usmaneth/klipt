@@ -42,6 +42,7 @@ export function ExportDialog({
 	const t = useScopedT("dialogs");
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [isCopying, setIsCopying] = useState(false);
+	const [copiedField, setCopiedField] = useState<string | null>(null);
 	const [shareUrl, setShareUrl] = useState<string | null>(null);
 	const [isStartingShare, setIsStartingShare] = useState(false);
 	const [password, setPassword] = useState("");
@@ -192,6 +193,8 @@ export function ExportDialog({
 		try {
 			const result = await window.electronAPI.copyFileToClipboard(exportedFilePath);
 			if (result.success) {
+				setCopiedField("file");
+				setTimeout(() => setCopiedField(null), 1500);
 				toast.success("Copied to clipboard");
 			} else {
 				toast.error(result.error || "Failed to copy to clipboard");
@@ -240,6 +243,8 @@ export function ExportDialog({
 		if (!shareUrl) return;
 		try {
 			await navigator.clipboard.writeText(shareUrl);
+			setCopiedField("shareLink");
+			setTimeout(() => setCopiedField(null), 1500);
 			toast.success("Link copied to clipboard");
 		} catch (err) {
 			toast.error(`Failed to copy link: ${String(err)}`);
@@ -304,6 +309,8 @@ export function ExportDialog({
 		if (!uploadedUrl) return;
 		try {
 			await navigator.clipboard.writeText(uploadedUrl);
+			setCopiedField("uploadedUrl");
+			setTimeout(() => setCopiedField(null), 1500);
 			toast.success("URL copied to clipboard");
 		} catch (err) {
 			toast.error(`Failed to copy URL: ${String(err)}`);
@@ -366,16 +373,42 @@ export function ExportDialog({
 					<div className="flex items-center gap-4">
 						{showSuccess ? (
 							<>
-								<div className="w-11 h-11 rounded-full bg-emerald-500/10 flex items-center justify-center ring-1 ring-emerald-400/20">
-									<Download className="w-5 h-5 text-emerald-400" />
+								<div className="w-11 h-11 flex items-center justify-center">
+									<svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
+										<circle cx="12" cy="12" r="10" stroke="rgba(34,197,94,0.2)" strokeWidth="2" />
+										<path
+											d="M8 12l3 3 5-5"
+											stroke="#22c55e"
+											strokeWidth="2.5"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											className="check-path"
+											style={{ strokeDasharray: 100, strokeDashoffset: 100, animation: 'check-draw 0.6s ease-in-out 0.2s forwards' }}
+										/>
+									</svg>
+									<style>{`
+										@keyframes check-draw {
+											to { stroke-dashoffset: 0; }
+										}
+									`}</style>
 								</div>
-								<div className="flex flex-col gap-1">
+								<div className="flex flex-col gap-1" style={{ animation: 'slideUp 0.3s ease-out' }}>
 									<span className="text-base font-semibold text-white/90">
 										{t("export.exportComplete")}
 									</span>
 									<span className="text-sm text-white/40">
 										{t("export.formatReady", undefined, { format: formatLabel.toLowerCase() })}
 									</span>
+									<style>{`
+										@keyframes slideUp {
+											from { opacity: 0; transform: translateY(6px); }
+											to { opacity: 1; transform: translateY(0); }
+										}
+										@keyframes scaleCheck {
+											from { transform: scale(0); opacity: 0; }
+											to { transform: scale(1); opacity: 1; }
+										}
+									`}</style>
 								</div>
 							</>
 						) : (
@@ -438,32 +471,28 @@ export function ExportDialog({
 										? t("export.compiling")
 										: t("export.renderingFrames")}
 								</span>
-								<span className="font-mono text-white/50 tabular-nums">
-									{isCompiling || isFinalizing ? (
-										renderProgress !== undefined && renderProgress > 0 ? (
-											`${renderProgress}%`
-										) : (
-											<span className="flex items-center gap-1.5 text-white/35">
-												<Loader2 className="w-3 h-3 animate-spin" />
-												{t("export.processing")}
-											</span>
-										)
+								{isCompiling || isFinalizing ? (
+									renderProgress !== undefined && renderProgress > 0 ? (
+										<span className="font-mono text-white/50 tabular-nums">{renderProgress}%</span>
 									) : (
-										`${progress.percentage.toFixed(0)}%`
-									)}
-								</span>
+										<span className="flex items-center gap-1.5 text-white/35">
+											<Loader2 className="w-3 h-3 animate-spin" />
+											{t("export.processing")}
+										</span>
+									)
+								) : null}
 							</div>
-							<div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden border border-white/[0.04] relative">
+							<div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
 								{isCompiling || isFinalizing ? (
 									renderProgress !== undefined && renderProgress > 0 ? (
 										<div
-											className="h-full bg-white/60 transition-all duration-300 ease-out rounded-full"
+											className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300 ease-out"
 											style={{ width: `${renderProgress}%` }}
 										/>
 									) : (
 										<div className="h-full w-full relative overflow-hidden rounded-full">
 											<div
-												className="absolute h-full w-1/3 bg-white/30 rounded-full"
+												className="absolute h-full w-1/3 bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
 												style={{
 													animation: "indeterminate 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite",
 												}}
@@ -478,11 +507,16 @@ export function ExportDialog({
 									)
 								) : (
 									<div
-										className="h-full bg-white/60 transition-all duration-300 ease-out rounded-full"
+										className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300 ease-out"
 										style={{ width: `${Math.min(progress.percentage, 100)}%` }}
 									/>
 								)}
 							</div>
+							{!(isCompiling || isFinalizing) && (
+								<p className="text-[11px] text-white/40 tabular-nums text-center">
+									{progress.percentage.toFixed(0)}%
+								</p>
+							)}
 						</div>
 
 						<div className="grid grid-cols-2 gap-3">
@@ -549,6 +583,7 @@ export function ExportDialog({
 							))}
 						</div>
 
+						<div key={activeTab} style={{ animation: 'slideUp 0.3s ease-out' }}>
 						{/* Share tab */}
 						{activeTab === "share" && (
 							<div className="space-y-3">
@@ -569,10 +604,12 @@ export function ExportDialog({
 									>
 										{isCopying ? (
 											<Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+										) : copiedField === "file" ? (
+											<Check className="w-3 h-3 mr-1.5 text-green-400" style={{ animation: 'scaleCheck 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }} />
 										) : (
 											<Copy className="w-3 h-3 mr-1.5" />
 										)}
-										Copy File
+										{copiedField === "file" ? "Copied!" : "Copy File"}
 									</Button>
 								</div>
 
@@ -619,7 +656,11 @@ export function ExportDialog({
 													className="text-white/40 hover:text-white/70 transition-colors shrink-0"
 													title="Copy link"
 												>
-													<ClipboardCopy className="w-3.5 h-3.5" />
+													{copiedField === "shareLink" ? (
+														<Check className="w-3.5 h-3.5 text-green-400" style={{ animation: 'scaleCheck 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }} />
+													) : (
+														<ClipboardCopy className="w-3.5 h-3.5" />
+													)}
 												</button>
 											</div>
 
@@ -691,7 +732,11 @@ export function ExportDialog({
 											className="text-white/40 hover:text-white/70 transition-colors shrink-0"
 											title="Copy URL"
 										>
-											<ClipboardCopy className="w-3.5 h-3.5" />
+											{copiedField === "uploadedUrl" ? (
+												<Check className="w-3.5 h-3.5 text-green-400" style={{ animation: 'scaleCheck 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }} />
+											) : (
+												<ClipboardCopy className="w-3.5 h-3.5" />
+											)}
 										</button>
 									</div>
 								) : (
@@ -884,6 +929,7 @@ export function ExportDialog({
 								)}
 							</div>
 						)}
+					</div>
 					</div>
 				)}
 
