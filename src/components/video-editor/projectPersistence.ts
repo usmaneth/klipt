@@ -479,6 +479,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						author: typeof c.author === "string" ? c.author : undefined,
 						createdAt: isFiniteNumber(c.createdAt) ? c.createdAt : Date.now(),
 						color: typeof c.color === "string" ? c.color : undefined,
+						type: c.type === "emoji" ? ("emoji" as const) : ("text" as const),
+						emoji: typeof c.emoji === "string" ? c.emoji : undefined,
 					}))
 			: [],
 		aspectRatio:

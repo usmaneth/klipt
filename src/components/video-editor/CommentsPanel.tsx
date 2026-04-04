@@ -11,6 +11,8 @@ const COMMENT_COLORS = [
 	{ value: "#BF5AF2", label: "Purple" },
 ];
 
+const EMOJI_REACTIONS = ["😂", "❤️", "😮", "🎉", "👍", "👎"];
+
 function formatMs(ms: number): string {
 	const totalSec = Math.floor(ms / 1000);
 	const m = Math.floor(totalSec / 60);
@@ -35,6 +37,7 @@ export function CommentsPanel({
 }: CommentsPanelProps) {
 	const [inputText, setInputText] = useState("");
 	const [selectedColor, setSelectedColor] = useState(COMMENT_COLORS[3].value);
+	const [animatingEmoji, setAnimatingEmoji] = useState<string | null>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const sortedComments = [...comments].sort((a, b) => a.timeMs - b.timeMs);
@@ -49,6 +52,7 @@ export function CommentsPanel({
 			text,
 			createdAt: Date.now(),
 			color: selectedColor,
+			type: "text",
 		};
 
 		onAddComment(comment);
@@ -56,6 +60,26 @@ export function CommentsPanel({
 		toast.success(`Comment added at ${formatMs(currentTimeMs)}`);
 		inputRef.current?.focus();
 	}, [inputText, currentTimeMs, selectedColor, onAddComment]);
+
+	const handleEmojiReaction = useCallback(
+		(emoji: string) => {
+			setAnimatingEmoji(emoji);
+			setTimeout(() => setAnimatingEmoji(null), 200);
+
+			const comment: TimelineComment = {
+				id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+				timeMs: currentTimeMs,
+				text: emoji,
+				createdAt: Date.now(),
+				type: "emoji",
+				emoji,
+			};
+
+			onAddComment(comment);
+			toast.success(`${emoji} at ${formatMs(currentTimeMs)}`);
+		},
+		[currentTimeMs, onAddComment],
+	);
 
 	return (
 		<div className="flex flex-col gap-2 h-full">
@@ -74,54 +98,102 @@ export function CommentsPanel({
 						No comments yet. Add a comment at the current timestamp below.
 					</p>
 				)}
-				{sortedComments.map((comment) => (
-					<div
-						key={comment.id}
-						onClick={() => {
-							onSeek(comment.timeMs);
-						}}
-						className="flex items-start gap-2 rounded-lg bg-white/[0.04] p-2 group cursor-pointer hover:bg-white/[0.06] transition-colors"
-					>
+				{sortedComments.map((comment) =>
+					comment.type === "emoji" ? (
 						<div
-							className="w-0 h-0 flex-shrink-0 mt-1"
-							style={{
-								borderLeft: "4px solid transparent",
-								borderRight: "4px solid transparent",
-								borderBottom: `7px solid ${comment.color || "#0A84FF"}`,
+							key={comment.id}
+							onClick={() => {
+								onSeek(comment.timeMs);
 							}}
-						/>
-						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-1.5">
-								<span className="text-[10px] text-white/30">
-									{formatMs(comment.timeMs)}
-								</span>
-								{comment.author && (
-									<span className="text-[9px] text-white/20">
-										{comment.author}
-									</span>
-								)}
-							</div>
-							<span className="text-[11px] text-white/60 break-words">
-								{comment.text}
-							</span>
-						</div>
-						<button
-							type="button"
-							onClick={(e) => {
-								e.stopPropagation();
-								onDeleteComment(comment.id);
-								toast("Comment deleted");
-							}}
-							className="text-white/20 hover:text-white/50 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 cursor-pointer"
+							className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 group cursor-pointer hover:bg-white/[0.06] transition-colors"
 						>
-							<Trash2 className="w-3 h-3" />
-						</button>
-					</div>
-				))}
+							<span className="text-2xl leading-none">{comment.emoji}</span>
+							<span className="text-[10px] text-white/30">
+								{formatMs(comment.timeMs)}
+							</span>
+							<button
+								type="button"
+								onClick={(e) => {
+									e.stopPropagation();
+									onDeleteComment(comment.id);
+									toast("Comment deleted");
+								}}
+								className="ml-auto text-white/20 hover:text-white/50 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 cursor-pointer"
+							>
+								<Trash2 className="w-3 h-3" />
+							</button>
+						</div>
+					) : (
+						<div
+							key={comment.id}
+							onClick={() => {
+								onSeek(comment.timeMs);
+							}}
+							className="flex items-start gap-2 rounded-lg bg-white/[0.04] p-2 group cursor-pointer hover:bg-white/[0.06] transition-colors"
+						>
+							<div
+								className="w-0 h-0 flex-shrink-0 mt-1"
+								style={{
+									borderLeft: "4px solid transparent",
+									borderRight: "4px solid transparent",
+									borderBottom: `7px solid ${comment.color || "#0A84FF"}`,
+								}}
+							/>
+							<div className="flex-1 min-w-0">
+								<div className="flex items-center gap-1.5">
+									<span className="text-[10px] text-white/30">
+										{formatMs(comment.timeMs)}
+									</span>
+									{comment.author && (
+										<span className="text-[9px] text-white/20">
+											{comment.author}
+										</span>
+									)}
+								</div>
+								<span className="text-[11px] text-white/60 break-words">
+									{comment.text}
+								</span>
+							</div>
+							<button
+								type="button"
+								onClick={(e) => {
+									e.stopPropagation();
+									onDeleteComment(comment.id);
+									toast("Comment deleted");
+								}}
+								className="text-white/20 hover:text-white/50 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 cursor-pointer"
+							>
+								<Trash2 className="w-3 h-3" />
+							</button>
+						</div>
+					),
+				)}
 			</div>
 
-			{/* Add comment input */}
+			{/* Add comment area */}
 			<div className="flex flex-col gap-3 mt-auto pt-4 border-t border-white/[0.04]">
+				{/* Emoji reaction bar */}
+				<div className="flex items-center gap-1.5">
+					{EMOJI_REACTIONS.map((emoji) => (
+						<button
+							key={emoji}
+							type="button"
+							onClick={() => handleEmojiReaction(emoji)}
+							className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-base transition-all duration-150 cursor-pointer"
+							style={{
+								transform:
+									animatingEmoji === emoji ? "scale(1.1)" : "scale(1)",
+							}}
+						>
+							{emoji}
+						</button>
+					))}
+				</div>
+
+				{/* Divider */}
+				<div className="border-t border-white/[0.06]" />
+
+				{/* Color picker + text input */}
 				<div className="flex gap-1">
 					{COMMENT_COLORS.map((c) => (
 						<button

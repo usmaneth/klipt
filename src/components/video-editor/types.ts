@@ -5,6 +5,8 @@ export interface TimelineComment {
 	author?: string;
 	createdAt: number; // unix timestamp
 	color?: string;
+	type?: "text" | "emoji";
+	emoji?: string; // the emoji character for emoji-type comments
 }
 
 export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6;
