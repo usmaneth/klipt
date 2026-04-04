@@ -9,10 +9,28 @@ import {
 	ipcMain,
 	Menu,
 	nativeImage,
+	net,
+	protocol,
 	session,
 	systemPreferences,
 	Tray,
 } from "electron";
+
+// Register custom protocol for safe local file access (replaces webSecurity: false).
+// Must be called before app.ready.
+protocol.registerSchemesAsPrivileged([
+	{
+		scheme: "klipt-media",
+		privileges: {
+			standard: true,
+			secure: true,
+			supportFetchAPI: true,
+			corsEnabled: true,
+			stream: true,
+			bypassCSP: true,
+		},
+	},
+]);
 import { getSelectedSourceId, killWgcCaptureProcess, registerIpcHandlers } from "./ipc/handlers";
 import {
 	createEditorWindow,
@@ -399,6 +417,13 @@ app.on("second-instance", () => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
+	// Handle klipt-media:// by serving local files
+	protocol.handle("klipt-media", (request) => {
+		const url = new URL(request.url);
+		const filePath = decodeURIComponent(url.pathname);
+		return net.fetch(`file://${filePath}`);
+	});
+
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
 		const allowed = ["media", "audioCapture", "microphone"];
 		return allowed.includes(permission);

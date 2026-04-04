@@ -356,7 +356,6 @@ export function createEditorWindow(): BrowserWindow {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
-			webSecurity: false,
 			backgroundThrottling: false,
 		},
 	});

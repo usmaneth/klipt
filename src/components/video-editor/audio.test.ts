@@ -3,18 +3,18 @@ import { describe, expect, it } from "vitest";
 import { fromFileUrl, normalizeProjectEditor, toFileUrl } from "./projectPersistence";
 
 describe("Audio path handling", () => {
-	describe("toFileUrl produces valid file:// URLs for audio paths", () => {
+	describe("toFileUrl produces valid klipt-media:// URLs for audio paths", () => {
 		it("should handle Unix absolute paths", () => {
-			expect(toFileUrl("/Users/music/song.mp3")).toBe("file:///Users/music/song.mp3");
+			expect(toFileUrl("/Users/music/song.mp3")).toBe("klipt-media:///Users/music/song.mp3");
 		});
 
 		it("should handle Windows drive paths", () => {
-			expect(toFileUrl("C:/Users/music/song.mp3")).toBe("file:///C:/Users/music/song.mp3");
+			expect(toFileUrl("C:/Users/music/song.mp3")).toBe("klipt-media:///C:/Users/music/song.mp3");
 		});
 
 		it("should handle backslash Windows paths", () => {
 			const result = toFileUrl("C:\\Users\\music\\song.mp3");
-			expect(result).toMatch(/^file:\/\//);
+			expect(result).toMatch(/^klipt-media:\/\//);
 			expect(result).toContain("C:");
 			expect(result).toContain("song.mp3");
 		});
@@ -28,8 +28,8 @@ describe("Audio path handling", () => {
 		it("should encode special characters like spaces", () => {
 			const result = toFileUrl("/Users/music/song file.mp3");
 			expect(result).toContain("song%20file.mp3");
-			// Result should be a valid file:// URL
-			expect(result).toMatch(/^file:\/\//);
+			// Result should be a valid klipt-media:// URL
+			expect(result).toMatch(/^klipt-media:\/\//);
 		});
 
 		it("should roundtrip through fromFileUrl for simple paths", () => {

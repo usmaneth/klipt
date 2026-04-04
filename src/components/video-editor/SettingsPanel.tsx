@@ -1784,7 +1784,7 @@ export function SettingsPanel({
 												<div className="p-3">
 													<audio
 														controls
-														src={`file://${dubbedAudioPath}`}
+														src={`klipt-media://${dubbedAudioPath}`}
 														className="w-full h-7 opacity-60"
 														style={{ filter: "invert(1)" }}
 													/>

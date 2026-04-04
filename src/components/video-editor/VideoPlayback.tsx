@@ -1154,7 +1154,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 					if (
 						wallpaper.startsWith("http") ||
-						wallpaper.startsWith("file://") ||
+						wallpaper.startsWith("file://") || wallpaper.startsWith("klipt-media://") ||
 						wallpaper.startsWith("/")
 					) {
 						const renderable = await getRenderableAssetUrl(wallpaper);

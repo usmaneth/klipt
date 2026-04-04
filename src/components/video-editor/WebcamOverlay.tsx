@@ -78,7 +78,7 @@ export function WebcamOverlay({
 
 	const borderRadius = SHAPE_BORDER_RADIUS[shape];
 
-	const videoSrc = videoPath.startsWith("file://") ? videoPath : `file://${videoPath}`;
+	const videoSrc = /^(file|klipt-media):\/\//.test(videoPath) ? videoPath : `klipt-media://${videoPath}`;
 
 	return (
 		<Rnd

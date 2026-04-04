@@ -2778,6 +2778,11 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("open-external-url", async (_, url: string) => {
 		try {
+			// Validate URL: only allow http/https to prevent file://, javascript:, etc.
+			const parsed = new URL(url);
+			if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+				return { success: false, error: `Blocked URL with disallowed protocol: ${parsed.protocol}` };
+			}
 			await shell.openExternal(url);
 			return { success: true };
 		} catch (error) {

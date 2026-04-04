@@ -180,8 +180,8 @@ async function tryNativeDenoise(
 	try {
 		// The native binary needs a file path. Extract it from the URL.
 		let inputPath = videoUrl;
-		if (videoUrl.startsWith("file://")) {
-			inputPath = decodeURIComponent(videoUrl.replace(/^file:\/\//, ""));
+		if (/^(file|klipt-media):\/\//.test(videoUrl)) {
+			inputPath = decodeURIComponent(videoUrl.replace(/^(file|klipt-media):\/\//, ""));
 		} else if (videoUrl.startsWith("blob:")) {
 			// Cannot pass blob URLs to native binary — need a real file path
 			return null;

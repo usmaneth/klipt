@@ -240,7 +240,7 @@ export class FrameRenderer {
 		try {
 			// Render background based on type
 			if (
-				wallpaper.startsWith("file://") ||
+				wallpaper.startsWith("file://") || wallpaper.startsWith("klipt-media://") ||
 				wallpaper.startsWith("data:") ||
 				wallpaper.startsWith("/") ||
 				wallpaper.startsWith("http")
@@ -350,7 +350,7 @@ export class FrameRenderer {
 
 	private async resolveWallpaperImageUrl(wallpaper: string): Promise<string> {
 		if (
-			wallpaper.startsWith("file://") ||
+			wallpaper.startsWith("file://") || wallpaper.startsWith("klipt-media://") ||
 			wallpaper.startsWith("data:") ||
 			wallpaper.startsWith("http")
 		) {
@@ -384,7 +384,7 @@ export class FrameRenderer {
 			!wallpaper.startsWith("/wallpapers/") &&
 			!wallpaper.startsWith("/app-icons/");
 
-		const wallpaperAsset = looksLikeAbsoluteFilePath ? `file://${encodeURI(wallpaper)}` : wallpaper;
+		const wallpaperAsset = looksLikeAbsoluteFilePath ? `klipt-media://${encodeURI(wallpaper)}` : wallpaper;
 
 		return getRenderableAssetUrl(wallpaperAsset);
 	}

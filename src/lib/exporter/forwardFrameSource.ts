@@ -94,12 +94,12 @@ export class ForwardFrameSource {
 	}
 
 	private resolveVideoResourceUrl(videoUrl: string): string {
-		if (/^(blob:|data:|https?:|file:)/i.test(videoUrl)) {
+		if (/^(blob:|data:|https?:|file:|klipt-media:)/i.test(videoUrl)) {
 			return videoUrl;
 		}
 
 		if (videoUrl.startsWith("/")) {
-			return `file://${encodeURI(videoUrl)}`;
+			return `klipt-media://${encodeURI(videoUrl)}`;
 		}
 
 		return videoUrl;

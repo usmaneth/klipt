@@ -89,7 +89,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function isFileUrl(value: string): boolean {
-	return /^file:\/\//i.test(value);
+	return /^(file|klipt-media):\/\//i.test(value);
 }
 
 function encodePathSegments(pathname: string, keepWindowsDrive = false): string {
@@ -105,23 +105,28 @@ function encodePathSegments(pathname: string, keepWindowsDrive = false): string 
 		.join("/");
 }
 
+/**
+ * Convert a local file path to a URL suitable for loading in the renderer.
+ * Uses the custom `klipt-media://` protocol which is handled by the main
+ * process, avoiding the need for `webSecurity: false`.
+ */
 export function toFileUrl(filePath: string): string {
 	const normalized = filePath.replace(/\\/g, "/");
 
 	// Windows drive path: C:/Users/...
 	if (/^[a-zA-Z]:\//.test(normalized)) {
-		return `file://${encodePathSegments(`/${normalized}`, true)}`;
+		return `klipt-media://${encodePathSegments(`/${normalized}`, true)}`;
 	}
 
 	// UNC path: //server/share/...
 	if (normalized.startsWith("//")) {
 		const [host, ...pathParts] = normalized.replace(/^\/+/, "").split("/");
 		const encodedPath = pathParts.map((part) => encodeURIComponent(part)).join("/");
-		return encodedPath ? `file://${host}/${encodedPath}` : `file://${host}/`;
+		return encodedPath ? `klipt-media://${host}/${encodedPath}` : `klipt-media://${host}/`;
 	}
 
 	const absolutePath = normalized.startsWith("/") ? normalized : `/${normalized}`;
-	return `file://${encodePathSegments(absolutePath)}`;
+	return `klipt-media://${encodePathSegments(absolutePath)}`;
 }
 
 export function fromFileUrl(fileUrl: string): string {
@@ -145,7 +150,7 @@ export function fromFileUrl(fileUrl: string): string {
 
 		return pathname;
 	} catch {
-		const rawFallbackPath = value.replace(/^file:\/\//i, "");
+		const rawFallbackPath = value.replace(/^(file|klipt-media):\/\//i, "");
 		let fallbackPath = rawFallbackPath;
 		try {
 			fallbackPath = decodeURIComponent(rawFallbackPath);

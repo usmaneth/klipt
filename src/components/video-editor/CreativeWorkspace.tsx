@@ -286,8 +286,24 @@ export function CreativeWorkspace({
 	}, [giphyQuery, fetchGiphy]);
 
 	const handleGiphyClipClick = useCallback((clip: GiphyClipResult) => {
-		const mp4Url = clip.images.fixed_width.mp4 ?? clip.images.original.mp4 ?? "";
 		const thumbnailUrl = clip.images.fixed_width.url;
+		const mp4Url = clip.images.fixed_width.mp4 ?? clip.images.original.mp4 ?? "";
+
+		// If a video is loaded, add directly to timeline as an overlay
+		if (onRestoreClipToTimeline && hasVideo) {
+			const scratchClip: ScratchPadClip = {
+				id: `giphy-${clip.id}-${Date.now()}`,
+				label: clip.title || "Giphy Clip",
+				sourceTimeMs: 0,
+				durationMs: 5000,
+				thumbnailUrl,
+				mp4Url,
+			};
+			onRestoreClipToTimeline(scratchClip);
+			return;
+		}
+
+		// Fallback: add to scratch pad
 		const newClip: ScratchPadClip = {
 			id: `giphy-${clip.id}-${Date.now()}`,
 			label: clip.title || "Giphy Clip",
@@ -298,7 +314,7 @@ export function CreativeWorkspace({
 		};
 		onScratchPadClipsChange([...scratchPadClips, newClip]);
 		toast.success("Clip added to scratch pad");
-	}, [scratchPadClips, onScratchPadClipsChange]);
+	}, [scratchPadClips, onScratchPadClipsChange, onRestoreClipToTimeline, hasVideo]);
 
 	// ── Scratch pad actions ─────────────────────────────────────────────────
 

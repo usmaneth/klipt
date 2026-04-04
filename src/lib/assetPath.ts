@@ -47,11 +47,11 @@ const BASE64_CHUNK_SIZE = 0x8000;
 const localFileDataUrlCache = new Map<string, string>();
 
 function toLocalFilePath(resourceUrl: string) {
-	if (!resourceUrl.startsWith("file://")) {
+	if (!/^(file|klipt-media):\/\//.test(resourceUrl)) {
 		return null;
 	}
 
-	const decodedPath = decodeURIComponent(resourceUrl.replace(/^file:\/\//, ""));
+	const decodedPath = decodeURIComponent(resourceUrl.replace(/^(file|klipt-media):\/\//, ""));
 	if (/^\/[A-Za-z]:/.test(decodedPath)) {
 		return decodedPath.slice(1);
 	}

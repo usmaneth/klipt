@@ -2592,7 +2592,7 @@ export default function VideoEditor() {
 						soundEffectRegions,
 						transitionRegions,
 						enhancedAudioUrl: (useDubbedAudio && dubbedAudioPath)
-							? `file://${dubbedAudioPath}`
+							? `klipt-media://${dubbedAudioPath}`
 							: (enhancedAudioUrl ?? undefined),
 						previewWidth,
 						previewHeight,
