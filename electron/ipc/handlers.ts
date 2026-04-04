@@ -4346,7 +4346,6 @@ export function registerIpcHandlers(
 		},
 	);
 
-<<<<<<< HEAD
 	// ── S3 / Cloud Upload ────────────────────────────────────────────────
 
 	type S3Config = {

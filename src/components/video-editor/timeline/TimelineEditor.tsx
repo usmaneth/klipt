@@ -761,15 +761,26 @@ function NoteMarkers({ notes }: { notes: WorkspaceNote[] }) {
 	);
 }
 
-function CommentMarkers({ comments }: { comments: TimelineComment[] }) {
+function CommentMarkers({ comments, onSeek }: { comments: TimelineComment[]; onSeek?: (time: number) => void }) {
 	const { range, valueToPixels, sidebarWidth, direction } = useTimelineContext();
 	const sideProperty = direction === "rtl" ? "right" : "left";
+	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
 	if (!comments || comments.length === 0) return null;
 
+	const formatTimestamp = (ms: number) => {
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+	};
+
+	const truncateText = (text: string, max: number) =>
+		text.length > max ? `${text.slice(0, max)}...` : text;
+
 	return (
 		<div
-			className="absolute top-0 bottom-0 z-40 pointer-events-none"
+			className="absolute top-0 bottom-0 z-40"
 			style={{ [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px` }}
 		>
 			{comments.map((comment) => {
@@ -779,9 +790,11 @@ function CommentMarkers({ comments }: { comments: TimelineComment[] }) {
 				return (
 					<div
 						key={comment.id}
-						className="absolute top-0 pointer-events-none"
+						className="absolute top-0 cursor-pointer transition-transform duration-150 hover:scale-110"
 						style={{ [sideProperty]: `${offset}px` }}
-						title={comment.text}
+						onMouseEnter={() => setHoveredId(comment.id)}
+						onMouseLeave={() => setHoveredId(null)}
+						onClick={() => onSeek?.(comment.timeMs / 1000)}
 					>
 						<div
 							className="w-0 h-0 -translate-x-1/2"
@@ -792,6 +805,12 @@ function CommentMarkers({ comments }: { comments: TimelineComment[] }) {
 								filter: `drop-shadow(0 0 3px ${color}80)`,
 							}}
 						/>
+						{hoveredId === comment.id && (
+							<div className="absolute top-[9px] left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/90 border border-white/10 whitespace-nowrap z-50 flex flex-col gap-0.5">
+								<span className="text-[10px] text-white/90">{truncateText(comment.text, 50)}</span>
+								<span className="text-[9px] text-white/40 font-mono">{formatTimestamp(comment.timeMs)}</span>
+							</div>
+						)}
 					</div>
 				);
 			})}
@@ -1954,7 +1973,7 @@ const TimelineEditor = memo(function TimelineEditor({
 					)}
 
 					{timelineComments && timelineComments.length > 0 && (
-						<CommentMarkers comments={timelineComments} />
+						<CommentMarkers comments={timelineComments} onSeek={onSeek} />
 					)}
 
 					<KeyframeMarkers

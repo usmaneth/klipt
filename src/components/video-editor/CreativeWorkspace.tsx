@@ -548,9 +548,14 @@ export function CreativeWorkspace({
 							<span className="text-[11px] text-white/70">{s.label}</span>
 						</div>
 						{s.type === "title" || s.type === "summary" ? (
-							<span className="text-[10px] text-white/30 ml-5">
-								{s.type === "title" ? "Generated title" : "Generated summary"}
-							</span>
+							<div className="ml-5 flex flex-col gap-1">
+								{s.type === "title" ? (
+									<span className="text-sm font-semibold text-white/80">{s.label}</span>
+								) : (
+									<span className="text-xs text-white/60 line-clamp-3">{s.label}</span>
+								)}
+								<span className="text-[9px] text-white/25 italic">Click Accept to copy to clipboard</span>
+							</div>
 						) : (
 							<span className="text-[10px] text-white/30 ml-5">
 								{formatMs(s.startMs)}
