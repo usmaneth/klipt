@@ -6,6 +6,7 @@ import {
 	Check,
 	Clipboard,
 	FileText,
+	Film,
 	History,
 	LayoutGrid,
 	Loader2,
@@ -23,8 +24,10 @@ import {
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
+import type { HighlightCandidate } from "@/lib/ai/highlightDetector";
 import type { SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
 import { CommentsPanel } from "./CommentsPanel";
+import { HighlightPanel } from "./HighlightPanel";
 
 // ── AI Suggestion type ──────────────────────────────────────────────────────
 
@@ -46,7 +49,8 @@ export type WorkspacePanel =
 	| "assets"
 	| "scratchpad"
 	| "notes"
-	| "comments";
+	| "comments"
+	| "highlights";
 
 export interface WorkspaceNote {
 	id: string;
@@ -116,6 +120,12 @@ interface CreativeWorkspaceProps {
 	onAddComment: (comment: TimelineComment) => void;
 	onDeleteComment: (id: string) => void;
 	onSeekToComment: (timeMs: number) => void;
+	highlights: HighlightCandidate[];
+	isDetectingHighlights: boolean;
+	hasTranscription: boolean;
+	onDetectHighlights: () => void;
+	onExportHighlightClip: (highlight: HighlightCandidate) => void;
+	onExportAllHighlights: (highlights: HighlightCandidate[]) => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -130,6 +140,7 @@ const PANELS: { id: WorkspacePanel; icon: typeof LayoutGrid; label: string }[] =
 	{ id: "scratchpad", icon: Clipboard, label: "Scratch Pad" },
 	{ id: "notes", icon: MessageSquare, label: "Notes" },
 	{ id: "comments", icon: MessageCircle, label: "Comments" },
+	{ id: "highlights", icon: Film, label: "Highlights" },
 ];
 
 const ASSET_SUB_TABS: { id: AssetSubTab; label: string }[] = [
@@ -217,6 +228,12 @@ export function CreativeWorkspace({
 	onAddComment,
 	onDeleteComment,
 	onSeekToComment,
+	highlights,
+	isDetectingHighlights,
+	hasTranscription,
+	onDetectHighlights,
+	onExportHighlightClip,
+	onExportAllHighlights,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
 	const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
@@ -984,6 +1001,18 @@ export function CreativeWorkspace({
 		/>
 	);
 
+	const renderHighlights = () => (
+		<HighlightPanel
+			highlights={highlights}
+			isDetecting={isDetectingHighlights}
+			hasTranscription={hasTranscription}
+			onDetectHighlights={onDetectHighlights}
+			onSeek={onJumpToTime}
+			onExportClip={onExportHighlightClip}
+			onExportAll={onExportAllHighlights}
+		/>
+	);
+
 	const panelContentMap: Record<WorkspacePanel, () => React.ReactNode> = {
 		clips: renderClips,
 		history: renderHistory,
@@ -992,6 +1021,7 @@ export function CreativeWorkspace({
 		scratchpad: renderScratchPad,
 		notes: renderNotes,
 		comments: renderComments,
+		highlights: renderHighlights,
 	};
 
 	const activePanelConfig = activePanel

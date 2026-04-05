@@ -36,6 +36,7 @@ import {
 } from "@/lib/exporter";
 import { canFastExport } from "@/lib/exporter/fastExport";
 import { matchesShortcut } from "@/lib/shortcuts";
+import { type HighlightCandidate, detectHighlights } from "@/lib/ai/highlightDetector";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { CommandPalette } from "./CommandPalette";
@@ -210,6 +211,8 @@ export default function VideoEditor() {
 	const [scratchPadClips, setScratchPadClips] = useState<ScratchPadClip[]>([]);
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
 	const [aiAnalysisProgress, setAiAnalysisProgress] = useState<number | null>(null);
+	const [highlights, setHighlights] = useState<HighlightCandidate[]>([]);
+	const [isDetectingHighlights, setIsDetectingHighlights] = useState(false);
 	const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
 	const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS);
 	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
@@ -1924,6 +1927,89 @@ export default function VideoEditor() {
 		}
 	}, [videoPath]);
 
+	// ── Highlight detection ─────────────────────────────────────────────────
+	const handleDetectHighlights = useCallback(() => {
+		if (captionCues.length === 0) {
+			toast.error("Generate captions first to detect highlights");
+			return;
+		}
+
+		setIsDetectingHighlights(true);
+		setHighlights([]);
+
+		// Extract word-level data from caption cues
+		const words: Array<{ text: string; start: number; end: number }> = [];
+		for (const cue of captionCues) {
+			if (cue.words) {
+				for (const w of cue.words) {
+					words.push({ text: w.text, start: w.startMs / 1000, end: w.endMs / 1000 });
+				}
+			}
+		}
+
+		const totalDurationMs = Math.max(0, Math.round(duration * 1000));
+
+		// Run detection (synchronous but we wrap for UX feedback)
+		try {
+			const results = detectHighlights(totalDurationMs, words);
+			setHighlights(results);
+			if (results.length > 0) {
+				toast.success(`Found ${results.length} highlight${results.length !== 1 ? "s" : ""}`);
+			} else {
+				toast("No highlights detected — video may be too short or lack speech variety");
+			}
+		} catch (err) {
+			console.error("[VideoEditor] Highlight detection failed:", err);
+			toast.error("Highlight detection failed");
+		} finally {
+			setIsDetectingHighlights(false);
+		}
+	}, [captionCues, duration]);
+
+	const handleExportHighlightClip = useCallback(
+		(highlight: HighlightCandidate) => {
+			// Create a trim region that keeps only the highlight segment
+			// We invert: trim everything before and after
+			const totalMs = Math.max(0, Math.round(duration * 1000));
+			const newRegions: TrimRegion[] = [];
+
+			if (highlight.startMs > 0) {
+				newRegions.push({
+					id: `trim-${nextTrimIdRef.current++}`,
+					startMs: 0,
+					endMs: highlight.startMs,
+				});
+			}
+			if (highlight.endMs < totalMs) {
+				newRegions.push({
+					id: `trim-${nextTrimIdRef.current++}`,
+					startMs: highlight.endMs,
+					endMs: totalMs,
+				});
+			}
+
+			setTrimRegions((prev) => [...prev, ...newRegions]);
+			toast.success(`Created trim regions for highlight clip (${Math.round((highlight.endMs - highlight.startMs) / 1000)}s)`);
+
+			// Seek to the highlight start
+			const video = videoPlaybackRef.current?.video;
+			if (video) {
+				video.currentTime = highlight.startMs / 1000;
+			}
+		},
+		[duration],
+	);
+
+	const handleExportAllHighlights = useCallback(
+		(highlightList: HighlightCandidate[]) => {
+			if (highlightList.length === 0) return;
+			// For "export all" we notify the user to export individually
+			// since multiple non-contiguous clips would need separate exports
+			toast(`${highlightList.length} highlights found — export each clip individually for best results`);
+		},
+		[],
+	);
+
 	const handleAcceptSuggestion = useCallback(
 		(suggestion: AISuggestion) => {
 			if (suggestion.type === "silence" || suggestion.type === "filler") {
@@ -3367,6 +3453,12 @@ export default function VideoEditor() {
 					onAddComment={handleAddComment}
 					onDeleteComment={handleDeleteComment}
 					onSeekToComment={handleSeekToComment}
+					highlights={highlights}
+					isDetectingHighlights={isDetectingHighlights}
+					hasTranscription={captionCues.length > 0}
+					onDetectHighlights={handleDetectHighlights}
+					onExportHighlightClip={handleExportHighlightClip}
+					onExportAllHighlights={handleExportAllHighlights}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}
