@@ -252,6 +252,14 @@ interface Window {
 			path?: string;
 			error?: string;
 		}>;
+		detectSilences: (
+			filePath: string,
+			options?: { thresholdDb?: number; minDurationMs?: number; paddingMs?: number },
+		) => Promise<{
+			success: boolean;
+			silences: Array<{ startMs: number; endMs: number }>;
+			error?: string;
+		}>;
 		nativeDetectSilence: (
 			inputPath: string,
 			options?: { threshold?: number; minDuration?: number },

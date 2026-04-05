@@ -123,6 +123,7 @@ interface TimelineEditorProps {
 	onAspectRatioChange: (aspectRatio: AspectRatio) => void;
 	workspaceNotes?: WorkspaceNote[];
 	timelineComments?: TimelineComment[];
+	onAutoSilenceCut?: () => void;
 }
 
 interface TimelineScaleConfig {
@@ -896,6 +897,7 @@ const TimelineEditor = memo(function TimelineEditor({
 	onAspectRatioChange,
 	workspaceNotes,
 	timelineComments,
+	onAutoSilenceCut,
 }: TimelineEditorProps) {
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
@@ -1831,6 +1833,17 @@ const TimelineEditor = memo(function TimelineEditor({
 					>
 						<Scissors className="w-3 h-3" />
 					</Button>
+					{onAutoSilenceCut && (
+						<Button
+							onClick={onAutoSilenceCut}
+							variant="ghost"
+							className="h-6 px-2 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md flex items-center gap-1"
+							title="Auto-Cut Silences"
+						>
+							<Scissors className="w-3 h-3" />
+							<span className="text-[10px]">Auto-Cut</span>
+						</Button>
+					)}
 					<Button
 						onClick={handleAddAnnotation}
 						variant="ghost"

@@ -1323,6 +1323,48 @@ export default function VideoEditor() {
 		setSelectedAnnotationId(null);
 	}, []);
 
+	const handleAutoSilenceCut = useCallback(async () => {
+		if (!videoPath) {
+			toast.error("No video loaded");
+			return;
+		}
+
+		try {
+			toast.info("Analyzing audio for silences...");
+			const result = await window.electronAPI.detectSilences(videoPath, {
+				thresholdDb: -30,
+				minDurationMs: 500,
+				paddingMs: 200,
+			});
+
+			if (!result.success) {
+				toast.error(`Silence detection failed: ${result.error}`);
+				return;
+			}
+
+			if (result.silences.length === 0) {
+				toast.info("No silences detected in the audio");
+				return;
+			}
+
+			// Create a trim region for each detected silence
+			const newTrimRegions: TrimRegion[] = result.silences.map((silence) => {
+				const id = `trim-${nextTrimIdRef.current++}`;
+				return {
+					id,
+					startMs: silence.startMs,
+					endMs: silence.endMs,
+				};
+			});
+
+			setTrimRegions((prev) => [...prev, ...newTrimRegions]);
+			toast.success(`Added ${newTrimRegions.length} trim region${newTrimRegions.length === 1 ? "" : "s"} for detected silences`);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Silence detection failed: ${message}`);
+		}
+	}, [videoPath]);
+
 	const handleZoomSpanChange = useCallback((id: string, span: Span) => {
 		setZoomRegions((prev) =>
 			prev.map((region) =>
@@ -3719,6 +3761,7 @@ export default function VideoEditor() {
 								onAspectRatioChange={setAspectRatio}
 								workspaceNotes={workspaceNotes}
 								timelineComments={timelineComments}
+								onAutoSilenceCut={handleAutoSilenceCut}
 							/>
 						</div>
 							</Panel>

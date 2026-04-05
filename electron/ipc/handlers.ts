@@ -3815,6 +3815,84 @@ export function registerIpcHandlers(
 		},
 	);
 
+	// ── FFmpeg-based Silence Detection (cross-platform) ────────────────
+	ipcMain.handle(
+		"detect-silences",
+		async (
+			_event,
+			{
+				filePath,
+				thresholdDb = -30,
+				minDurationMs = 500,
+				paddingMs = 200,
+			}: {
+				filePath: string;
+				thresholdDb?: number;
+				minDurationMs?: number;
+				paddingMs?: number;
+			},
+		) => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+
+				// Resolve file:// URLs
+				let resolvedPath = filePath;
+				if (resolvedPath.startsWith("file://")) {
+					resolvedPath = decodeURIComponent(resolvedPath.replace(/^file:\/\//, ""));
+				}
+
+				const minDurationSec = minDurationMs / 1000;
+
+				const { stderr } = await execFileAsync(
+					ffmpegPath,
+					[
+						"-i",
+						resolvedPath,
+						"-af",
+						`silencedetect=noise=${thresholdDb}dB:d=${minDurationSec}`,
+						"-f",
+						"null",
+						"-",
+					],
+					{ timeout: 120_000 },
+				);
+
+				// Parse silence_start / silence_end pairs from stderr
+				const silences: Array<{ startMs: number; endMs: number }> = [];
+				const lines = stderr.split("\n");
+				let currentStart: number | null = null;
+
+				for (const line of lines) {
+					const startMatch = line.match(/silence_start:\s*([\d.]+)/);
+					if (startMatch) {
+						currentStart = parseFloat(startMatch[1]) * 1000;
+						continue;
+					}
+					const endMatch = line.match(/silence_end:\s*([\d.]+)/);
+					if (endMatch && currentStart !== null) {
+						const endMs = parseFloat(endMatch[1]) * 1000;
+						// Apply padding: shrink the silence region from both sides
+						const paddedStart = currentStart + paddingMs;
+						const paddedEnd = endMs - paddingMs;
+						if (paddedStart < paddedEnd) {
+							silences.push({
+								startMs: Math.round(paddedStart),
+								endMs: Math.round(paddedEnd),
+							});
+						}
+						currentStart = null;
+					}
+				}
+
+				return { success: true, silences };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[detect-silences] Failed:", message);
+				return { success: false, silences: [], error: message };
+			}
+		},
+	);
+
 	// ── Voice Dubbing ───────────────────────────────────────────────────
 
 	ipcMain.handle(

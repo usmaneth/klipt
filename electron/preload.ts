@@ -281,6 +281,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	nativeDenoiseAudio: (inputPath: string) => {
 		return ipcRenderer.invoke("native-denoise-audio", inputPath);
 	},
+	detectSilences: (
+		filePath: string,
+		options?: { thresholdDb?: number; minDurationMs?: number; paddingMs?: number },
+	) => {
+		return ipcRenderer.invoke("detect-silences", { filePath, ...options });
+	},
 	nativeDetectSilence: (
 		inputPath: string,
 		options?: { threshold?: number; minDuration?: number },
