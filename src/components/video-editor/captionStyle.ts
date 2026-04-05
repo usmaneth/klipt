@@ -2,7 +2,7 @@
 
 import type { WordAnimationState } from "./captionLayout";
 
-export type CaptionAnimationStyle = "none" | "fade" | "rise" | "pop";
+export type CaptionAnimationStyle = "none" | "fade" | "rise" | "pop" | "bold-pop" | "karaoke" | "typewriter" | "bounce" | "glow";
 
 export interface CaptionSettings {
 	enabled: boolean;
@@ -16,6 +16,8 @@ export interface CaptionSettings {
 	animation: CaptionAnimationStyle;
 	language: string; // "auto" | "en" | "es" | "fr" | "de" | etc.
 	fontFamily: string;
+	activeColor: string; // color of currently spoken word for animated styles
+	activeScale: number; // scale factor for active word (e.g. 1.2)
 }
 
 export const DEFAULT_CAPTION_SETTINGS: CaptionSettings = {
@@ -30,6 +32,8 @@ export const DEFAULT_CAPTION_SETTINGS: CaptionSettings = {
 	animation: "none",
 	fontFamily: "Inter, system-ui, sans-serif",
 	language: "auto",
+	activeColor: "#FFDD00",
+	activeScale: 1.2,
 };
 
 /** Reference width used for relative font scaling */
@@ -48,6 +52,15 @@ export function wordColor(
 	state: WordAnimationState,
 	settings: CaptionSettings,
 ): string {
+	const anim = settings.animation ?? "none";
+
+	// For animated highlight styles, use activeColor for the active word
+	// and inactiveColor for everything else
+	if (anim === "bold-pop" || anim === "karaoke" || anim === "bounce" || anim === "glow") {
+		if (state === "active") return settings.activeColor ?? settings.highlightColor;
+		return settings.inactiveTextColor;
+	}
+
 	switch (state) {
 		case "active":
 			return settings.highlightColor;
@@ -68,6 +81,29 @@ export function wordOpacity(state: WordAnimationState): number {
 		case "upcoming":
 			return 0.5;
 	}
+}
+
+/** Returns whether a word should be visible given the animation style */
+export function wordVisible(state: WordAnimationState, animation: CaptionAnimationStyle): boolean {
+	if (animation === "typewriter") {
+		// Only show words that have started speaking or are currently active
+		return state === "active" || state === "spoken";
+	}
+	return true;
+}
+
+/**
+ * For karaoke style: returns 0-1 fill progress for a word being spoken.
+ * 0 = not yet spoken, 1 = fully spoken.
+ */
+export function karaokeProgress(
+	wordStartMs: number,
+	wordEndMs: number,
+	currentTimeMs: number,
+): number {
+	if (currentTimeMs <= wordStartMs) return 0;
+	if (currentTimeMs >= wordEndMs) return 1;
+	return (currentTimeMs - wordStartMs) / (wordEndMs - wordStartMs);
 }
 
 /**

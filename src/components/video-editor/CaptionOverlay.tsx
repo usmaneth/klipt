@@ -13,9 +13,11 @@ import {
 	type CaptionAnimationStyle,
 	type CaptionSettings,
 	captionBackgroundBox,
+	karaokeProgress,
 	scaleFontSize,
 	wordColor,
 	wordOpacity,
+	wordVisible,
 } from "./captionStyle";
 
 interface CaptionOverlayProps {
@@ -37,6 +39,16 @@ function animationTransition(animation: CaptionAnimationStyle): string {
 			return "opacity 0.2s ease-out, transform 0.2s ease-out";
 		case "pop":
 			return "opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.34,1.56,0.64,1)";
+		case "bold-pop":
+			return "transform 0.15s cubic-bezier(0.34,1.56,0.64,1), color 0.1s ease";
+		case "karaoke":
+			return "none"; // karaoke uses gradient, no transition needed
+		case "typewriter":
+			return "opacity 0.12s ease-out";
+		case "bounce":
+			return "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), color 0.1s ease";
+		case "glow":
+			return "text-shadow 0.2s ease-in-out, color 0.1s ease";
 		default:
 			return "none";
 	}
@@ -48,6 +60,9 @@ function wordStyle(
 	settings: CaptionSettings,
 	scaledFontSize: number,
 ): React.CSSProperties {
+	const animation = settings.animation ?? "none";
+	const activeScale = settings.activeScale ?? 1.2;
+
 	const base: React.CSSProperties = {
 		color: wordColor(state, settings),
 		opacity: wordOpacity(state),
@@ -56,17 +71,67 @@ function wordStyle(
 		fontSize: `${scaledFontSize}px`,
 		fontFamily: settings.fontFamily,
 		lineHeight: 1.4,
-		transition: animationTransition(settings.animation),
+		transition: animationTransition(animation),
 		whiteSpace: "pre",
 	};
 
-	if (settings.animation === "rise" && state === "active") {
+	if (animation === "rise" && state === "active") {
 		base.transform = "translateY(-2px)";
-	} else if (settings.animation === "pop" && state === "active") {
+	} else if (animation === "pop" && state === "active") {
 		base.transform = "scale(1.08)";
+	} else if (animation === "bold-pop" && state === "active") {
+		base.transform = `scale(${activeScale})`;
+		base.fontWeight = 900;
+		base.opacity = 1;
+	} else if (animation === "bold-pop") {
+		base.opacity = 0.7;
+	} else if (animation === "typewriter") {
+		if (!wordVisible(state, animation)) {
+			base.opacity = 0;
+			base.width = 0;
+			base.overflow = "hidden";
+		} else {
+			base.opacity = 1;
+		}
+	} else if (animation === "bounce" && state === "active") {
+		base.transform = `scale(${activeScale}) translateY(-3px)`;
+		base.opacity = 1;
+	} else if (animation === "bounce") {
+		base.opacity = 0.7;
+	} else if (animation === "glow" && state === "active") {
+		const glowColor = settings.activeColor ?? settings.highlightColor;
+		base.textShadow = `0 0 8px ${glowColor}, 0 0 16px ${glowColor}, 0 0 24px ${glowColor}80`;
+		base.opacity = 1;
+	} else if (animation === "glow") {
+		base.textShadow = "none";
+		base.opacity = 0.7;
 	}
 
 	return base;
+}
+
+/** Builds a CSS gradient for karaoke fill effect */
+function karaokeStyle(
+	settings: CaptionSettings,
+	scaledFontSize: number,
+	fillProgress: number,
+): React.CSSProperties {
+	const activeColor = settings.activeColor ?? settings.highlightColor;
+	const inactiveColor = settings.inactiveTextColor;
+	const pct = Math.round(fillProgress * 100);
+	return {
+		display: "inline-block",
+		fontWeight: 700,
+		fontSize: `${scaledFontSize}px`,
+		fontFamily: settings.fontFamily,
+		lineHeight: 1.4,
+		whiteSpace: "pre" as const,
+		background: `linear-gradient(90deg, ${activeColor} ${pct}%, ${inactiveColor} ${pct}%)`,
+		WebkitBackgroundClip: "text",
+		WebkitTextFillColor: "transparent",
+		backgroundClip: "text",
+		opacity: 1,
+	};
 }
 
 export function CaptionOverlay({
@@ -103,11 +168,32 @@ export function CaptionOverlay({
 		settings.positionOffset,
 	);
 
+	const animation = settings.animation ?? "none";
+
 	// Group animated words back into lines for rendering
 	let wordIdx = 0;
 	const renderedLines = layout.page.lines.map((line, li) => {
 		const lineWords = line.words.map((_w, wi) => {
 			const aw = layout.words[wordIdx++];
+
+			// Karaoke uses a gradient fill style
+			if (animation === "karaoke") {
+				const progress = karaokeProgress(aw.startMs, aw.endMs, currentTimeMs);
+				// Spoken words are fully filled, upcoming are unfilled
+				const fillPct = aw.state === "spoken" ? 1 : aw.state === "upcoming" ? 0 : progress;
+				return (
+					<span key={`${li}-${wi}`} style={karaokeStyle(settings, fontSize, fillPct)}>
+						{wi > 0 ? " " : ""}
+						{aw.text}
+					</span>
+				);
+			}
+
+			// Typewriter: skip words that haven't been spoken yet
+			if (animation === "typewriter" && !wordVisible(aw.state, animation)) {
+				return null;
+			}
+
 			return (
 				<span key={`${li}-${wi}`} style={wordStyle(aw.state, settings, fontSize)}>
 					{wi > 0 ? " " : ""}

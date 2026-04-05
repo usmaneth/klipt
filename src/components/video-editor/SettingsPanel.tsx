@@ -1562,8 +1562,8 @@ export function SettingsPanel({
 												<span className="text-[11px] font-medium text-white/50 tracking-wide">
 													Animation
 												</span>
-												<div className="flex gap-1">
-													{(["none", "fade", "rise", "pop"] as const).map((anim) => (
+												<div className="flex flex-wrap gap-1">
+													{(["none", "fade", "rise", "pop", "bold-pop", "karaoke", "typewriter", "bounce", "glow"] as const).map((anim) => (
 														<button
 															key={anim}
 															type="button"
@@ -1579,11 +1579,50 @@ export function SettingsPanel({
 																	: "bg-white/[0.03] text-white/30 border border-transparent"
 															}`}
 														>
-															{anim.charAt(0).toUpperCase() + anim.slice(1)}
+															{anim === "bold-pop" ? "Bold Pop" : anim.charAt(0).toUpperCase() + anim.slice(1)}
 														</button>
 													))}
 												</div>
 											</div>
+
+											{/* Active word color — shown for highlight-driven animations */}
+											{(captionSettings.animation === "bold-pop" || captionSettings.animation === "karaoke" || captionSettings.animation === "bounce" || captionSettings.animation === "glow") && (
+												<div className="flex items-center justify-between p-3 border-b border-white/[0.04]">
+													<span className="text-[11px] font-medium text-white/50 tracking-wide">
+														Active Color
+													</span>
+													<input
+														type="color"
+														value={captionSettings.activeColor ?? captionSettings.highlightColor}
+														onChange={(e) =>
+															onCaptionSettingsChange({
+																...captionSettings,
+																activeColor: e.target.value,
+															})
+														}
+														className="w-7 h-7 rounded-md border border-white/[0.1] bg-transparent cursor-pointer"
+													/>
+												</div>
+											)}
+
+											{/* Active scale — shown for bold-pop and bounce */}
+											{(captionSettings.animation === "bold-pop" || captionSettings.animation === "bounce") && (
+												<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider">
+													<SliderControl
+														label="Active Scale"
+														value={captionSettings.activeScale ?? 1.2}
+														defaultValue={1.2}
+														min={1.0}
+														max={1.5}
+														step={0.05}
+														onChange={(v) =>
+															onCaptionSettingsChange({ ...captionSettings, activeScale: v })
+														}
+														formatValue={(v) => `${v.toFixed(2)}x`}
+														parseInput={(t) => parseFloat(t.replace(/x$/, ""))}
+													/>
+												</div>
+											)}
 
 											{/* Font size */}
 											<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider">

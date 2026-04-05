@@ -11,9 +11,11 @@ import {
 import {
 	type CaptionSettings,
 	captionBackgroundBox,
+	karaokeProgress,
 	scaleFontSize,
 	wordColor,
 	wordOpacity,
+	wordVisible,
 } from "@/components/video-editor/captionStyle";
 
 /**
@@ -100,11 +102,23 @@ export function renderCaptions(
 			const aw = layout.words[wordIdx++];
 			const text = (wi > 0 ? " " : "") + aw.text;
 
+			// Typewriter: skip words not yet spoken
+			if (animation === "typewriter" && !wordVisible(aw.state, animation)) {
+				continue;
+			}
+
 			ctx.globalAlpha = wordOpacity(aw.state);
 			ctx.fillStyle = wordColor(aw.state, settings);
 
+			const activeScale = settings.activeScale ?? 1.2;
+
+			// Adjust opacity for highlight-driven styles
+			if (animation === "bold-pop" || animation === "bounce" || animation === "glow") {
+				ctx.globalAlpha = aw.state === "active" ? 1 : 0.7;
+			}
+
 			// Draw highlight background behind active words
-			if (aw.state === "active" && settings.highlightColor) {
+			if (aw.state === "active" && settings.highlightColor && animation !== "bold-pop" && animation !== "karaoke" && animation !== "bounce" && animation !== "glow") {
 				const wordWidth = ctx.measureText(text).width;
 				const highlightPadding = fontSize * 0.15;
 				ctx.save();
@@ -130,10 +144,8 @@ export function renderCaptions(
 			if (aw.state === "active" && animation !== "none") {
 				ctx.save();
 				if (animation === "rise") {
-					// Shift active word up slightly
 					ctx.fillText(text, cursorX, cursorY - fontSize * 0.06);
 				} else if (animation === "pop") {
-					// Scale active word up from center
 					const wordWidth = ctx.measureText(text).width;
 					const scale = 1.08;
 					const cx = cursorX + wordWidth / 2;
@@ -142,10 +154,67 @@ export function renderCaptions(
 					ctx.scale(scale, scale);
 					ctx.translate(-cx, -cy);
 					ctx.fillText(text, cursorX, cursorY);
+				} else if (animation === "bold-pop") {
+					const wordWidth = ctx.measureText(text).width;
+					const cx = cursorX + wordWidth / 2;
+					const cy = cursorY + fontSize * 0.6;
+					ctx.translate(cx, cy);
+					ctx.scale(activeScale, activeScale);
+					ctx.translate(-cx, -cy);
+					ctx.font = `900 ${fontSize}px ${settings.fontFamily}`;
+					ctx.fillText(text, cursorX, cursorY);
+					ctx.font = font; // restore
+				} else if (animation === "bounce") {
+					const wordWidth = ctx.measureText(text).width;
+					const cx = cursorX + wordWidth / 2;
+					const cy = cursorY + fontSize * 0.6;
+					ctx.translate(cx, cy);
+					ctx.scale(activeScale, activeScale);
+					ctx.translate(-cx, -cy);
+					ctx.fillText(text, cursorX, cursorY - fontSize * 0.08);
+				} else if (animation === "glow") {
+					const glowColor = settings.activeColor ?? settings.highlightColor;
+					ctx.shadowColor = glowColor;
+					ctx.shadowBlur = 16;
+					ctx.fillText(text, cursorX, cursorY);
+					// Draw again for stronger glow
+					ctx.fillText(text, cursorX, cursorY);
+					ctx.shadowBlur = 0;
+					ctx.shadowColor = "transparent";
+				} else if (animation === "karaoke") {
+					// Karaoke: draw inactive color first, then clip active color
+					const wordWidth = ctx.measureText(text).width;
+					const progress = karaokeProgress(aw.startMs, aw.endMs, timeMs);
+					const fillWidth = wordWidth * progress;
+
+					// Draw full word in inactive color
+					ctx.fillStyle = settings.inactiveTextColor;
+					ctx.globalAlpha = 1;
+					ctx.fillText(text, cursorX, cursorY);
+
+					// Clip and draw filled portion in active color
+					ctx.save();
+					ctx.beginPath();
+					ctx.rect(cursorX, cursorY - fontSize * 0.2, fillWidth, fontSize * 1.6);
+					ctx.clip();
+					ctx.fillStyle = settings.activeColor ?? settings.highlightColor;
+					ctx.fillText(text, cursorX, cursorY);
+					ctx.restore();
 				} else {
 					ctx.fillText(text, cursorX, cursorY);
 				}
 				ctx.restore();
+			} else if (animation === "karaoke") {
+				// For spoken/upcoming words in karaoke mode
+				const progress = aw.state === "spoken" ? 1 : 0;
+				if (progress === 1) {
+					ctx.fillStyle = settings.activeColor ?? settings.highlightColor;
+					ctx.globalAlpha = 1;
+				} else {
+					ctx.fillStyle = settings.inactiveTextColor;
+					ctx.globalAlpha = 1;
+				}
+				ctx.fillText(text, cursorX, cursorY);
 			} else {
 				ctx.fillText(text, cursorX, cursorY);
 			}
