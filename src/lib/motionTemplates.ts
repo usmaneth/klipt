@@ -69,10 +69,14 @@ function drawRoundRect(
 }
 
 function hexToRgba(hex: string, alpha: number): string {
-  const c = hex.replace("#", "");
+  let c = hex.replace("#", "");
+  // Handle 3-digit shorthand (#fff -> ffffff)
+  if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+  if (c.length !== 6) return `rgba(0,0,0,${alpha})`;
   const r = Number.parseInt(c.substring(0, 2), 16);
   const g = Number.parseInt(c.substring(2, 4), 16);
   const b = Number.parseInt(c.substring(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return `rgba(0,0,0,${alpha})`;
   return `rgba(${r},${g},${b},${alpha})`;
 }
 

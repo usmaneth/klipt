@@ -4362,6 +4362,9 @@ export default function VideoEditor() {
 											onAspectRatioChange={setAspectRatio}
 											workspaceNotes={workspaceNotes}
 											timelineComments={timelineComments}
+											sceneMarkers={sceneMarkers}
+											onAutoSilenceCut={handleAutoSilenceCut}
+											onAutoZoomFace={handleAutoZoomFace}
 										/>
 									</div>
 								</Panel>

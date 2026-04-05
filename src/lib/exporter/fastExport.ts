@@ -46,9 +46,11 @@ export function canFastExport(project: FastExportProjectState): boolean {
 	// Must have no overlays / annotations
 	if (project.annotationRegions.length > 0) return false;
 
-	// Must have no zoom regions (or all identity — depth 1 is the lowest zoom)
+	// Must have no zoom regions (or all identity — depth 1 with centred focus)
 	if (project.zoomRegions.length > 0) {
-		const hasNonIdentityZoom = project.zoomRegions.some((z) => z.depth !== 1);
+		const hasNonIdentityZoom = project.zoomRegions.some(
+			(z) => z.depth !== 1 || Math.abs(z.focus.cx - 0.5) > 0.01 || Math.abs(z.focus.cy - 0.5) > 0.01,
+		);
 		if (hasNonIdentityZoom) return false;
 	}
 

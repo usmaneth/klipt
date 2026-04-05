@@ -46,12 +46,16 @@ async function detectFacesInImage(imageSrc: string, timeMs: number): Promise<Det
 	const detector = new FaceDetector({ maxDetectedFaces: 10 });
 	const results = await detector.detect(img);
 
+	const w = img.naturalWidth;
+	const h = img.naturalHeight;
+	if (w === 0 || h === 0) return [];
+
 	return results.map((face) => ({
 		timeMs,
-		x: face.boundingBox.x / img.naturalWidth,
-		y: face.boundingBox.y / img.naturalHeight,
-		width: face.boundingBox.width / img.naturalWidth,
-		height: face.boundingBox.height / img.naturalHeight,
+		x: face.boundingBox.x / w,
+		y: face.boundingBox.y / h,
+		width: face.boundingBox.width / w,
+		height: face.boundingBox.height / h,
 	}));
 }
 
@@ -116,7 +120,9 @@ export function mergeFaceDetections(
 		for (const cluster of clusters) {
 			const dx = Math.abs(face.x - cluster.avgX);
 			const dy = Math.abs(face.y - cluster.avgY);
-			if (dx < positionTolerance && dy < positionTolerance) {
+			const lastFaceTime = cluster.faces[cluster.faces.length - 1].timeMs;
+			const temporalGap = face.timeMs - lastFaceTime;
+			if (dx < positionTolerance && dy < positionTolerance && temporalGap < 10000) {
 				cluster.faces.push(face);
 				const n = cluster.faces.length;
 				cluster.avgX = (cluster.avgX * (n - 1) + face.x) / n;
