@@ -2014,6 +2014,14 @@ export default function VideoEditor() {
 		[],
 	);
 
+	const handleAddMotionTemplate = useCallback(
+		(templateId: string, _values: Record<string, string>, durationMs: number) => {
+			toast.success(`Added motion template "${templateId}" (${(durationMs / 1000).toFixed(1)}s)`);
+			// Template overlay will be rendered during export via the motion template renderer
+		},
+		[],
+	);
+
 	const handleDetectScenes = useCallback(async () => {
 		if (!videoPath) return;
 		setIsDetectingScenes(true);
@@ -3489,6 +3497,7 @@ export default function VideoEditor() {
 					onDetectHighlights={handleDetectHighlights}
 					onExportHighlightClip={handleExportHighlightClip}
 					onExportAllHighlights={handleExportAllHighlights}
+					onAddMotionTemplate={handleAddMotionTemplate}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 				{/* Ambient orbs (z-0) */}
