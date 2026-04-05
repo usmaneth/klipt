@@ -41,6 +41,7 @@ import {
 } from "@/lib/exporter";
 import { canFastExport } from "@/lib/exporter/fastExport";
 import { matchesShortcut } from "@/lib/shortcuts";
+import { detectChapters } from "@/lib/ai/chapterDetector";
 import { type HighlightCandidate, detectHighlights } from "@/lib/ai/highlightDetector";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
@@ -76,6 +77,7 @@ import {
 import {
 	type AnnotationRegion,
 	type AudioRegion,
+	type Chapter,
 	type ColorCorrectionProfile,
 	type CropRegion,
 	type CursorStyle,
@@ -231,6 +233,8 @@ export default function VideoEditor() {
 	const [aiAnalysisProgress, setAiAnalysisProgress] = useState<number | null>(null);
 	const [highlights, setHighlights] = useState<HighlightCandidate[]>([]);
 	const [isDetectingHighlights, setIsDetectingHighlights] = useState(false);
+	const [chapters, setChapters] = useState<Chapter[]>([]);
+	const [isDetectingChapters, setIsDetectingChapters] = useState(false);
 	const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
 	const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS);
 	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
@@ -2270,6 +2274,48 @@ export default function VideoEditor() {
 		}
 	}, [captionCues, duration]);
 
+	// ── Chapter detection ──────────────────────────────────────────────────
+	const handleDetectChapters = useCallback(() => {
+		if (captionCues.length === 0) {
+			toast.error("Generate captions first to detect chapters");
+			return;
+		}
+
+		setIsDetectingChapters(true);
+		setChapters([]);
+
+		try {
+			const cueData = captionCues.map((cue) => ({
+				startMs: cue.startMs,
+				endMs: cue.endMs,
+				text: cue.text,
+			}));
+			const results = detectChapters(cueData);
+			setChapters(results);
+			if (results.length > 0) {
+				toast.success(`Found ${results.length} chapter${results.length !== 1 ? "s" : ""}`);
+			} else {
+				toast("No chapters detected — video may be too short or lack topic variety");
+			}
+		} catch (err) {
+			console.error("[VideoEditor] Chapter detection failed:", err);
+			toast.error("Chapter detection failed");
+		} finally {
+			setIsDetectingChapters(false);
+		}
+	}, [captionCues]);
+
+	const handleEditChapterTitle = useCallback((index: number, newTitle: string) => {
+		setChapters((prev) =>
+			prev.map((ch, i) => (i === index ? { ...ch, title: newTitle } : ch)),
+		);
+	}, []);
+
+	const handleDeleteChapter = useCallback((index: number) => {
+		setChapters((prev) => prev.filter((_, i) => i !== index));
+		toast("Chapter removed");
+	}, []);
+
 	const handleExportHighlightClip = useCallback(
 		(highlight: HighlightCandidate) => {
 			// Create a trim region that keeps only the highlight segment
@@ -3948,6 +3994,12 @@ export default function VideoEditor() {
 					onExportHighlightClip={handleExportHighlightClip}
 					onExportAllHighlights={handleExportAllHighlights}
 					onAddMotionTemplate={handleAddMotionTemplate}
+					chapters={chapters}
+					isDetectingChapters={isDetectingChapters}
+					onDetectChapters={handleDetectChapters}
+					onEditChapterTitle={handleEditChapterTitle}
+					onDeleteChapter={handleDeleteChapter}
+					onSeekToChapter={(timeMs: number) => handleJumpToTime(timeMs)}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 					{/* Ambient orbs (z-0) */}
@@ -4408,6 +4460,8 @@ export default function VideoEditor() {
 											workspaceNotes={workspaceNotes}
 											timelineComments={timelineComments}
 											sceneMarkers={sceneMarkers}
+											chapters={chapters}
+											onSeekToChapter={(timeMs: number) => handleSeek(timeMs / 1000)}
 											onAutoSilenceCut={handleAutoSilenceCut}
 											onAutoZoomFace={handleAutoZoomFace}
 										/>

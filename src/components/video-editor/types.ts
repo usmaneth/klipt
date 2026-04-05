@@ -1,3 +1,10 @@
+export interface Chapter {
+	startMs: number;
+	endMs: number;
+	title: string;
+	confidence: number; // 0-1
+}
+
 export interface TimelineComment {
 	id: string;
 	timeMs: number;

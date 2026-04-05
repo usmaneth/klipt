@@ -14,6 +14,7 @@ import {
 	MessageCircle,
 	MessageSquare,
 	Music,
+	Pencil,
 	Play,
 	RotateCcw,
 	Search,
@@ -26,7 +27,7 @@ import { type MutableRefObject, useCallback, useEffect, useRef, useState } from 
 import { toast } from "sonner";
 import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
 import type { HighlightCandidate } from "@/lib/ai/highlightDetector";
-import type { SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
+import type { Chapter, SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
 import { CommentsPanel } from "./CommentsPanel";
 import { MotionTemplatePanel } from "./MotionTemplatePanel";
 import { HighlightPanel } from "./HighlightPanel";
@@ -133,6 +134,12 @@ interface CreativeWorkspaceProps {
 	onExportHighlightClip: (highlight: HighlightCandidate) => void;
 	onExportAllHighlights: (highlights: HighlightCandidate[]) => void;
 	onAddMotionTemplate?: (templateId: string, values: Record<string, string>, durationMs: number) => void;
+	chapters?: Chapter[];
+	isDetectingChapters?: boolean;
+	onDetectChapters?: () => void;
+	onEditChapterTitle?: (index: number, newTitle: string) => void;
+	onDeleteChapter?: (index: number) => void;
+	onSeekToChapter?: (timeMs: number) => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -246,6 +253,12 @@ export function CreativeWorkspace({
 	onExportHighlightClip,
 	onExportAllHighlights,
 	onAddMotionTemplate,
+	chapters = [],
+	isDetectingChapters = false,
+	onDetectChapters,
+	onEditChapterTitle,
+	onDeleteChapter,
+	onSeekToChapter,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
 	const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
@@ -484,6 +497,149 @@ export function CreativeWorkspace({
 		);
 	};
 
+	// ── Chapter editing state ───────────────────────────────────────────────
+	const [editingChapterIdx, setEditingChapterIdx] = useState<number | null>(null);
+	const [editingChapterTitle, setEditingChapterTitle] = useState("");
+
+	const renderChapterSection = () => {
+		if (!onDetectChapters) return null;
+
+		const confidenceLabel = (c: number) => {
+			if (c >= 0.7) return { text: "High", color: "text-emerald-400 bg-emerald-500/20" };
+			if (c >= 0.4) return { text: "Med", color: "text-yellow-400 bg-yellow-500/20" };
+			return { text: "Low", color: "text-red-400 bg-red-500/20" };
+		};
+
+		return (
+			<div className="mt-4 border-t border-white/[0.06] pt-4">
+				<div className="flex items-center justify-between mb-2">
+					<div className="flex items-center gap-1.5">
+						<BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+						<span className="text-[11px] font-medium text-white/70">Chapters</span>
+					</div>
+					{chapters.length > 0 && (
+						<button
+							type="button"
+							onClick={onDetectChapters}
+							disabled={isDetectingChapters}
+							className="text-[10px] text-emerald-400/70 hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1"
+						>
+							<RotateCcw className="w-3 h-3" />
+							Regenerate
+						</button>
+					)}
+				</div>
+
+				{chapters.length === 0 && (
+					<button
+						type="button"
+						onClick={onDetectChapters}
+						disabled={!hasTranscription || isDetectingChapters}
+						className={`w-full px-4 py-2 rounded-lg text-[11px] font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+							hasTranscription && !isDetectingChapters
+								? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 cursor-pointer"
+								: "bg-white/[0.04] text-white/20 opacity-50 cursor-not-allowed"
+						}`}
+					>
+						<BookOpen className="w-3.5 h-3.5" />
+						{isDetectingChapters
+							? "Detecting chapters..."
+							: hasTranscription
+								? "Auto-Chapter"
+								: "Generate captions first"}
+					</button>
+				)}
+
+				{chapters.length > 0 && (
+					<div className="flex flex-col gap-1.5">
+						{chapters.map((ch, idx) => {
+							const badge = confidenceLabel(ch.confidence);
+							const isEditing = editingChapterIdx === idx;
+
+							return (
+								<motion.div
+									key={`ch-${ch.startMs}`}
+									initial={{ opacity: 0, x: -10 }}
+									animate={{ opacity: 1, x: 0 }}
+									transition={{ duration: 0.2, delay: idx * 0.04 }}
+									className="rounded-lg bg-white/[0.04] p-2.5 flex flex-col gap-1.5"
+								>
+									<div className="flex items-center gap-2">
+										<span className="text-[10px] text-emerald-400/60 font-mono flex-shrink-0">
+											{idx + 1}.
+										</span>
+										{isEditing ? (
+											<input
+												type="text"
+												value={editingChapterTitle}
+												onChange={(e) => setEditingChapterTitle(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														onEditChapterTitle?.(idx, editingChapterTitle);
+														setEditingChapterIdx(null);
+													}
+													if (e.key === "Escape") {
+														setEditingChapterIdx(null);
+													}
+												}}
+												onBlur={() => {
+													onEditChapterTitle?.(idx, editingChapterTitle);
+													setEditingChapterIdx(null);
+												}}
+												autoFocus
+												className="flex-1 bg-black/40 border border-emerald-500/30 rounded px-2 py-0.5 text-[11px] text-white/80 outline-none focus:border-emerald-500/60"
+											/>
+										) : (
+											<span className="text-[11px] text-white/70 flex-1 truncate">
+												{ch.title}
+											</span>
+										)}
+										<span
+											className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${badge.color}`}
+										>
+											{badge.text}
+										</span>
+									</div>
+									<div className="flex items-center gap-2 ml-5">
+										<button
+											type="button"
+											onClick={() => onSeekToChapter?.(ch.startMs)}
+											className="text-[10px] text-[#0A84FF] hover:text-[#0A84FF]/80 transition-colors cursor-pointer"
+										>
+											{formatMs(ch.startMs)}
+										</button>
+										<span className="text-[10px] text-white/20">-</span>
+										<span className="text-[10px] text-white/30">
+											{formatMs(ch.endMs)}
+										</span>
+										<div className="flex-1" />
+										<button
+											type="button"
+											onClick={() => {
+												setEditingChapterIdx(idx);
+												setEditingChapterTitle(ch.title);
+											}}
+											className="text-white/30 hover:text-white/60 transition-colors cursor-pointer"
+										>
+											<Pencil className="w-3 h-3" />
+										</button>
+										<button
+											type="button"
+											onClick={() => onDeleteChapter?.(idx)}
+											className="text-white/30 hover:text-red-400 transition-colors cursor-pointer"
+										>
+											<Trash2 className="w-3 h-3" />
+										</button>
+									</div>
+								</motion.div>
+							);
+						})}
+					</div>
+				)}
+			</div>
+		);
+	};
+
 	const renderAI = () => {
 		// Analysing in progress
 		if (aiAnalysisProgress !== null) {
@@ -542,6 +698,26 @@ export function CreativeWorkspace({
 									: "Detect Scenes"}
 						</button>
 					)}
+					{onDetectChapters && (
+						<button
+							type="button"
+							onClick={onDetectChapters}
+							disabled={!hasTranscription || isDetectingChapters}
+							className={`mt-1 px-4 py-2 rounded-lg text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 ${
+								hasTranscription && !isDetectingChapters
+									? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 cursor-pointer"
+									: "bg-white/[0.04] text-white/20 opacity-50 cursor-not-allowed"
+							}`}
+						>
+							<BookOpen className="w-3.5 h-3.5" />
+							{isDetectingChapters
+								? "Detecting chapters..."
+								: chapters.length > 0
+									? `Re-detect Chapters (${chapters.length} found)`
+									: "Auto-Chapter"}
+						</button>
+					)}
+					{renderChapterSection()}
 				</div>
 			);
 		}
@@ -663,6 +839,7 @@ export function CreativeWorkspace({
 				>
 					Re-analyze
 				</button>
+				{renderChapterSection()}
 			</div>
 		);
 	};

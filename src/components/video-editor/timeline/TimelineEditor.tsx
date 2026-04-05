@@ -49,6 +49,7 @@ import type { WorkspaceNote } from "../CreativeWorkspace";
 import type {
 	AnnotationRegion,
 	AudioRegion,
+	Chapter,
 	CursorTelemetryPoint,
 	SoundEffectRegion,
 	SpeedRegion,
@@ -127,6 +128,8 @@ interface TimelineEditorProps {
 	timelineComments?: TimelineComment[];
 	onAutoSilenceCut?: () => void;
 	sceneMarkers?: Array<{ timeMs: number; confidence: number }>;
+	chapters?: Chapter[];
+	onSeekToChapter?: (timeMs: number) => void;
 }
 
 interface TimelineScaleConfig {
@@ -869,6 +872,53 @@ function SceneMarkers({ scenes, onSeek }: { scenes: Array<{ timeMs: number; conf
 	);
 }
 
+function ChapterMarkers({ chapters, onSeek }: { chapters: Chapter[]; onSeek?: (timeMs: number) => void }) {
+	const { range, valueToPixels, sidebarWidth, direction } = useTimelineContext();
+	const sideProperty = direction === "rtl" ? "right" : "left";
+	const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+	if (!chapters || chapters.length === 0) return null;
+
+	const formatTimestamp = (ms: number) => {
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+	};
+
+	return (
+		<div
+			className="absolute top-0 bottom-0 z-30"
+			style={{ [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px` }}
+		>
+			{chapters.map((chapter, idx) => {
+				const offset = valueToPixels(chapter.startMs - range.start);
+				if (offset < -20 || offset > 5000) return null;
+				return (
+					<div
+						key={`chapter-${chapter.startMs}`}
+						className="absolute top-0 bottom-0 cursor-pointer group"
+						style={{ [sideProperty]: `${offset}px` }}
+						onMouseEnter={() => setHoveredIdx(idx)}
+						onMouseLeave={() => setHoveredIdx(null)}
+						onClick={() => onSeek?.(chapter.startMs)}
+					>
+						<div
+							className="w-[2px] h-full -translate-x-1/2 opacity-60 group-hover:opacity-100 transition-opacity"
+							style={{ backgroundColor: "#10b981" }}
+						/>
+						{hoveredIdx === idx && (
+							<div className="absolute top-[2px] left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/90 border border-emerald-500/30 whitespace-nowrap z-50">
+								<span className="text-[10px] text-emerald-300">Ch. {idx + 1}: {chapter.title} ({formatTimestamp(chapter.startMs)})</span>
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function CuttingRoomFloor({ clips, onRestore }: { clips: TrimRegion[]; onRestore: (id: string) => void }) {
 	const { range, valueToPixels } = useTimelineContext();
 	
@@ -950,6 +1000,8 @@ const TimelineEditor = memo(function TimelineEditor({
 	timelineComments,
 	onAutoSilenceCut,
 	sceneMarkers,
+	chapters,
+	onSeekToChapter,
 }: TimelineEditorProps) {
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
@@ -2052,6 +2104,10 @@ const TimelineEditor = memo(function TimelineEditor({
 
 					{sceneMarkers && sceneMarkers.length > 0 && (
 						<SceneMarkers scenes={sceneMarkers} onSeek={onSeek} />
+					)}
+
+					{chapters && chapters.length > 0 && (
+						<ChapterMarkers chapters={chapters} onSeek={onSeekToChapter} />
 					)}
 
 					<KeyframeMarkers
