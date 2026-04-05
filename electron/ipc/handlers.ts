@@ -4905,4 +4905,72 @@ export function registerIpcHandlers(
 			}
 		},
 	);
+
+	// ── Scene Detection ──────────────────────────────────────────────────
+
+	ipcMain.handle(
+		"detect-scenes",
+		async (
+			_event,
+			{ filePath, threshold = 0.35 }: { filePath: string; threshold?: number },
+		): Promise<{
+			success: boolean;
+			scenes: Array<{ timeMs: number; confidence: number }>;
+			error?: string;
+		}> => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+
+				// Resolve file:// URLs
+				let resolvedInput = filePath;
+				if (resolvedInput.startsWith("file://")) {
+					resolvedInput = decodeURIComponent(resolvedInput.replace(/^file:\/\//, ""));
+				}
+
+				const { stderr } = await execFileAsync(
+					ffmpegPath,
+					[
+						"-i",
+						resolvedInput,
+						"-filter:v",
+						`select='gt(scene,${threshold})',showinfo`,
+						"-f",
+						"null",
+						"-",
+					],
+					{ timeout: 120_000, maxBuffer: 50 * 1024 * 1024 },
+				);
+
+				// Parse showinfo output lines from stderr for pts_time and scene score
+				const scenes: Array<{ timeMs: number; confidence: number }> = [];
+				const lines = stderr.split("\n");
+				for (const line of lines) {
+					if (!line.includes("showinfo") || !line.includes("pts_time:")) continue;
+					const ptsMatch = line.match(/pts_time:\s*([\d.]+)/);
+					if (!ptsMatch?.[1]) continue;
+					const timeSec = Number.parseFloat(ptsMatch[1]);
+					if (Number.isNaN(timeSec)) continue;
+
+					// Try to extract the scene score from the Parsed_select filter log
+					let confidence = threshold;
+					const scoreMatch = line.match(/score:\s*([\d.]+)/);
+					if (scoreMatch?.[1]) {
+						confidence = Number.parseFloat(scoreMatch[1]);
+					}
+
+					scenes.push({
+						timeMs: Math.round(timeSec * 1000),
+						confidence,
+					});
+				}
+
+				console.log(`[detect-scenes] Found ${scenes.length} scene boundaries`);
+				return { success: true, scenes };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[detect-scenes] Failed:", message);
+				return { success: false, scenes: [], error: message };
+			}
+		},
+	);
 }

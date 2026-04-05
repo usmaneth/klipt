@@ -223,6 +223,10 @@ export default function VideoEditor() {
 	const [isTranslatingCaptions, setIsTranslatingCaptions] = useState(false);
 	const [captionTranslationProgress, setCaptionTranslationProgress] = useState<number | null>(null);
 
+	// Scene detection state
+	const [sceneMarkers, setSceneMarkers] = useState<Array<{ timeMs: number; confidence: number }>>([]);
+	const [isDetectingScenes, setIsDetectingScenes] = useState(false);
+
 	// Dubbing state
 	const [dubbedAudioPath, setDubbedAudioPath] = useState<string | null>(null);
 	const [isDubbing, setIsDubbing] = useState(false);
@@ -2010,6 +2014,29 @@ export default function VideoEditor() {
 		[],
 	);
 
+	const handleDetectScenes = useCallback(async () => {
+		if (!videoPath) return;
+		setIsDetectingScenes(true);
+		try {
+			const result = await window.electronAPI.detectScenes(videoPath);
+			if (!result.success) {
+				toast.error(result.error ?? "Scene detection failed");
+				return;
+			}
+			setSceneMarkers(result.scenes);
+			if (result.scenes.length === 0) {
+				toast.info("No scene changes detected");
+			} else {
+				toast.success(`Detected ${result.scenes.length} scene change${result.scenes.length === 1 ? "" : "s"}`);
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Scene detection failed: ${message}`);
+		} finally {
+			setIsDetectingScenes(false);
+		}
+	}, [videoPath]);
+
 	const handleAcceptSuggestion = useCallback(
 		(suggestion: AISuggestion) => {
 			if (suggestion.type === "silence" || suggestion.type === "filler") {
@@ -3453,6 +3480,9 @@ export default function VideoEditor() {
 					onAddComment={handleAddComment}
 					onDeleteComment={handleDeleteComment}
 					onSeekToComment={handleSeekToComment}
+					onDetectScenes={handleDetectScenes}
+					isDetectingScenes={isDetectingScenes}
+					sceneMarkerCount={sceneMarkers.length}
 					highlights={highlights}
 					isDetectingHighlights={isDetectingHighlights}
 					hasTranscription={captionCues.length > 0}
@@ -3853,6 +3883,7 @@ export default function VideoEditor() {
 								onAspectRatioChange={setAspectRatio}
 								workspaceNotes={workspaceNotes}
 								timelineComments={timelineComments}
+								sceneMarkers={sceneMarkers}
 								onAutoSilenceCut={handleAutoSilenceCut}
 							/>
 						</div>

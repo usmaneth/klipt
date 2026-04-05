@@ -393,4 +393,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("fast-export-progress", listener);
 		return () => ipcRenderer.removeListener("fast-export-progress", listener);
 	},
+	detectScenes: (filePath: string, threshold?: number) => {
+		return ipcRenderer.invoke("detect-scenes", { filePath, threshold });
+	},
 });

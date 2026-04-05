@@ -364,6 +364,14 @@ interface Window {
 		onFastExportProgress: (
 			callback: (progress: { percent: number }) => void,
 		) => () => void;
+		detectScenes: (
+			filePath: string,
+			threshold?: number,
+		) => Promise<{
+			success: boolean;
+			scenes: Array<{ timeMs: number; confidence: number }>;
+			error?: string;
+		}>;
 	};
 }
 

@@ -120,6 +120,9 @@ interface CreativeWorkspaceProps {
 	onAddComment: (comment: TimelineComment) => void;
 	onDeleteComment: (id: string) => void;
 	onSeekToComment: (timeMs: number) => void;
+	onDetectScenes?: () => void;
+	isDetectingScenes?: boolean;
+	sceneMarkerCount?: number;
 	highlights: HighlightCandidate[];
 	isDetectingHighlights: boolean;
 	hasTranscription: boolean;
@@ -228,6 +231,9 @@ export function CreativeWorkspace({
 	onAddComment,
 	onDeleteComment,
 	onSeekToComment,
+	onDetectScenes,
+	isDetectingScenes = false,
+	sceneMarkerCount = 0,
 	highlights,
 	isDetectingHighlights,
 	hasTranscription,
@@ -512,6 +518,24 @@ export function CreativeWorkspace({
 					>
 						{hasVideo ? "Analyze Video" : "Load a video first"}
 					</button>
+					{onDetectScenes && (
+						<button
+							type="button"
+							onClick={onDetectScenes}
+							disabled={!hasVideo || isDetectingScenes}
+							className={`mt-1 px-4 py-2 rounded-lg text-[11px] font-medium transition-colors ${
+								hasVideo && !isDetectingScenes
+									? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 cursor-pointer"
+									: "bg-white/[0.04] text-white/20 opacity-50 cursor-not-allowed"
+							}`}
+						>
+							{isDetectingScenes
+								? "Detecting scenes..."
+								: sceneMarkerCount > 0
+									? `Re-detect Scenes (${sceneMarkerCount} found)`
+									: "Detect Scenes"}
+						</button>
+					)}
 				</div>
 			);
 		}

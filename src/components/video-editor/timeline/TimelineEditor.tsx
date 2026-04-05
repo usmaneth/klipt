@@ -124,6 +124,7 @@ interface TimelineEditorProps {
 	workspaceNotes?: WorkspaceNote[];
 	timelineComments?: TimelineComment[];
 	onAutoSilenceCut?: () => void;
+	sceneMarkers?: Array<{ timeMs: number; confidence: number }>;
 }
 
 interface TimelineScaleConfig {
@@ -819,6 +820,100 @@ function CommentMarkers({ comments, onSeek }: { comments: TimelineComment[]; onS
 	);
 }
 
+function SceneMarkers({ scenes, onSeek }: { scenes: Array<{ timeMs: number; confidence: number }>; onSeek?: (time: number) => void }) {
+	const { range, valueToPixels, sidebarWidth, direction } = useTimelineContext();
+	const sideProperty = direction === "rtl" ? "right" : "left";
+	const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+	if (!scenes || scenes.length === 0) return null;
+
+	const formatTimestamp = (ms: number) => {
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+	};
+
+	return (
+		<div
+			className="absolute top-0 bottom-0 z-30"
+			style={{ [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px` }}
+		>
+			{scenes.map((scene, idx) => {
+				const offset = valueToPixels(scene.timeMs - range.start);
+				if (offset < -20 || offset > 5000) return null;
+				return (
+					<div
+						key={`scene-${scene.timeMs}`}
+						className="absolute top-0 bottom-0 cursor-pointer group"
+						style={{ [sideProperty]: `${offset}px` }}
+						onMouseEnter={() => setHoveredIdx(idx)}
+						onMouseLeave={() => setHoveredIdx(null)}
+						onClick={() => onSeek?.(scene.timeMs / 1000)}
+					>
+						<div
+							className="w-[2px] h-full -translate-x-1/2 opacity-60 group-hover:opacity-100 transition-opacity"
+							style={{ backgroundColor: "#06b6d4" }}
+						/>
+						{hoveredIdx === idx && (
+							<div className="absolute top-[2px] left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/90 border border-cyan-500/30 whitespace-nowrap z-50">
+								<span className="text-[10px] text-cyan-300">Scene change at {formatTimestamp(scene.timeMs)}</span>
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+function SceneMarkers({ scenes, onSeek }: { scenes: Array<{ timeMs: number; confidence: number }>; onSeek?: (time: number) => void }) {
+	const { range, valueToPixels, sidebarWidth, direction } = useTimelineContext();
+	const sideProperty = direction === "rtl" ? "right" : "left";
+	const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+	if (!scenes || scenes.length === 0) return null;
+
+	const formatTimestamp = (ms: number) => {
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+	};
+
+	return (
+		<div
+			className="absolute top-0 bottom-0 z-30"
+			style={{ [sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px` }}
+		>
+			{scenes.map((scene, idx) => {
+				const offset = valueToPixels(scene.timeMs - range.start);
+				if (offset < -20 || offset > 5000) return null;
+				return (
+					<div
+						key={`scene-${scene.timeMs}`}
+						className="absolute top-0 bottom-0 cursor-pointer group"
+						style={{ [sideProperty]: `${offset}px` }}
+						onMouseEnter={() => setHoveredIdx(idx)}
+						onMouseLeave={() => setHoveredIdx(null)}
+						onClick={() => onSeek?.(scene.timeMs / 1000)}
+					>
+						<div
+							className="w-[2px] h-full -translate-x-1/2 opacity-60 group-hover:opacity-100 transition-opacity"
+							style={{ backgroundColor: "#06b6d4" }}
+						/>
+						{hoveredIdx === idx && (
+							<div className="absolute top-[2px] left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/90 border border-cyan-500/30 whitespace-nowrap z-50">
+								<span className="text-[10px] text-cyan-300">Scene change at {formatTimestamp(scene.timeMs)}</span>
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 function CuttingRoomFloor({ clips, onRestore }: { clips: TrimRegion[]; onRestore: (id: string) => void }) {
 	const { range, valueToPixels } = useTimelineContext();
 	
@@ -898,6 +993,7 @@ const TimelineEditor = memo(function TimelineEditor({
 	workspaceNotes,
 	timelineComments,
 	onAutoSilenceCut,
+	sceneMarkers,
 }: TimelineEditorProps) {
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
 	const totalMs = useMemo(() => Math.max(0, Math.round(videoDuration * 1000)), [videoDuration]);
@@ -1987,6 +2083,10 @@ const TimelineEditor = memo(function TimelineEditor({
 
 					{timelineComments && timelineComments.length > 0 && (
 						<CommentMarkers comments={timelineComments} onSeek={onSeek} />
+					)}
+
+					{sceneMarkers && sceneMarkers.length > 0 && (
+						<SceneMarkers scenes={sceneMarkers} onSeek={onSeek} />
 					)}
 
 					<KeyframeMarkers
