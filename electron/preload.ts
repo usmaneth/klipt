@@ -340,8 +340,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	copyFileToClipboard: (filePath: string) => {
 		return ipcRenderer.invoke("copy-file-to-clipboard", filePath);
 	},
-	startShareServer: (filePath: string) => {
-		return ipcRenderer.invoke("start-share-server", filePath);
+	startShareServer: (
+		filePath: string,
+		metadata?: {
+			title?: string;
+			transcript?: Array<{ startMs: number; endMs: number; text: string }>;
+			chapters?: Array<{ startMs: number; title: string }>;
+			duration?: number;
+		},
+	) => {
+		return ipcRenderer.invoke("start-share-server", filePath, metadata);
 	},
 	stopShareServer: () => {
 		return ipcRenderer.invoke("stop-share-server");

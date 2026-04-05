@@ -4274,8 +4274,35 @@ export function registerIpcHandlers(
 		uniqueViewers: number;
 		viewEvents: Array<{ timestamp: number; ip: string; userAgent: string }>;
 	}
+	interface ShareMetadata {
+		title: string;
+		transcript: Array<{ startMs: number; endMs: number; text: string }>;
+		chapters: Array<{ startMs: number; title: string }>;
+		duration: number;
+	}
+	interface ShareComment {
+		name: string;
+		text: string;
+		videoTime: number;
+		timestamp: number;
+	}
 	const shareAnalyticsStore = new Map<string, ViewerAnalytics>();
 	let currentShareFilePath: string | null = null;
+	let currentShareMetadata: ShareMetadata = { title: "", transcript: [], chapters: [], duration: 0 };
+	let shareComments: ShareComment[] = [];
+	let shareReactions: Record<string, number> = {};
+
+	// Resolve viewer HTML template path for both dev and production.
+	// In dev, import.meta.url points to dist-electron/ipc/handlers.js
+	// so APP_ROOT (one level up from dist-electron) gets us to the project root.
+	// In production, app.getAppPath() points to the app.asar root which
+	// includes electron/share via the files config.
+	const viewerHtmlPath = path.join(
+		process.env.APP_ROOT || app.getAppPath(),
+		"electron",
+		"share",
+		"viewer.html",
+	);
 
 	function getLocalIpAddress(): string {
 		const interfaces = os.networkInterfaces();
@@ -4301,9 +4328,31 @@ export function registerIpcHandlers(
 			activeShareServer = null;
 		}
 		currentShareFilePath = null;
+		shareComments = [];
+		shareReactions = {};
 	}
 
-	ipcMain.handle("start-share-server", async (_, filePath: string) => {
+	function parseBody(req: http.IncomingMessage): Promise<string> {
+		return new Promise((resolve, reject) => {
+			let body = "";
+			req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
+			req.on("end", () => resolve(body));
+			req.on("error", reject);
+		});
+	}
+
+	ipcMain.handle(
+		"start-share-server",
+		async (
+			_,
+			filePath: string,
+			metadata?: {
+				title?: string;
+				transcript?: Array<{ startMs: number; endMs: number; text: string }>;
+				chapters?: Array<{ startMs: number; title: string }>;
+				duration?: number;
+			},
+		) => {
 		try {
 			// Stop any existing server first
 			stopShareServer();
@@ -4324,6 +4373,15 @@ export function registerIpcHandlers(
 			const fileName = path.basename(filePath);
 
 			currentShareFilePath = filePath;
+			currentShareMetadata = {
+				title: metadata?.title || fileName,
+				transcript: metadata?.transcript || [],
+				chapters: metadata?.chapters || [],
+				duration: metadata?.duration || 0,
+			};
+			shareComments = [];
+			shareReactions = {};
+
 			if (!shareAnalyticsStore.has(filePath)) {
 				shareAnalyticsStore.set(filePath, {
 					totalViews: 0,
@@ -4332,41 +4390,152 @@ export function registerIpcHandlers(
 				});
 			}
 
+			// Read viewer HTML template
+			let viewerHtml = "";
+			try {
+				viewerHtml = await fs.readFile(viewerHtmlPath, "utf-8");
+			} catch {
+				viewerHtml = "<html><body><h1>Viewer page not found</h1></body></html>";
+			}
+
 			const server = http.createServer(async (req, res) => {
-				if (req.url === "/video" || req.url === "/") {
-					// Track analytics
+				const url = req.url || "/";
+				const method = req.method || "GET";
+
+				// CORS headers for API routes
+				res.setHeader("Access-Control-Allow-Origin", "*");
+				res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+				res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+				if (method === "OPTIONS") {
+					res.writeHead(204);
+					res.end();
+					return;
+				}
+
+				// ── Viewer page ──
+				if (url === "/" && method === "GET") {
+					// Track analytics for page views
 					const analytics = shareAnalyticsStore.get(filePath);
 					if (analytics) {
 						const ip = req.socket.remoteAddress || "unknown";
 						const userAgent = req.headers["user-agent"] || "unknown";
 						analytics.totalViews++;
-						analytics.viewEvents.push({
-							timestamp: Date.now(),
-							ip,
-							userAgent,
-						});
+						analytics.viewEvents.push({ timestamp: Date.now(), ip, userAgent });
 						const uniqueIps = new Set(analytics.viewEvents.map((e) => e.ip));
 						analytics.uniqueViewers = uniqueIps.size;
 					}
 
+					const html = viewerHtml.replace(/\{\{TITLE\}\}/g, currentShareMetadata.title.replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+					res.writeHead(200, {
+						"Content-Type": "text/html; charset=utf-8",
+						"Content-Length": Buffer.byteLength(html),
+					});
+					res.end(html);
+					return;
+				}
+
+				// ── Video file ──
+				if (url === "/video" && method === "GET") {
 					try {
 						const fileStat = await fs.stat(filePath);
-						res.writeHead(200, {
-							"Content-Type": contentType,
-							"Content-Length": fileStat.size,
-							"Content-Disposition": `inline; filename="${fileName}"`,
-							"Access-Control-Allow-Origin": "*",
-						});
-						const stream = fsSync.createReadStream(filePath);
-						stream.pipe(res);
+						const range = req.headers.range;
+
+						if (range) {
+							// Support range requests for seeking
+							const parts = range.replace(/bytes=/, "").split("-");
+							const start = parseInt(parts[0], 10);
+							const end = parts[1] ? parseInt(parts[1], 10) : fileStat.size - 1;
+							const chunkSize = end - start + 1;
+							res.writeHead(206, {
+								"Content-Range": `bytes ${start}-${end}/${fileStat.size}`,
+								"Accept-Ranges": "bytes",
+								"Content-Length": chunkSize,
+								"Content-Type": contentType,
+							});
+							const stream = fsSync.createReadStream(filePath, { start, end });
+							stream.pipe(res);
+						} else {
+							res.writeHead(200, {
+								"Content-Type": contentType,
+								"Content-Length": fileStat.size,
+								"Content-Disposition": `inline; filename="${fileName}"`,
+								"Accept-Ranges": "bytes",
+							});
+							const stream = fsSync.createReadStream(filePath);
+							stream.pipe(res);
+						}
 					} catch {
 						res.writeHead(404);
 						res.end("File not found");
 					}
-				} else {
-					res.writeHead(404);
-					res.end("Not found");
+					return;
 				}
+
+				// ── Metadata API ──
+				if (url === "/api/metadata" && method === "GET") {
+					const analytics = shareAnalyticsStore.get(filePath);
+					const payload = {
+						...currentShareMetadata,
+						viewCount: analytics?.totalViews || 0,
+					};
+					const json = JSON.stringify(payload);
+					res.writeHead(200, { "Content-Type": "application/json" });
+					res.end(json);
+					return;
+				}
+
+				// ── Comments API ──
+				if (url === "/api/comments" && method === "GET") {
+					res.writeHead(200, { "Content-Type": "application/json" });
+					res.end(JSON.stringify(shareComments));
+					return;
+				}
+				if (url === "/api/comments" && method === "POST") {
+					try {
+						const body = await parseBody(req);
+						const data = JSON.parse(body);
+						if (data.name && data.text) {
+							shareComments.push({
+								name: String(data.name).slice(0, 50),
+								text: String(data.text).slice(0, 500),
+								videoTime: Number(data.videoTime) || 0,
+								timestamp: Date.now(),
+							});
+						}
+						res.writeHead(200, { "Content-Type": "application/json" });
+						res.end(JSON.stringify(shareComments));
+					} catch {
+						res.writeHead(400);
+						res.end(JSON.stringify({ error: "Invalid request" }));
+					}
+					return;
+				}
+
+				// ── Reactions API ──
+				if (url === "/api/reactions" && method === "GET") {
+					res.writeHead(200, { "Content-Type": "application/json" });
+					res.end(JSON.stringify(shareReactions));
+					return;
+				}
+				if (url === "/api/reactions" && method === "POST") {
+					try {
+						const body = await parseBody(req);
+						const data = JSON.parse(body);
+						if (data.emoji && typeof data.emoji === "string") {
+							shareReactions[data.emoji] = (shareReactions[data.emoji] || 0) + 1;
+						}
+						res.writeHead(200, { "Content-Type": "application/json" });
+						res.end(JSON.stringify(shareReactions));
+					} catch {
+						res.writeHead(400);
+						res.end(JSON.stringify({ error: "Invalid request" }));
+					}
+					return;
+				}
+
+				res.writeHead(404);
+				res.end("Not found");
 			});
 
 			return new Promise<{
@@ -4384,7 +4553,7 @@ export function registerIpcHandlers(
 					}
 					const port = addr.port;
 					const localIP = getLocalIpAddress();
-					const url = `http://${localIP}:${port}/video`;
+					const url = `http://${localIP}:${port}`;
 
 					activeShareServer = server;
 

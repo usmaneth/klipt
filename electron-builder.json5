@@ -20,6 +20,7 @@
     "dist",
     "dist-electron",
     "electron/native",
+    "electron/share",
     "!*.png",
     "!preview*.png",
     "!*.md",

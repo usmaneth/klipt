@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}} — Klipt</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0b;--surface:#141416;--surface2:#1c1c1f;--border:#2a2a2e;--text:#e4e4e7;--text2:#a1a1aa;--accent:#E0000F;--accent-hover:#ff1a2b;--radius:12px}
+html{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font-family:inherit;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;outline:none;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--accent)}
+
+/* Layout */
+.page{max-width:1400px;margin:0 auto;padding:24px 24px 60px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.title{font-size:1.5rem;font-weight:700;line-height:1.3}
+.meta{display:flex;align-items:center;gap:16px;color:var(--text2);font-size:.85rem}
+.meta svg{width:16px;height:16px}
+.main-grid{display:grid;grid-template-columns:1fr 340px;gap:24px}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}.transcript-panel{max-height:300px}}
+
+/* Video Player */
+.player-wrap{position:relative;background:#000;border-radius:var(--radius);overflow:hidden;aspect-ratio:16/9}
+.player-wrap video{width:100%;height:100%;display:block;object-fit:contain}
+.player-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transition:opacity .3s;background:linear-gradient(transparent 50%,rgba(0,0,0,.7))}
+.player-wrap:hover .player-overlay,.player-wrap.show-controls .player-overlay{opacity:1}
+.big-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.big-play svg{width:72px;height:72px;fill:rgba(255,255,255,.9);filter:drop-shadow(0 2px 8px rgba(0,0,0,.5));transition:transform .2s}
+.controls{padding:12px 16px 16px;display:flex;flex-direction:column;gap:8px}
+.seek-row{position:relative;height:6px;cursor:pointer;border-radius:3px;background:rgba(255,255,255,.2)}
+.seek-progress{height:100%;border-radius:3px;background:var(--accent);pointer-events:none;position:relative}
+.seek-thumb{position:absolute;right:-6px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 4px rgba(0,0,0,.4);opacity:0;transition:opacity .15s}
+.seek-row:hover .seek-thumb{opacity:1}
+.chapter-marker{position:absolute;top:0;width:3px;height:100%;background:rgba(255,255,255,.5);border-radius:1px;z-index:2;pointer-events:none}
+.ctrl-row{display:flex;align-items:center;gap:12px}
+.ctrl-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;transition:background .15s}
+.ctrl-btn:hover{background:rgba(255,255,255,.1)}
+.ctrl-btn svg{width:20px;height:20px;fill:#fff}
+.time-display{font-size:.8rem;color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums;white-space:nowrap}
+.spacer{flex:1}
+.volume-wrap{display:flex;align-items:center;gap:6px}
+.volume-slider{-webkit-appearance:none;width:80px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);outline:none}
+.volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;cursor:pointer}
+.speed-btn{font-size:.75rem;font-weight:600;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.1);color:#fff;white-space:nowrap}
+.speed-btn:hover{background:rgba(255,255,255,.2)}
+
+/* Transcript Panel */
+.transcript-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 200px)}
+.panel-title{padding:14px 16px;font-weight:600;font-size:.9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.panel-title svg{width:18px;height:18px;color:var(--text2)}
+.transcript-list{flex:1;overflow-y:auto;padding:8px}
+.transcript-list::-webkit-scrollbar{width:6px}
+.transcript-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.cue-item{display:flex;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .15s}
+.cue-item:hover{background:var(--surface2)}
+.cue-item.active{background:rgba(224,0,15,.1)}
+.cue-item.active .cue-time{color:var(--accent)}
+.cue-time{font-size:.75rem;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:42px;padding-top:2px}
+.cue-text{font-size:.85rem;line-height:1.5;color:var(--text)}
+.no-transcript{padding:24px;text-align:center;color:var(--text2);font-size:.85rem}
+
+/* Reactions */
+.reactions-bar{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.reaction-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:var(--surface);border:1px solid var(--border);font-size:.9rem;transition:all .2s;user-select:none}
+.reaction-btn:hover{border-color:var(--accent);background:var(--surface2);transform:scale(1.05)}
+.reaction-btn.reacted{border-color:var(--accent);background:rgba(224,0,15,.1)}
+.reaction-count{font-size:.75rem;color:var(--text2);font-variant-numeric:tabular-nums}
+
+/* Comments */
+.comments-section{margin-top:24px;grid-column:1/-1}
+.comments-title{font-size:1.1rem;font-weight:600;margin-bottom:16px}
+.comment-form{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.comment-form input[name=name]{width:160px}
+.comment-form input[name=comment]{flex:1;min-width:200px}
+.comment-form button{padding:8px 20px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;transition:background .2s}
+.comment-form button:hover{background:var(--accent-hover)}
+.comment-form button:disabled{opacity:.5;cursor:not-allowed}
+.comment-list{display:flex;flex-direction:column;gap:12px}
+.comment-item{display:flex;gap:12px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.comment-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0}
+.comment-body{flex:1;min-width:0}
+.comment-header{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.comment-name{font-weight:600;font-size:.85rem}
+.comment-time{font-size:.75rem;color:var(--text2)}
+.comment-text{font-size:.85rem;line-height:1.5;color:var(--text)}
+.no-comments{text-align:center;padding:20px;color:var(--text2);font-size:.85rem}
+
+/* Branding */
+.branding{margin-top:40px;text-align:center;color:var(--text2);font-size:.8rem;opacity:.6}
+.branding span{color:var(--accent);font-weight:600}
+
+/* Glass effect for panels */
+@supports(backdrop-filter:blur(12px)){
+.transcript-panel,.comment-item{backdrop-filter:blur(12px);background:rgba(20,20,22,.85)}
+}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.comment-item{animation:fadeIn .3s ease}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+.reaction-btn.just-clicked{animation:pulse .3s ease}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1 class="title" id="videoTitle">{{TITLE}}</h1>
+    <div class="meta">
+      <span id="viewCount"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> <span id="views">0</span> views</span>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div>
+      <div class="player-wrap" id="playerWrap">
+        <video id="video" preload="metadata"></video>
+        <div class="big-play" id="bigPlay">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <div class="player-overlay" id="overlay">
+          <div class="controls">
+            <div class="seek-row" id="seekBar">
+              <div class="seek-progress" id="seekProgress" style="width:0%">
+                <div class="seek-thumb"></div>
+              </div>
+            </div>
+            <div class="ctrl-row">
+              <button class="ctrl-btn" id="playBtn" title="Play/Pause">
+                <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="pauseIcon" viewBox="0 0 24 24" style="display:none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+              </button>
+              <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+              <div class="spacer"></div>
+              <div class="volume-wrap">
+                <button class="ctrl-btn" id="muteBtn" title="Mute">
+                  <svg id="volIcon" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07" fill="none" stroke="#fff" stroke-width="2"/><path d="M19.07 4.93a10 10 0 010 14.14" fill="none" stroke="#fff" stroke-width="2"/></svg>
+                  <svg id="mutedIcon" viewBox="0 0 24 24" style="display:none"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15" stroke="#fff" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="#fff" stroke-width="2"/></svg>
+                </button>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+              </div>
+              <button class="speed-btn" id="speedBtn" title="Playback speed">1x</button>
+              <button class="ctrl-btn" id="fsBtn" title="Fullscreen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reactions-bar" id="reactionsBar"></div>
+    </div>
+
+    <div class="transcript-panel" id="transcriptPanel">
+      <div class="panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Transcript
+      </div>
+      <div class="transcript-list" id="transcriptList">
+        <div class="no-transcript">No transcript available</div>
+      </div>
+    </div>
+
+    <div class="comments-section">
+      <div class="comments-title">Comments</div>
+      <form class="comment-form" id="commentForm">
+        <input name="name" placeholder="Your name" required maxlength="50" autocomplete="off">
+        <input name="comment" placeholder="Add a comment..." required maxlength="500" autocomplete="off">
+        <button type="submit">Post</button>
+      </form>
+      <div class="comment-list" id="commentList">
+        <div class="no-comments">No comments yet. Be the first!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="branding">Shared via <span>Klipt</span></div>
+</div>
+
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const playerWrap = document.getElementById('playerWrap');
+  const bigPlay = document.getElementById('bigPlay');
+  const playBtn = document.getElementById('playBtn');
+  const playIcon = document.getElementById('playIcon');
+  const pauseIcon = document.getElementById('pauseIcon');
+  const seekBar = document.getElementById('seekBar');
+  const seekProgress = document.getElementById('seekProgress');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const muteBtn = document.getElementById('muteBtn');
+  const volIcon = document.getElementById('volIcon');
+  const mutedIcon = document.getElementById('mutedIcon');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const speedBtn = document.getElementById('speedBtn');
+  const fsBtn = document.getElementById('fsBtn');
+  const transcriptList = document.getElementById('transcriptList');
+  const reactionsBar = document.getElementById('reactionsBar');
+  const commentForm = document.getElementById('commentForm');
+  const commentList = document.getElementById('commentList');
+
+  let metadata = { title: '', transcript: [], chapters: [], duration: 0 };
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  let speedIdx = 2;
+  let controlsTimer = null;
+
+  // Load video
+  video.src = '/video';
+
+  // Fetch metadata
+  fetch('/api/metadata').then(r => r.json()).then(data => {
+    metadata = data;
+    if (data.title) {
+      document.getElementById('videoTitle').textContent = data.title;
+      document.title = data.title + ' \u2014 Klipt';
+    }
+    renderTranscript();
+    renderChapters();
+  }).catch(() => {});
+
+  // Fetch reactions
+  function loadReactions() {
+    fetch('/api/reactions').then(r => r.json()).then(renderReactions).catch(() => {});
+  }
+  loadReactions();
+
+  // Fetch comments
+  function loadComments() {
+    fetch('/api/comments').then(r => r.json()).then(renderComments).catch(() => {});
+  }
+  loadComments();
+
+  // Fetch view count
+  fetch('/api/metadata').then(r => r.json()).then(() => {
+    document.getElementById('views').textContent = '1';
+  });
+  // Update view count periodically
+  setInterval(() => {
+    fetch('/api/metadata').then(r => r.json()).then(d => {
+      if (d.viewCount !== undefined) document.getElementById('views').textContent = d.viewCount;
+    }).catch(() => {});
+  }, 30000);
+
+  // ── Video controls ──
+  function togglePlay() {
+    if (video.paused) { video.play(); } else { video.pause(); }
+  }
+  video.addEventListener('click', togglePlay);
+  playerWrap.addEventListener('dblclick', toggleFullscreen);
+  playBtn.addEventListener('click', togglePlay);
+  bigPlay.addEventListener('click', function(e) { e.stopPropagation(); togglePlay(); });
+
+  video.addEventListener('play', () => {
+    playIcon.style.display = 'none'; pauseIcon.style.display = 'block';
+    bigPlay.style.display = 'none';
+  });
+  video.addEventListener('pause', () => {
+    playIcon.style.display = 'block'; pauseIcon.style.display = 'none';
+    bigPlay.style.display = 'flex';
+  });
+  video.addEventListener('ended', () => {
+    playIcon.style.display = 'block'; pauseIcon.style.display = 'none';
+    bigPlay.style.display = 'flex';
+  });
+
+  // Show controls on mouse move
+  playerWrap.addEventListener('mousemove', () => {
+    playerWrap.classList.add('show-controls');
+    clearTimeout(controlsTimer);
+    controlsTimer = setTimeout(() => {
+      if (!video.paused) playerWrap.classList.remove('show-controls');
+    }, 3000);
+  });
+
+  // Time update
+  video.addEventListener('timeupdate', () => {
+    if (!video.duration) return;
+    const pct = (video.currentTime / video.duration) * 100;
+    seekProgress.style.width = pct + '%';
+    timeDisplay.textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
+    highlightTranscript(video.currentTime * 1000);
+  });
+
+  video.addEventListener('loadedmetadata', () => {
+    timeDisplay.textContent = '0:00 / ' + fmtTime(video.duration);
+    // Update view count after load
+    fetch('/api/metadata').then(r => r.json()).then(d => {
+      if (d.viewCount !== undefined) document.getElementById('views').textContent = d.viewCount;
+    }).catch(() => {});
+  });
+
+  // Seek
+  seekBar.addEventListener('click', (e) => {
+    if (!video.duration) return;
+    const rect = seekBar.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    video.currentTime = pct * video.duration;
+  });
+
+  // Volume
+  muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    volIcon.style.display = video.muted ? 'none' : 'block';
+    mutedIcon.style.display = video.muted ? 'block' : 'none';
+    volumeSlider.value = video.muted ? 0 : video.volume;
+  });
+  volumeSlider.addEventListener('input', (e) => {
+    video.volume = parseFloat(e.target.value);
+    video.muted = video.volume === 0;
+    volIcon.style.display = video.muted ? 'none' : 'block';
+    mutedIcon.style.display = video.muted ? 'block' : 'none';
+  });
+
+  // Speed
+  speedBtn.addEventListener('click', () => {
+    speedIdx = (speedIdx + 1) % speeds.length;
+    video.playbackRate = speeds[speedIdx];
+    speedBtn.textContent = speeds[speedIdx] + 'x';
+  });
+
+  // Fullscreen
+  function toggleFullscreen() {
+    if (document.fullscreenElement) { document.exitFullscreen(); }
+    else { playerWrap.requestFullscreen().catch(() => {}); }
+  }
+  fsBtn.addEventListener('click', toggleFullscreen);
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === ' ' || e.key === 'k') { e.preventDefault(); togglePlay(); }
+    else if (e.key === 'f') { toggleFullscreen(); }
+    else if (e.key === 'm') { muteBtn.click(); }
+    else if (e.key === 'ArrowRight') { video.currentTime = Math.min(video.duration, video.currentTime + 5); }
+    else if (e.key === 'ArrowLeft') { video.currentTime = Math.max(0, video.currentTime - 5); }
+  });
+
+  // ── Transcript ──
+  function renderTranscript() {
+    const cues = metadata.transcript;
+    if (!cues || cues.length === 0) return;
+    transcriptList.innerHTML = '';
+    cues.forEach((cue, i) => {
+      const el = document.createElement('div');
+      el.className = 'cue-item';
+      el.dataset.index = i;
+      el.innerHTML = '<span class="cue-time">' + fmtTime(cue.startMs / 1000) + '</span><span class="cue-text">' + escHtml(cue.text) + '</span>';
+      el.addEventListener('click', () => {
+        video.currentTime = cue.startMs / 1000;
+        video.play();
+      });
+      transcriptList.appendChild(el);
+    });
+  }
+
+  function highlightTranscript(timeMs) {
+    const cues = metadata.transcript;
+    if (!cues || cues.length === 0) return;
+    const items = transcriptList.querySelectorAll('.cue-item');
+    let activeIdx = -1;
+    for (let i = 0; i < cues.length; i++) {
+      if (timeMs >= cues[i].startMs && timeMs < cues[i].endMs) { activeIdx = i; break; }
+    }
+    items.forEach((el, i) => {
+      el.classList.toggle('active', i === activeIdx);
+    });
+    if (activeIdx >= 0 && items[activeIdx]) {
+      items[activeIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  // ── Chapter markers ──
+  function renderChapters() {
+    const chapters = metadata.chapters;
+    if (!chapters || chapters.length === 0 || !metadata.duration) return;
+    chapters.forEach(ch => {
+      const pct = (ch.startMs / metadata.duration) * 100;
+      const marker = document.createElement('div');
+      marker.className = 'chapter-marker';
+      marker.style.left = pct + '%';
+      marker.title = ch.title;
+      seekBar.appendChild(marker);
+    });
+  }
+
+  // ── Reactions ──
+  const EMOJIS = ['\uD83D\uDC4D', '\u2764\uFE0F', '\uD83D\uDE02', '\uD83D\uDD25', '\uD83D\uDC4F', '\uD83D\uDE2E'];
+  const myReactions = new Set();
+
+  function renderReactions(data) {
+    reactionsBar.innerHTML = '';
+    EMOJIS.forEach(emoji => {
+      const count = (data && data[emoji]) || 0;
+      const btn = document.createElement('button');
+      btn.className = 'reaction-btn' + (myReactions.has(emoji) ? ' reacted' : '');
+      btn.innerHTML = emoji + (count > 0 ? ' <span class="reaction-count">' + count + '</span>' : '');
+      btn.addEventListener('click', () => {
+        if (myReactions.has(emoji)) return;
+        myReactions.add(emoji);
+        btn.classList.add('reacted', 'just-clicked');
+        setTimeout(() => btn.classList.remove('just-clicked'), 300);
+        fetch('/api/reactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emoji })
+        }).then(r => r.json()).then(renderReactions).catch(() => {});
+      });
+      reactionsBar.appendChild(btn);
+    });
+  }
+
+  // ── Comments ──
+  function renderComments(comments) {
+    if (!comments || comments.length === 0) {
+      commentList.innerHTML = '<div class="no-comments">No comments yet. Be the first!</div>';
+      return;
+    }
+    commentList.innerHTML = '';
+    comments.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'comment-item';
+      const initials = (c.name || '?').charAt(0).toUpperCase();
+      el.innerHTML =
+        '<div class="comment-avatar">' + initials + '</div>' +
+        '<div class="comment-body">' +
+          '<div class="comment-header">' +
+            '<span class="comment-name">' + escHtml(c.name) + '</span>' +
+            '<span class="comment-time">' + relativeTime(c.timestamp) + '</span>' +
+          '</div>' +
+          '<div class="comment-text">' + escHtml(c.text) + '</div>' +
+        '</div>';
+      commentList.appendChild(el);
+    });
+  }
+
+  commentForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(commentForm);
+    const name = fd.get('name').trim();
+    const text = fd.get('comment').trim();
+    if (!name || !text) return;
+    const btn = commentForm.querySelector('button');
+    btn.disabled = true;
+    fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, text, videoTime: video.currentTime })
+    }).then(r => r.json()).then(data => {
+      renderComments(data);
+      commentForm.querySelector('[name=comment]').value = '';
+    }).catch(() => {}).finally(() => { btn.disabled = false; });
+  });
+
+  // ── Helpers ──
+  function fmtTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    s = Math.floor(s);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  function relativeTime(ts) {
+    if (!ts) return '';
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
+})();
+</script>
+</body>
+</html>

@@ -4590,6 +4590,12 @@ export default function VideoEditor() {
 						canRetrySave={hasPendingExportSave}
 						exportFormat={exportFormat}
 						exportedFilePath={exportedFilePath}
+						captionCues={(translatedCaptionCues ?? captionCues).map((cue) => ({
+							startMs: cue.startMs,
+							endMs: cue.endMs,
+							text: cue.text,
+						}))}
+						videoDuration={Math.round(duration * 1000)}
 					/>
 
 					<CommandPalette

@@ -319,6 +319,12 @@ interface Window {
 		) => Promise<{ success: boolean; error?: string }>;
 		startShareServer: (
 			filePath: string,
+			metadata?: {
+				title?: string;
+				transcript?: Array<{ startMs: number; endMs: number; text: string }>;
+				chapters?: Array<{ startMs: number; title: string }>;
+				duration?: number;
+			},
 		) => Promise<{ success: boolean; url?: string; port?: number; error?: string }>;
 		stopShareServer: () => Promise<{ success: boolean; error?: string }>;
 		getShareAnalytics: () => Promise<{

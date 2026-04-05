@@ -25,6 +25,8 @@ interface ExportDialogProps {
 	canRetrySave?: boolean;
 	exportFormat?: "mp4" | "gif";
 	exportedFilePath?: string;
+	captionCues?: Array<{ startMs: number; endMs: number; text: string }>;
+	videoDuration?: number;
 }
 
 export function ExportDialog({
@@ -37,7 +39,9 @@ export function ExportDialog({
 	onRetrySave,
 	canRetrySave = false,
 	exportFormat = "mp4",
-	exportedFilePath, // Add this line
+	exportedFilePath,
+	captionCues,
+	videoDuration,
 }: ExportDialogProps) {
 	const t = useScopedT("dialogs");
 	const [showSuccess, setShowSuccess] = useState(false);
@@ -215,7 +219,30 @@ export function ExportDialog({
 			successTimerRef.current = null;
 		}
 		try {
-			const result = await window.electronAPI.startShareServer(exportedFilePath);
+			const metadata: {
+				title?: string;
+				transcript?: Array<{ startMs: number; endMs: number; text: string }>;
+				chapters?: Array<{ startMs: number; title: string }>;
+				duration?: number;
+			} = {};
+
+			if (captionCues && captionCues.length > 0) {
+				metadata.transcript = captionCues;
+			}
+			if (videoDuration && videoDuration > 0) {
+				metadata.duration = videoDuration;
+			}
+			// Use the file name as a fallback title
+			if (exportedFilePath) {
+				const parts = exportedFilePath.replace(/\\/g, "/").split("/");
+				const fileName = parts[parts.length - 1] || "Video";
+				metadata.title = fileName.replace(/\.[^.]+$/, "");
+			}
+
+			const result = await window.electronAPI.startShareServer(
+				exportedFilePath,
+				metadata,
+			);
 			if (result.success && result.url) {
 				setShareUrl(result.url);
 				toast.success("Share server started");
