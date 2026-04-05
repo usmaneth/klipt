@@ -165,6 +165,60 @@ function writeString(view: DataView, offset: number, str: string): void {
 	}
 }
 
+export type DenoiseProfile = "light" | "moderate" | "aggressive";
+
+/**
+ * Try FFmpeg-based audio denoising using afftdn and companion filters.
+ * Returns a Blob if the IPC handler is available, or null to signal fallback.
+ */
+async function tryFfmpegDenoise(
+	videoUrl: string,
+	profile: DenoiseProfile,
+	onProgress?: (percent: number) => void,
+): Promise<Blob | null> {
+	if (!window.electronAPI?.denoiseAudio) {
+		return null;
+	}
+
+	try {
+		let inputPath = videoUrl;
+		if (/^(file|klipt-media):\/\//.test(videoUrl)) {
+			inputPath = decodeURIComponent(videoUrl.replace(/^(file|klipt-media):\/\//, ""));
+		} else if (videoUrl.startsWith("blob:")) {
+			return null;
+		}
+
+		onProgress?.(10);
+		const result = await window.electronAPI.denoiseAudio({
+			inputPath,
+			profile,
+		});
+		onProgress?.(80);
+
+		if (!result.success || !result.outputPath) {
+			console.warn("[audioEnhancer] FFmpeg denoise failed:", result.error);
+			return null;
+		}
+
+		const fileResult = await window.electronAPI.readLocalFile(result.outputPath);
+		onProgress?.(90);
+
+		if (!fileResult.success || !fileResult.data) {
+			console.warn("[audioEnhancer] Failed to read FFmpeg output file");
+			return null;
+		}
+
+		const ext = result.outputPath.split(".").pop()?.toLowerCase();
+		const mimeType = ext === "wav" ? "audio/wav" : ext === "mp3" ? "audio/mpeg" : "audio/wav";
+		const blob = new Blob([new Uint8Array(fileResult.data)], { type: mimeType });
+		onProgress?.(100);
+		return blob;
+	} catch (err) {
+		console.warn("[audioEnhancer] FFmpeg denoise unavailable, will fall back:", err);
+		return null;
+	}
+}
+
 /**
  * Try native macOS audio denoising via the klipt-audio binary.
  * Returns a WAV Blob if the native binary is available, or null to signal fallback.
@@ -255,19 +309,28 @@ async function wasmDenoise(
 /**
  * High-level API: enhance audio from a video URL.
  *
- * Tries native macOS denoising first (klipt-audio binary using Accelerate framework).
- * Falls back to WASM-based RNNoise if native is unavailable (e.g., binary not built,
- * blob: URL input, or non-macOS platform).
+ * Denoising priority:
+ *   1. FFmpeg afftdn-based denoising (cross-platform, profile-aware)
+ *   2. Native macOS denoising (klipt-audio binary)
+ *   3. WASM-based RNNoise (browser fallback)
  *
- * Returns a WAV Blob with denoised audio at 48 kHz mono.
+ * Returns a Blob with denoised audio.
  */
 export async function enhanceAudio(
 	videoUrl: string,
 	onProgress?: (percent: number) => void,
+	profile: DenoiseProfile = "moderate",
 ): Promise<Blob> {
 	onProgress?.(0);
 
-	// Try native binary first
+	// Try FFmpeg-based denoising first (cross-platform, supports profiles)
+	const ffmpegResult = await tryFfmpegDenoise(videoUrl, profile, onProgress);
+	if (ffmpegResult) {
+		console.log(`[audioEnhancer] Used FFmpeg denoiser (profile: ${profile})`);
+		return ffmpegResult;
+	}
+
+	// Try native binary
 	const nativeResult = await tryNativeDenoise(videoUrl, onProgress);
 	if (nativeResult) {
 		console.log("[audioEnhancer] Used native denoiser");

@@ -247,6 +247,15 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		denoiseAudio: (args: {
+			inputPath: string;
+			outputPath?: string;
+			profile: "light" | "moderate" | "aggressive";
+		}) => Promise<{
+			success: boolean;
+			outputPath?: string;
+			error?: string;
+		}>;
 		nativeDenoiseAudio: (inputPath: string) => Promise<{
 			success: boolean;
 			path?: string;

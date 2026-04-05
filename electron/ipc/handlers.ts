@@ -3708,6 +3708,75 @@ export function registerIpcHandlers(
 		}
 	});
 
+	// ── FFmpeg-based audio denoising ──
+
+	ipcMain.handle(
+		"denoise-audio",
+		async (
+			_event,
+			args: {
+				inputPath: string;
+				outputPath?: string;
+				profile: "light" | "moderate" | "aggressive";
+			},
+		) => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+
+				let resolvedInput = args.inputPath;
+				if (resolvedInput.startsWith("file://")) {
+					resolvedInput = decodeURIComponent(resolvedInput.replace(/^file:\/\//, ""));
+				}
+				if (resolvedInput.startsWith("klipt-media://")) {
+					resolvedInput = decodeURIComponent(resolvedInput.replace(/^klipt-media:\/\//, ""));
+				}
+
+				// Verify input exists
+				await fs.access(resolvedInput, fsConstants.R_OK);
+
+				const ext = path.extname(resolvedInput) || ".wav";
+				const outputPath =
+					args.outputPath ??
+					path.join(os.tmpdir(), `klipt-denoised-${Date.now()}${ext}`);
+
+				// Build filter chain based on profile
+				let audioFilter: string;
+				switch (args.profile) {
+					case "light":
+						audioFilter =
+							"afftdn=nf=-25,highpass=f=80,lowpass=f=12000";
+						break;
+					case "moderate":
+						audioFilter =
+							"afftdn=nf=-20,highpass=f=100,lowpass=f=10000,acompressor=threshold=-20dB:ratio=3:attack=5:release=50";
+						break;
+					case "aggressive":
+						audioFilter =
+							"afftdn=nf=-15,highpass=f=120,lowpass=f=8000,acompressor=threshold=-18dB:ratio=4:attack=5:release=50,loudnorm";
+						break;
+				}
+
+				await execFileAsync(
+					ffmpegPath,
+					["-y", "-i", resolvedInput, "-af", audioFilter, outputPath],
+					{ timeout: 300_000 },
+				);
+
+				// Verify output was created
+				await fs.access(outputPath, fsConstants.R_OK);
+
+				console.log(
+					`[denoise-audio] Successfully denoised with profile="${args.profile}": ${outputPath}`,
+				);
+				return { success: true, outputPath };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[denoise-audio] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
 	// ── Native audio processing handlers ──
 
 	ipcMain.handle("native-denoise-audio", async (_event, inputPath: string) => {

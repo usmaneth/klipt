@@ -2,7 +2,7 @@ import { Mic, RotateCcw, Sparkles } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { enhanceAudio } from "@/lib/audio/audioEnhancer";
+import { enhanceAudio, type DenoiseProfile } from "@/lib/audio/audioEnhancer";
 import { generateWaveform } from "@/lib/audio/waveformGenerator";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +74,7 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 	const [showAfter, setShowAfter] = useState(audioEnhanced);
 	const [originalWaveform, setOriginalWaveform] = useState<number[]>([]);
 	const [enhancedWaveform, setEnhancedWaveform] = useState<number[]>([]);
+	const [denoiseProfile, setDenoiseProfile] = useState<DenoiseProfile>("moderate");
 	const processingRef = useRef(false);
 
 	// Decode waveform from a URL
@@ -141,7 +142,7 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 		try {
 			const blob = await enhanceAudio(videoUrl, (pct) => {
 				setProgress(pct);
-			});
+			}, denoiseProfile);
 			onEnhance(blob);
 			setStatus("done");
 			setShowAfter(true);
@@ -158,7 +159,7 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 		} finally {
 			processingRef.current = false;
 		}
-	}, [videoUrl, onEnhance]);
+	}, [videoUrl, onEnhance, denoiseProfile]);
 
 	const handleUndo = useCallback(() => {
 		onUndo();
@@ -230,6 +231,27 @@ export const StudioSoundPanel = memo(function StudioSoundPanel({
 						className="h-full rounded-full bg-gradient-to-r from-[#E0000F] to-[#FF4500] transition-all duration-300 ease-out shadow-[0_0_10px_rgba(224,0,15,0.4)]"
 						style={{ width: `${progress}%` }}
 					/>
+				</div>
+			)}
+
+			{/* Denoise profile selector */}
+			{status === "idle" && (
+				<div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/[0.03] border border-white/5">
+					{(["light", "moderate", "aggressive"] as const).map((profile) => (
+						<button
+							key={profile}
+							type="button"
+							onClick={() => setDenoiseProfile(profile)}
+							className={cn(
+								"flex-1 text-[10px] font-semibold tracking-wide py-1.5 rounded-md transition-all capitalize",
+								denoiseProfile === profile
+									? "bg-gradient-to-r from-[#E0000F]/20 to-[#FF4500]/20 text-white border border-white/10 shadow-[0_0_8px_rgba(224,0,15,0.15)]"
+									: "text-slate-500 hover:text-slate-300 border border-transparent",
+							)}
+						>
+							{profile}
+						</button>
+					))}
 				</div>
 			)}
 
