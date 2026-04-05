@@ -396,4 +396,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	detectScenes: (filePath: string, threshold?: number) => {
 		return ipcRenderer.invoke("detect-scenes", { filePath, threshold });
 	},
+	detectFaceRegions: (filePath: string, intervalMs?: number) => {
+		return ipcRenderer.invoke("detect-face-regions", { filePath, intervalMs });
+	},
 });

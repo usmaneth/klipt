@@ -372,6 +372,22 @@ interface Window {
 			scenes: Array<{ timeMs: number; confidence: number }>;
 			error?: string;
 		}>;
+		detectFaceRegions: (
+			filePath: string,
+			intervalMs?: number,
+		) => Promise<{
+			success: boolean;
+			faceRegions: Array<{
+				timeMs: number;
+				cx: number;
+				cy: number;
+				width: number;
+				height: number;
+			}>;
+			videoWidth?: number;
+			videoHeight?: number;
+			error?: string;
+		}>;
 	};
 }
 

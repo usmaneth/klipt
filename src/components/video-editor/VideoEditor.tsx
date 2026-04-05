@@ -1317,6 +1317,124 @@ export default function VideoEditor() {
 		setSelectedAnnotationId(null);
 	}, []);
 
+	const handleAutoZoomFace = useCallback(async () => {
+		if (!videoPath) {
+			toast.error("No video loaded");
+			return;
+		}
+
+		const sourcePath = videoSourcePath ?? fromFileUrl(videoPath);
+		toast.info("Detecting face regions...");
+
+		try {
+			const result = await window.electronAPI.detectFaceRegions(sourcePath, 2000);
+
+			if (!result.success || !result.faceRegions || result.faceRegions.length === 0) {
+				toast.info("No face regions detected in this recording.", {
+					description: result.error ?? "Try a recording with more on-screen activity.",
+				});
+				return;
+			}
+
+			// Group consecutive face positions into zoom spans.
+			// If face center stays within a threshold for 5+ seconds, merge into one region.
+			const MERGE_THRESHOLD = 0.15; // normalized distance threshold
+			const MIN_SPAN_MS = 3000; // minimum 3s to create a zoom region
+			const ZOOM_PADDING_MS = 500; // padding before/after the detected span
+
+			interface FaceGroup {
+				startMs: number;
+				endMs: number;
+				samples: Array<{ cx: number; cy: number }>;
+			}
+
+			const groups: FaceGroup[] = [];
+			let currentGroup: FaceGroup | null = null;
+
+			for (const sample of result.faceRegions) {
+				if (!currentGroup) {
+					currentGroup = {
+						startMs: sample.timeMs,
+						endMs: sample.timeMs,
+						samples: [{ cx: sample.cx, cy: sample.cy }],
+					};
+					continue;
+				}
+
+				const avgCx =
+					currentGroup.samples.reduce((s, p) => s + p.cx, 0) / currentGroup.samples.length;
+				const avgCy =
+					currentGroup.samples.reduce((s, p) => s + p.cy, 0) / currentGroup.samples.length;
+				const dist = Math.hypot(sample.cx - avgCx, sample.cy - avgCy);
+
+				if (dist <= MERGE_THRESHOLD) {
+					currentGroup.endMs = sample.timeMs;
+					currentGroup.samples.push({ cx: sample.cx, cy: sample.cy });
+				} else {
+					groups.push(currentGroup);
+					currentGroup = {
+						startMs: sample.timeMs,
+						endMs: sample.timeMs,
+						samples: [{ cx: sample.cx, cy: sample.cy }],
+					};
+				}
+			}
+			if (currentGroup) {
+				groups.push(currentGroup);
+			}
+
+			// Filter to groups with sufficient duration and build zoom regions
+			const existingSpans = zoomRegions
+				.map((r) => ({ start: r.startMs, end: r.endMs }))
+				.sort((a, b) => a.start - b.start);
+
+			let addedCount = 0;
+
+			for (const group of groups) {
+				const spanDuration = group.endMs - group.startMs;
+				if (spanDuration < MIN_SPAN_MS) continue;
+
+				const startMs = Math.max(0, group.startMs - ZOOM_PADDING_MS);
+				const endMs = group.endMs + ZOOM_PADDING_MS;
+
+				// Skip if overlapping existing zoom regions
+				const hasOverlap = existingSpans.some(
+					(span) => endMs > span.start && startMs < span.end,
+				);
+				if (hasOverlap) continue;
+
+				const avgCx =
+					group.samples.reduce((s, p) => s + p.cx, 0) / group.samples.length;
+				const avgCy =
+					group.samples.reduce((s, p) => s + p.cy, 0) / group.samples.length;
+
+				const focus: ZoomFocus = { cx: avgCx, cy: avgCy };
+
+				handleZoomSuggested(
+					{ start: startMs, end: endMs },
+					focus,
+				);
+
+				existingSpans.push({ start: startMs, end: endMs });
+				addedCount++;
+			}
+
+			if (addedCount === 0) {
+				toast.info("No usable face regions found.", {
+					description:
+						"Detected regions overlap existing zooms or are too short.",
+				});
+			} else {
+				toast.success(
+					`Added ${addedCount} face-tracked zoom${addedCount === 1 ? "" : "s"}`,
+				);
+			}
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error("Face detection failed", { description: message });
+		}
+	}, [videoPath, videoSourcePath, zoomRegions, handleZoomSuggested]);
+
 	const handleTrimAdded = useCallback((span: Span) => {
 		const id = `trim-${nextTrimIdRef.current++}`;
 		const newRegion: TrimRegion = {
@@ -3841,6 +3959,7 @@ export default function VideoEditor() {
 								zoomRegions={effectiveZoomRegions}
 								onZoomAdded={handleZoomAdded}
 								onZoomSuggested={handleZoomSuggested}
+								onAutoZoomFace={handleAutoZoomFace}
 								onZoomSpanChange={handleZoomSpanChange}
 								onZoomDelete={handleZoomDelete}
 								selectedZoomId={selectedZoomId}

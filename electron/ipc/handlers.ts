@@ -4921,7 +4921,6 @@ export function registerIpcHandlers(
 			try {
 				const ffmpegPath = getFfmpegBinaryPath();
 
-				// Resolve file:// URLs
 				let resolvedInput = filePath;
 				if (resolvedInput.startsWith("file://")) {
 					resolvedInput = decodeURIComponent(resolvedInput.replace(/^file:\/\//, ""));
@@ -4941,7 +4940,6 @@ export function registerIpcHandlers(
 					{ timeout: 120_000, maxBuffer: 50 * 1024 * 1024 },
 				);
 
-				// Parse showinfo output lines from stderr for pts_time and scene score
 				const scenes: Array<{ timeMs: number; confidence: number }> = [];
 				const lines = stderr.split("\n");
 				for (const line of lines) {
@@ -4951,7 +4949,6 @@ export function registerIpcHandlers(
 					const timeSec = Number.parseFloat(ptsMatch[1]);
 					if (Number.isNaN(timeSec)) continue;
 
-					// Try to extract the scene score from the Parsed_select filter log
 					let confidence = threshold;
 					const scoreMatch = line.match(/score:\s*([\d.]+)/);
 					if (scoreMatch?.[1]) {
@@ -4970,6 +4967,89 @@ export function registerIpcHandlers(
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[detect-scenes] Failed:", message);
 				return { success: false, scenes: [], error: message };
+			}
+		},
+	);
+
+	// ── Face-region detection via FFmpeg cropdetect ─────────────────────────
+
+	ipcMain.handle(
+		"detect-face-regions",
+		async (
+			_event,
+			{ filePath, intervalMs = 2000 }: { filePath: string; intervalMs?: number },
+		) => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+
+				const frameInterval = Math.max(1, Math.round((intervalMs / 1000) * 30));
+
+				const { stderr } = await execFileAsync(
+					ffmpegPath,
+					[
+						"-i",
+						filePath,
+						"-vf",
+						`select='not(mod(n\\,${frameInterval}))',cropdetect=24:2:0`,
+						"-an",
+						"-f",
+						"null",
+						"-",
+					],
+					{ timeout: 120_000, maxBuffer: 50 * 1024 * 1024 },
+				);
+
+				const cropLineRegex =
+					/\[Parsed_cropdetect.*?\]\s+x1:(\d+)\s+x2:(\d+)\s+y1:(\d+)\s+y2:(\d+)\s+w:(\d+)\s+h:(\d+)\s+x:(\d+)\s+y:(\d+).*?t:\s*([\d.]+)/g;
+
+				const dimMatch = stderr.match(/Stream\s+#\d+:\d+.*Video:.*?\s(\d{2,5})x(\d{2,5})/);
+				const videoWidth = dimMatch ? Number.parseInt(dimMatch[1], 10) : 1920;
+				const videoHeight = dimMatch ? Number.parseInt(dimMatch[2], 10) : 1080;
+
+				interface RawCropSample {
+					timeMs: number;
+					cx: number;
+					cy: number;
+					width: number;
+					height: number;
+				}
+
+				const rawSamples: RawCropSample[] = [];
+				let match: RegExpExecArray | null;
+
+				while ((match = cropLineRegex.exec(stderr)) !== null) {
+					const x = Number.parseInt(match[7], 10);
+					const y = Number.parseInt(match[8], 10);
+					const w = Number.parseInt(match[5], 10);
+					const h = Number.parseInt(match[6], 10);
+					const t = Number.parseFloat(match[9]);
+
+					const cx = (x + w / 2) / videoWidth;
+					const cy = (y + h / 2) / videoHeight;
+					const normW = w / videoWidth;
+					const normH = h / videoHeight;
+
+					rawSamples.push({
+						timeMs: Math.round(t * 1000),
+						cx: Math.max(0, Math.min(1, cx)),
+						cy: Math.max(0, Math.min(1, cy)),
+						width: Math.max(0, Math.min(1, normW)),
+						height: Math.max(0, Math.min(1, normH)),
+					});
+				}
+
+				rawSamples.sort((a, b) => a.timeMs - b.timeMs);
+
+				return {
+					success: true,
+					faceRegions: rawSamples,
+					videoWidth,
+					videoHeight,
+				};
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[detect-face-regions] Failed:", message);
+				return { success: false, error: message, faceRegions: [] };
 			}
 		},
 	);

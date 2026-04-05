@@ -3,6 +3,7 @@ import { useTimelineContext } from "dnd-timeline";
 import {
 	Check,
 	ChevronDown,
+	Focus,
 	Gauge,
 	MessageSquare,
 	MousePointerClick,
@@ -82,6 +83,7 @@ interface TimelineEditorProps {
 	zoomRegions: ZoomRegion[];
 	onZoomAdded: (span: Span) => void;
 	onZoomSuggested?: (span: Span, focus: ZoomFocus) => void;
+	onAutoZoomFace?: () => void;
 	onZoomSpanChange: (id: string, span: Span) => void;
 	onZoomDelete: (id: string) => void;
 	selectedZoomId: string | null;
@@ -904,6 +906,7 @@ const TimelineEditor = memo(function TimelineEditor({
 	zoomRegions,
 	onZoomAdded,
 	onZoomSuggested,
+	onAutoZoomFace,
 	onZoomSpanChange,
 	onZoomDelete,
 	selectedZoomId,
@@ -1872,6 +1875,15 @@ const TimelineEditor = memo(function TimelineEditor({
 					>
 						<MousePointerClick className="w-3 h-3" />
 						<span className="text-[10px]">Clicks</span>
+					</Button>
+					<Button
+						onClick={onAutoZoomFace}
+						variant="ghost"
+						className="h-6 px-2 text-white/30 bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.05] hover:text-white/50 transition-all duration-150 rounded-md flex items-center gap-1"
+						title="Auto-Zoom Face"
+					>
+						<Focus className="w-3 h-3" />
+						<span className="text-[10px]">Face</span>
 					</Button>
 					<Button
 						onClick={handleAddTrim}
