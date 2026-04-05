@@ -388,6 +388,19 @@ interface Window {
 			videoHeight?: number;
 			error?: string;
 		}>;
+		extractFramesForFaceDetection: (
+			filePath: string,
+			options?: { intervalMs?: number; maxFrames?: number },
+		) => Promise<{
+			success: boolean;
+			frames?: Array<{ timeMs: number; path: string }>;
+			error?: string;
+		}>;
+		autoColorCorrect: (
+			filePath: string,
+			profile: "auto" | "warm" | "cool" | "vivid",
+		) => Promise<{ success: boolean; correctedPath?: string; error?: string }>;
+		cleanupFaceDetectionFrames: (frameDir: string) => Promise<{ success: boolean }>;
 	};
 }
 

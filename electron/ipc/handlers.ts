@@ -5053,4 +5053,137 @@ export function registerIpcHandlers(
 			}
 		},
 	);
+
+	// ── Face Detection - Extract frames for renderer-side face detection ──
+
+	ipcMain.handle(
+		"extract-frames-for-face-detection",
+		async (
+			_,
+			filePath: string,
+			options?: { intervalMs?: number; maxFrames?: number },
+		): Promise<{
+			success: boolean;
+			frames?: Array<{ timeMs: number; path: string }>;
+			error?: string;
+		}> => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+				const intervalMs = options?.intervalMs ?? 2000;
+				const maxFrames = options?.maxFrames ?? 30;
+				const intervalSec = intervalMs / 1000;
+
+				const tmpDir = path.join(os.tmpdir(), `klipt-face-frames-${Date.now()}`);
+				await fs.mkdir(tmpDir, { recursive: true });
+
+				const fps = 1 / intervalSec;
+				await execFileAsync(
+					ffmpegPath,
+					[
+						"-i",
+						filePath,
+						"-vf",
+						`fps=${fps}`,
+						"-frames:v",
+						String(maxFrames),
+						"-q:v",
+						"2",
+						path.join(tmpDir, "frame-%04d.jpg"),
+					],
+					{ timeout: 120_000 },
+				);
+
+				const files = await fs.readdir(tmpDir);
+				const frameFiles = files.filter((f) => f.startsWith("frame-") && f.endsWith(".jpg")).sort();
+
+				const frames = frameFiles.map((file, index) => ({
+					timeMs: index * intervalMs,
+					path: path.join(tmpDir, file),
+				}));
+
+				return { success: true, frames };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[extract-frames-for-face-detection] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	// ── Auto Color Correction ──────────────────────────────────────────────
+
+	ipcMain.handle(
+		"auto-color-correct",
+		async (
+			_,
+			filePath: string,
+			profile: "auto" | "warm" | "cool" | "vivid",
+		): Promise<{ success: boolean; correctedPath?: string; error?: string }> => {
+			try {
+				const ffmpegPath = getFfmpegBinaryPath();
+
+				const baseFilter =
+					"colorlevels=rimin=0.04:gimin=0.04:bimin=0.04:rimax=0.96:gimax=0.96:bimax=0.96";
+				let filterChain: string;
+
+				switch (profile) {
+					case "warm":
+						filterChain = `${baseFilter},colortemperature=6500`;
+						break;
+					case "cool":
+						filterChain = `${baseFilter},colortemperature=4500`;
+						break;
+					case "vivid":
+						filterChain = `${baseFilter},eq=saturation=1.3:contrast=1.1`;
+						break;
+					case "auto":
+					default:
+						filterChain = baseFilter;
+						break;
+				}
+
+				const ext = path.extname(filePath);
+				const baseName = path.basename(filePath, ext);
+				const dir = path.dirname(filePath);
+				const correctedPath = path.join(dir, `${baseName}_color_${profile}${ext}`);
+
+				await execFileAsync(
+					ffmpegPath,
+					[
+						"-y",
+						"-i",
+						filePath,
+						"-vf",
+						filterChain,
+						"-c:a",
+						"copy",
+						"-movflags",
+						"+faststart",
+						correctedPath,
+					],
+					{ timeout: 300_000 },
+				);
+
+				return { success: true, correctedPath };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[auto-color-correct] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	// ── Cleanup face detection frames ──────────────────────────────────────
+
+	ipcMain.handle(
+		"cleanup-face-detection-frames",
+		async (_, frameDir: string): Promise<{ success: boolean }> => {
+			try {
+				await fs.rm(frameDir, { recursive: true, force: true });
+				return { success: true };
+			} catch {
+				return { success: true };
+			}
+		},
+	);
 }

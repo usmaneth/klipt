@@ -1,5 +1,14 @@
 import type { Span } from "dnd-timeline";
-import { ChevronDown, Download, FolderOpen, Languages, Redo2, Share, Undo2, Search } from "lucide-react";
+import {
+	ChevronDown,
+	Download,
+	FolderOpen,
+	Languages,
+	Redo2,
+	Search,
+	Share,
+	Undo2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -11,17 +20,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { AppLocale } from "@/i18n/config";
 import { SUPPORTED_LOCALES } from "@/i18n/config";
 import { getAssetPath } from "@/lib/assetPath";
+import { SFX_DURATIONS } from "@/lib/audio/soundEffectSynth";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -40,11 +45,20 @@ import { type HighlightCandidate, detectHighlights } from "@/lib/ai/highlightDet
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { CommandPalette } from "./CommandPalette";
-import { type AISuggestion, CreativeWorkspace, type ScratchPadClip, type WorkspaceNote, type WorkspacePanel } from "./CreativeWorkspace";
+import {
+	type AISuggestion,
+	CreativeWorkspace,
+	type ScratchPadClip,
+	type WorkspaceNote,
+	type WorkspacePanel,
+} from "./CreativeWorkspace";
+import type { CaptionCue } from "./captionLayout";
+import type { CaptionSettings } from "./captionStyle";
+import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
 import { ExportDialog } from "./ExportDialog";
-import { ProjectBrowserDialog } from "./ProjectBrowserDialog";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import PlaybackControls from "./PlaybackControls";
+import { ProjectBrowserDialog } from "./ProjectBrowserDialog";
 import {
 	createProjectData,
 	deriveNextId,
@@ -62,6 +76,7 @@ import {
 import {
 	type AnnotationRegion,
 	type AudioRegion,
+	type ColorCorrectionProfile,
 	type CropRegion,
 	type CursorStyle,
 	type CursorTelemetryPoint,
@@ -72,6 +87,8 @@ import {
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
+	type FaceBlurRegion,
+	type FaceBlurStyle,
 	type FigureData,
 	type PlaybackSpeed,
 	type SoundEffectId,
@@ -85,10 +102,6 @@ import {
 	type ZoomFocus,
 	type ZoomRegion,
 } from "./types";
-import { SFX_DURATIONS } from "@/lib/audio/soundEffectSynth";
-import type { CaptionCue } from "./captionLayout";
-import type { CaptionSettings } from "./captionStyle";
-import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import {
 	buildLoopedCursorTelemetry,
@@ -216,7 +229,9 @@ export default function VideoEditor() {
 	const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
 	const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS);
 	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
-	const [captionTranscriptionProgress, setCaptionTranscriptionProgress] = useState<number | null>(null);
+	const [captionTranscriptionProgress, setCaptionTranscriptionProgress] = useState<number | null>(
+		null,
+	);
 	const [captionTranscriptionLabel, setCaptionTranscriptionLabel] = useState<string | null>(null);
 	const [translatedCaptionCues, setTranslatedCaptionCues] = useState<CaptionCue[] | null>(null);
 	const [captionTranslationLang, setCaptionTranslationLang] = useState<string | null>(null);
@@ -236,6 +251,17 @@ export default function VideoEditor() {
 		message: string;
 	} | null>(null);
 	const [useDubbedAudio, setUseDubbedAudio] = useState(false);
+
+	// Face Detection & Auto-Blur state
+	const [faceBlurRegions, setFaceBlurRegions] = useState<FaceBlurRegion[]>([]);
+	const [isDetectingFaces, setIsDetectingFaces] = useState(false);
+	const [faceDetectionProgress, setFaceDetectionProgress] = useState<number | null>(null);
+
+	// Auto Color Correction state
+	const [colorCorrectionProfile, setColorCorrectionProfile] =
+		useState<ColorCorrectionProfile | null>(null);
+	const [isColorCorrecting, setIsColorCorrecting] = useState(false);
+	const [originalVideoPath, setOriginalVideoPath] = useState<string | null>(null);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -270,7 +296,7 @@ export default function VideoEditor() {
 				audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 				analyser = audioCtx.createAnalyser();
 				analyser.fftSize = 256;
-				
+
 				if (!(video as any)._audioSourceConnected) {
 					source = audioCtx.createMediaElementSource(video);
 					source.connect(analyser);
@@ -303,11 +329,11 @@ export default function VideoEditor() {
 		let lastDrawTime = 0;
 		let audioDataArray: Uint8Array;
 		let currentVolume = 0;
-		
+
 		const updateAmbilight = (timestamp: number) => {
 			const video = videoPlaybackRef.current?.video;
 			const canvas = ambilightCanvasRef.current;
-			
+
 			if (video && canvas && !video.paused && timestamp - lastDrawTime > 60) {
 				const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
 				if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -343,7 +369,6 @@ export default function VideoEditor() {
 		rafId = requestAnimationFrame(updateAmbilight);
 		return () => cancelAnimationFrame(rafId);
 	}, []);
-
 
 	const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
 	const [exportError, setExportError] = useState<string | null>(null);
@@ -1575,18 +1600,15 @@ export default function VideoEditor() {
 		[selectedTrimId],
 	);
 
-	const handleRestoreFromFloor = useCallback(
-		(id: string) => {
-			setCuttingRoomFloor((prev) => {
-				const region = prev.find((r) => r.id === id);
-				if (region) {
-					setTrimRegions((trims) => [...trims, region]);
-				}
-				return prev.filter((r) => r.id !== id);
-			});
-		},
-		[],
-	);
+	const handleRestoreFromFloor = useCallback((id: string) => {
+		setCuttingRoomFloor((prev) => {
+			const region = prev.find((r) => r.id === id);
+			if (region) {
+				setTrimRegions((trims) => [...trims, region]);
+			}
+			return prev.filter((r) => r.id !== id);
+		});
+	}, []);
 
 	// ── Caption generation ──────────────────────────────────────────────────
 	const handleGenerateCaptions = useCallback(async () => {
@@ -1639,11 +1661,9 @@ export default function VideoEditor() {
 		}
 
 		// ── Transcribe ───────────────────────────────────────────────────
-		const cleanup = window.electronAPI.onTranscriptionProgress(
-			(progress: { percent: number }) => {
-				setCaptionTranscriptionProgress(progress.percent);
-			},
-		);
+		const cleanup = window.electronAPI.onTranscriptionProgress((progress: { percent: number }) => {
+			setCaptionTranscriptionProgress(progress.percent);
+		});
 
 		try {
 			const response = await window.electronAPI.transcribeAudio(videoPath);
@@ -1733,9 +1753,7 @@ export default function VideoEditor() {
 					text: translatedTexts[i]?.trim() ?? cue.text,
 					// Keep original word-level timing but replace text at cue level
 					// Words keep their timing from the original for animation sync
-					words: cue.words
-						? cue.words.map((w) => ({ ...w }))
-						: undefined,
+					words: cue.words ? cue.words.map((w) => ({ ...w })) : undefined,
 				}));
 
 				setTranslatedCaptionCues(translated);
@@ -1755,7 +1773,17 @@ export default function VideoEditor() {
 
 	// ── AI Suggestions handlers ──────────────────────────────────────────────
 
-	const FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "literally", "right", "so"];
+	const FILLER_WORDS = [
+		"um",
+		"uh",
+		"like",
+		"you know",
+		"basically",
+		"actually",
+		"literally",
+		"right",
+		"so",
+	];
 	const SILENCE_THRESHOLD_MS = 800;
 
 	const handleAnalyzeVideo = useCallback(async () => {
@@ -1764,11 +1792,9 @@ export default function VideoEditor() {
 		setAiAnalysisProgress(0);
 		setAiSuggestions([]);
 
-		const cleanup = window.electronAPI.onTranscriptionProgress(
-			(progress: { percent: number }) => {
-				setAiAnalysisProgress(progress.percent);
-			},
-		);
+		const cleanup = window.electronAPI.onTranscriptionProgress((progress: { percent: number }) => {
+			setAiAnalysisProgress(progress.percent);
+		});
 
 		try {
 			const response = await window.electronAPI.transcribeAudio(videoPath);
@@ -1845,11 +1871,13 @@ export default function VideoEditor() {
 				const firstWord = words[0];
 				const lastWord = words[words.length - 1];
 				if (firstWord && lastWord) {
-					for (let winStart = firstWord.start; winStart + WINDOW_SEC <= lastWord.end; winStart += 1) {
+					for (
+						let winStart = firstWord.start;
+						winStart + WINDOW_SEC <= lastWord.end;
+						winStart += 1
+					) {
 						const winEnd = winStart + WINDOW_SEC;
-						const wordsInWindow = words.filter(
-							(w) => w.start >= winStart && w.end <= winEnd,
-						);
+						const wordsInWindow = words.filter((w) => w.start >= winStart && w.end <= winEnd);
 						const density = wordsInWindow.length / WINDOW_SEC;
 						if (density > bestDensity) {
 							bestDensity = density;
@@ -1916,7 +1944,8 @@ export default function VideoEditor() {
 							const startIdx = refinedBreaks[b];
 							if (startIdx === undefined) continue;
 							finalBreaks.push(startIdx);
-							const nextBreakIdx = b + 1 < refinedBreaks.length ? refinedBreaks[b + 1] : words.length;
+							const nextBreakIdx =
+								b + 1 < refinedBreaks.length ? refinedBreaks[b + 1] : words.length;
 							if (nextBreakIdx === undefined) continue;
 							const startWord = words[startIdx];
 							const endWord = words[nextBreakIdx - 1];
@@ -1942,7 +1971,8 @@ export default function VideoEditor() {
 						for (let c = 0; c < uniqueBreaks.length; c++) {
 							const chapterStartIdx = uniqueBreaks[c];
 							if (chapterStartIdx === undefined) continue;
-							const chapterEndIdx = c + 1 < uniqueBreaks.length ? uniqueBreaks[c + 1] : words.length;
+							const chapterEndIdx =
+								c + 1 < uniqueBreaks.length ? uniqueBreaks[c + 1] : words.length;
 							if (chapterEndIdx === undefined) continue;
 
 							const chapterWords = words.slice(chapterStartIdx, chapterEndIdx);
@@ -1976,7 +2006,117 @@ export default function VideoEditor() {
 
 			// Generate title and summary from transcription
 			if (words.length > 0) {
-				const STOPWORDS = new Set(["the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall", "can", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "into", "through", "during", "before", "after", "above", "below", "between", "out", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "each", "every", "both", "few", "more", "most", "other", "some", "such", "no", "not", "only", "own", "same", "so", "than", "too", "very", "just", "because", "but", "and", "or", "if", "while", "about", "up", "it", "its", "i", "me", "my", "we", "our", "you", "your", "he", "him", "his", "she", "her", "they", "them", "their", "this", "that", "these", "those", "what", "which", "who", "whom"]);
+				const STOPWORDS = new Set([
+					"the",
+					"a",
+					"an",
+					"is",
+					"are",
+					"was",
+					"were",
+					"be",
+					"been",
+					"being",
+					"have",
+					"has",
+					"had",
+					"do",
+					"does",
+					"did",
+					"will",
+					"would",
+					"could",
+					"should",
+					"may",
+					"might",
+					"shall",
+					"can",
+					"to",
+					"of",
+					"in",
+					"for",
+					"on",
+					"with",
+					"at",
+					"by",
+					"from",
+					"as",
+					"into",
+					"through",
+					"during",
+					"before",
+					"after",
+					"above",
+					"below",
+					"between",
+					"out",
+					"off",
+					"over",
+					"under",
+					"again",
+					"further",
+					"then",
+					"once",
+					"here",
+					"there",
+					"when",
+					"where",
+					"why",
+					"how",
+					"all",
+					"each",
+					"every",
+					"both",
+					"few",
+					"more",
+					"most",
+					"other",
+					"some",
+					"such",
+					"no",
+					"not",
+					"only",
+					"own",
+					"same",
+					"so",
+					"than",
+					"too",
+					"very",
+					"just",
+					"because",
+					"but",
+					"and",
+					"or",
+					"if",
+					"while",
+					"about",
+					"up",
+					"it",
+					"its",
+					"i",
+					"me",
+					"my",
+					"we",
+					"our",
+					"you",
+					"your",
+					"he",
+					"him",
+					"his",
+					"she",
+					"her",
+					"they",
+					"them",
+					"their",
+					"this",
+					"that",
+					"these",
+					"those",
+					"what",
+					"which",
+					"who",
+					"whom",
+				]);
 
 				const fullText = words.map((w) => w.text).join(" ");
 				const firstWord = words[0];
@@ -2004,7 +2144,10 @@ export default function VideoEditor() {
 				// --- Summary generation ---
 				// Take first 3 sentences or first ~200 words
 				const first3Sentences = sentences.slice(0, 3).join(". ").trim();
-				const first200Words = words.slice(0, 200).map((w) => w.text).join(" ");
+				const first200Words = words
+					.slice(0, 200)
+					.map((w) => w.text)
+					.join(" ");
 				let summarySource = first3Sentences.length > 0 ? first3Sentences : first200Words;
 				if (!summarySource.endsWith(".")) {
 					summarySource += ".";
@@ -2024,9 +2167,10 @@ export default function VideoEditor() {
 					.map(([word]) => word);
 
 				const keyPhraseSuffix = topWords.length > 0 ? ` Key topics: ${topWords.join(", ")}.` : "";
-				const summaryText = summarySource.length > 300
-					? `${summarySource.slice(0, 297).trim()}...${keyPhraseSuffix}`
-					: `${summarySource}${keyPhraseSuffix}`;
+				const summaryText =
+					summarySource.length > 300
+						? `${summarySource.slice(0, 297).trim()}...${keyPhraseSuffix}`
+						: `${summarySource}${keyPhraseSuffix}`;
 
 				suggestions.push({
 					id: `ai-${suggestionId++}`,
@@ -2200,48 +2344,47 @@ export default function VideoEditor() {
 							? "Title copied to clipboard"
 							: "Summary copied to clipboard",
 					);
-				}).catch(() => {
+				})
+				.catch(() => {
 					toast.error("Failed to copy to clipboard");
 				});
-			} else if (suggestion.type === "chapter") {
-				// Create a text annotation on the timeline showing the chapter title
-				const id = `annotation-${nextAnnotationIdRef.current++}`;
-				const zIndex = nextAnnotationZIndexRef.current++;
-				// Extract chapter title from label (format: "Chapter N: Title")
-				const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
-				const chapterTitle = titleMatch?.[1] ?? suggestion.label;
-				const newRegion: AnnotationRegion = {
-					id,
-					startMs: suggestion.startMs,
-					endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
-					type: "text",
-					content: chapterTitle,
-					position: { x: 50, y: 10 },
-					size: { width: 60, height: 12 },
-					style: {
-						...DEFAULT_ANNOTATION_STYLE,
-						fontSize: 48,
-						fontWeight: "bold",
-						color: "#ffffff",
-						backgroundColor: "rgba(0, 0, 0, 0.6)",
-					},
-					zIndex,
-				};
-				setAnnotationRegions((prev) => [...prev, newRegion]);
-				setSelectedAnnotationId(id);
-				setSelectedZoomId(null);
-				setSelectedTrimId(null);
-				// Seek to the chapter start
-				const video = videoPlaybackRef.current?.video;
-				if (video) {
-					video.currentTime = suggestion.startMs / 1000;
-				}
+		} else if (suggestion.type === "chapter") {
+			// Create a text annotation on the timeline showing the chapter title
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			const zIndex = nextAnnotationZIndexRef.current++;
+			// Extract chapter title from label (format: "Chapter N: Title")
+			const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
+			const chapterTitle = titleMatch?.[1] ?? suggestion.label;
+			const newRegion: AnnotationRegion = {
+				id,
+				startMs: suggestion.startMs,
+				endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
+				type: "text",
+				content: chapterTitle,
+				position: { x: 50, y: 10 },
+				size: { width: 60, height: 12 },
+				style: {
+					...DEFAULT_ANNOTATION_STYLE,
+					fontSize: 48,
+					fontWeight: "bold",
+					color: "#ffffff",
+					backgroundColor: "rgba(0, 0, 0, 0.6)",
+				},
+				zIndex,
+			};
+			setAnnotationRegions((prev) => [...prev, newRegion]);
+			setSelectedAnnotationId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+			// Seek to the chapter start
+			const video = videoPlaybackRef.current?.video;
+			if (video) {
+				video.currentTime = suggestion.startMs / 1000;
 			}
-			// Remove the suggestion after accepting
-			setAiSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
-		},
-		[],
-	);
+		}
+		// Remove the suggestion after accepting
+		setAiSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
+	}, []);
 
 	const handleDismissSuggestion = useCallback((id: string) => {
 		setAiSuggestions((prev) => prev.filter((s) => s.id !== id));
@@ -2403,9 +2546,7 @@ export default function VideoEditor() {
 	const handleAudioVolumeChange = useCallback((id: string, volume: number) => {
 		setAudioRegions((prev) =>
 			prev.map((region) =>
-				region.id === id
-					? { ...region, volume: Math.max(0, Math.min(1, volume)) }
-					: region,
+				region.id === id ? { ...region, volume: Math.max(0, Math.min(1, volume)) } : region,
 			),
 		);
 	}, []);
@@ -2454,97 +2595,112 @@ export default function VideoEditor() {
 		setSelectedTrimId(null);
 	}, []);
 
-	const handleStickerAnnotationAdded = useCallback((emoji: string) => {
-		const startMs = Math.round(currentTime * 1000);
-		const endMs = Math.min(startMs + 5000, Math.round(duration * 1000));
-		const id = `annotation-${nextAnnotationIdRef.current++}`;
-		const zIndex = nextAnnotationZIndexRef.current++;
-		const newRegion: AnnotationRegion = {
-			id,
-			startMs,
-			endMs,
-			type: "text",
-			content: emoji,
-			position: { x: 50, y: 50 },
-			size: { width: 15, height: 15 },
-			style: { ...DEFAULT_ANNOTATION_STYLE, fontSize: 64 },
-			zIndex,
-		};
-		setAnnotationRegions((prev) => [...prev, newRegion]);
-		setSelectedAnnotationId(id);
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-	}, [currentTime, duration]);
+	const handleStickerAnnotationAdded = useCallback(
+		(emoji: string) => {
+			const startMs = Math.round(currentTime * 1000);
+			const endMs = Math.min(startMs + 5000, Math.round(duration * 1000));
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			const zIndex = nextAnnotationZIndexRef.current++;
+			const newRegion: AnnotationRegion = {
+				id,
+				startMs,
+				endMs,
+				type: "text",
+				content: emoji,
+				position: { x: 50, y: 50 },
+				size: { width: 15, height: 15 },
+				style: { ...DEFAULT_ANNOTATION_STYLE, fontSize: 64 },
+				zIndex,
+			};
+			setAnnotationRegions((prev) => [...prev, newRegion]);
+			setSelectedAnnotationId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+		},
+		[currentTime, duration],
+	);
 
-	const handleRestoreClipToTimeline = useCallback((clip: ScratchPadClip) => {
-		const gifUrl = clip.thumbnailUrl;
-		if (!gifUrl) {
-			toast.error("Clip has no image to add");
-			return;
-		}
+	const handleRestoreClipToTimeline = useCallback(
+		(clip: ScratchPadClip) => {
+			const gifUrl = clip.thumbnailUrl;
+			if (!gifUrl) {
+				toast.error("Clip has no image to add");
+				return;
+			}
 
-		// Fetch the GIF and convert to data URL for the annotation system
-		fetch(gifUrl)
-			.then((res) => res.blob())
-			.then((blob) => {
-				const reader = new FileReader();
-				reader.onloadend = () => {
-					const dataUrl = reader.result as string;
-					const startMs = Math.round(currentTime * 1000);
-					const endMs = Math.min(startMs + (clip.durationMs || 5000), Math.round(duration * 1000));
-					const id = `annotation-${nextAnnotationIdRef.current++}`;
-					const zIndex = nextAnnotationZIndexRef.current++;
-					const newRegion: AnnotationRegion = {
-						id,
-						startMs,
-						endMs,
-						type: "image",
-						content: dataUrl,
-						imageContent: dataUrl,
-						position: { x: 35, y: 35 },
-						size: { width: 30, height: 30 },
-						style: { ...DEFAULT_ANNOTATION_STYLE },
-						zIndex,
+			// Fetch the GIF and convert to data URL for the annotation system
+			fetch(gifUrl)
+				.then((res) => res.blob())
+				.then((blob) => {
+					const reader = new FileReader();
+					reader.onloadend = () => {
+						const dataUrl = reader.result as string;
+						const startMs = Math.round(currentTime * 1000);
+						const endMs = Math.min(
+							startMs + (clip.durationMs || 5000),
+							Math.round(duration * 1000),
+						);
+						const id = `annotation-${nextAnnotationIdRef.current++}`;
+						const zIndex = nextAnnotationZIndexRef.current++;
+						const newRegion: AnnotationRegion = {
+							id,
+							startMs,
+							endMs,
+							type: "image",
+							content: dataUrl,
+							imageContent: dataUrl,
+							position: { x: 35, y: 35 },
+							size: { width: 30, height: 30 },
+							style: { ...DEFAULT_ANNOTATION_STYLE },
+							zIndex,
+						};
+						setAnnotationRegions((prev) => [...prev, newRegion]);
+						setSelectedAnnotationId(id);
+						toast.success(`"${clip.label}" added as overlay at ${(startMs / 1000).toFixed(1)}s`);
 					};
-					setAnnotationRegions((prev) => [...prev, newRegion]);
-					setSelectedAnnotationId(id);
-					toast.success(`"${clip.label}" added as overlay at ${(startMs / 1000).toFixed(1)}s`);
-				};
-				reader.readAsDataURL(blob);
-			})
-			.catch(() => {
-				toast.error("Failed to fetch clip image");
-			});
-	}, [currentTime, duration]);
+					reader.readAsDataURL(blob);
+				})
+				.catch(() => {
+					toast.error("Failed to fetch clip image");
+				});
+		},
+		[currentTime, duration],
+	);
 
-	const handleAddSoundEffect = useCallback((soundId: SoundEffectId) => {
-		const startMs = Math.round(currentTime * 1000);
-		const durationMs = Math.round(SFX_DURATIONS[soundId] * 1000);
-		const endMs = Math.min(startMs + durationMs, Math.round(duration * 1000));
-		const id = `sfx-${nextSfxIdRef.current++}`;
-		const newRegion: SoundEffectRegion = {
-			id,
-			startMs,
-			endMs,
-			soundId,
-			volume: 0.7,
-		};
-		setSoundEffectRegions((prev) => [...prev, newRegion]);
-		toast.success(`Added "${soundId.replace("sfx-", "")}" at ${(startMs / 1000).toFixed(1)}s`);
-	}, [currentTime, duration]);
+	const handleAddSoundEffect = useCallback(
+		(soundId: SoundEffectId) => {
+			const startMs = Math.round(currentTime * 1000);
+			const durationMs = Math.round(SFX_DURATIONS[soundId] * 1000);
+			const endMs = Math.min(startMs + durationMs, Math.round(duration * 1000));
+			const id = `sfx-${nextSfxIdRef.current++}`;
+			const newRegion: SoundEffectRegion = {
+				id,
+				startMs,
+				endMs,
+				soundId,
+				volume: 0.7,
+			};
+			setSoundEffectRegions((prev) => [...prev, newRegion]);
+			toast.success(`Added "${soundId.replace("sfx-", "")}" at ${(startMs / 1000).toFixed(1)}s`);
+		},
+		[currentTime, duration],
+	);
 
-	const handleAddTransition = useCallback((type: TransitionType) => {
-		const atMs = Math.round(currentTime * 1000);
-		const id = `tr-${nextTransitionIdRef.current++}`;
-		const newTransition: TransitionRegion = {
-			id,
-			atMs,
-			durationMs: 500,
-			type,
-		};
-		setTransitionRegions((prev) => [...prev, newTransition]);
-		toast.success(`Added "${type}" transition at ${(atMs / 1000).toFixed(1)}s`);
-	}, [currentTime]);
+	const handleAddTransition = useCallback(
+		(type: TransitionType) => {
+			const atMs = Math.round(currentTime * 1000);
+			const id = `tr-${nextTransitionIdRef.current++}`;
+			const newTransition: TransitionRegion = {
+				id,
+				atMs,
+				durationMs: 500,
+				type,
+			};
+			setTransitionRegions((prev) => [...prev, newTransition]);
+			toast.success(`Added "${type}" transition at ${(atMs / 1000).toFixed(1)}s`);
+		},
+		[currentTime],
+	);
 
 	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
 		setAnnotationRegions((prev) =>
@@ -2953,7 +3109,10 @@ export default function VideoEditor() {
 									bgColor: webcamBgColor,
 								}
 							: undefined,
-						captionCues: (translatedCaptionCues ?? captionCues).length > 0 ? (translatedCaptionCues ?? captionCues) : undefined,
+						captionCues:
+							(translatedCaptionCues ?? captionCues).length > 0
+								? (translatedCaptionCues ?? captionCues)
+								: undefined,
 						captionSettings: captionSettings.enabled ? captionSettings : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
@@ -3130,9 +3289,10 @@ export default function VideoEditor() {
 						audioRegions,
 						soundEffectRegions,
 						transitionRegions,
-						enhancedAudioUrl: (useDubbedAudio && dubbedAudioPath)
-							? `klipt-media://${dubbedAudioPath}`
-							: (enhancedAudioUrl ?? undefined),
+						enhancedAudioUrl:
+							useDubbedAudio && dubbedAudioPath
+								? `klipt-media://${dubbedAudioPath}`
+								: (enhancedAudioUrl ?? undefined),
 						previewWidth,
 						previewHeight,
 						webcamVideoPath: webcamPath ?? undefined,
@@ -3152,7 +3312,10 @@ export default function VideoEditor() {
 									bgColor: webcamBgColor,
 								}
 							: undefined,
-						captionCues: (translatedCaptionCues ?? captionCues).length > 0 ? (translatedCaptionCues ?? captionCues) : undefined,
+						captionCues:
+							(translatedCaptionCues ?? captionCues).length > 0
+								? (translatedCaptionCues ?? captionCues)
+								: undefined,
 						captionSettings: captionSettings.enabled ? captionSettings : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
@@ -3305,7 +3468,12 @@ export default function VideoEditor() {
 
 		setIsExporting(true);
 		setShowExportDialog(true);
-		setExportProgress({ currentFrame: 0, totalFrames: 100, percentage: 0, estimatedTimeRemaining: 0 });
+		setExportProgress({
+			currentFrame: 0,
+			totalFrames: 100,
+			percentage: 0,
+			estimatedTimeRemaining: 0,
+		});
 		setExportError(null);
 
 		const cleanupProgress = window.electronAPI.onFastExportProgress(({ percent }) => {
@@ -3329,7 +3497,12 @@ export default function VideoEditor() {
 			}
 
 			if (result.success && result.outputPath) {
-				setExportProgress({ currentFrame: 100, totalFrames: 100, percentage: 100, estimatedTimeRemaining: 0 });
+				setExportProgress({
+					currentFrame: 100,
+					totalFrames: 100,
+					percentage: 100,
+					estimatedTimeRemaining: 0,
+				});
 				showExportSuccessToast(result.outputPath);
 				setExportedFilePath(result.outputPath);
 			} else {
@@ -3531,23 +3704,141 @@ export default function VideoEditor() {
 		}
 	}, []);
 
+	// Face Detection handler
+	const handleDetectFaces = useCallback(async () => {
+		if (!videoPath || isDetectingFaces) return;
+		setIsDetectingFaces(true);
+		setFaceDetectionProgress(0);
+
+		try {
+			// Extract frames using FFmpeg via IPC
+			const result = await window.electronAPI.extractFramesForFaceDetection(videoPath, {
+				intervalMs: 2000,
+				maxFrames: 30,
+			});
+
+			if (!result.success || !result.frames || result.frames.length === 0) {
+				toast.error(result.error || "No frames could be extracted for face detection");
+				return;
+			}
+
+			// Use the FaceDetector API in the renderer
+			const { detectFacesInFrames, mergeFaceDetections } = await import("@/lib/ai/faceDetector");
+
+			const faces = await detectFacesInFrames(result.frames, (percent) => {
+				setFaceDetectionProgress(percent);
+			});
+
+			// Cleanup temp frames
+			if (result.frames.length > 0) {
+				const frameDir = result.frames[0].path.substring(0, result.frames[0].path.lastIndexOf("/"));
+				await window.electronAPI.cleanupFaceDetectionFrames(frameDir).catch(() => {});
+			}
+
+			if (faces.length === 0) {
+				toast.info("No faces detected in the video");
+				return;
+			}
+
+			// Merge nearby detections into regions
+			const merged = mergeFaceDetections(faces);
+
+			const newRegions: FaceBlurRegion[] = merged.map((m, idx) => ({
+				id: `face-${Date.now()}-${idx}`,
+				startMs: m.startMs,
+				endMs: m.endMs + 2000, // extend a bit past last detection
+				x: m.x,
+				y: m.y,
+				width: m.width,
+				height: m.height,
+				blurStyle: "gaussian" as const,
+				enabled: true,
+			}));
+
+			setFaceBlurRegions(newRegions);
+			toast.success(`Detected ${newRegions.length} face region(s)`);
+		} catch (err) {
+			console.error("[handleDetectFaces]", err);
+			toast.error(`Face detection failed: ${String(err)}`);
+		} finally {
+			setIsDetectingFaces(false);
+			setFaceDetectionProgress(null);
+		}
+	}, [videoPath, isDetectingFaces]);
+
+	const handleFaceBlurToggle = useCallback((id: string, enabled: boolean) => {
+		setFaceBlurRegions((prev) => prev.map((r) => (r.id === id ? { ...r, enabled } : r)));
+	}, []);
+
+	const handleFaceBlurStyleChange = useCallback((id: string, style: FaceBlurStyle) => {
+		setFaceBlurRegions((prev) => prev.map((r) => (r.id === id ? { ...r, blurStyle: style } : r)));
+	}, []);
+
+	const handleFaceBlurDelete = useCallback((id: string) => {
+		setFaceBlurRegions((prev) => prev.filter((r) => r.id !== id));
+	}, []);
+
+	// Auto Color Correction handler
+	const handleColorCorrect = useCallback(
+		async (profile: ColorCorrectionProfile) => {
+			if (!videoPath || isColorCorrecting) return;
+			setIsColorCorrecting(true);
+
+			try {
+				// Save original path if not already saved
+				if (!originalVideoPath) {
+					setOriginalVideoPath(videoPath);
+				}
+
+				const sourceFile = originalVideoPath || videoPath;
+				const result = await window.electronAPI.autoColorCorrect(sourceFile, profile);
+
+				if (!result.success || !result.correctedPath) {
+					toast.error(result.error || "Color correction failed");
+					return;
+				}
+
+				setColorCorrectionProfile(profile);
+				setVideoPath(result.correctedPath);
+				toast.success(`Applied "${profile}" color correction`);
+			} catch (err) {
+				console.error("[handleColorCorrect]", err);
+				toast.error(`Color correction failed: ${String(err)}`);
+			} finally {
+				setIsColorCorrecting(false);
+			}
+		},
+		[videoPath, isColorCorrecting, originalVideoPath],
+	);
+
+	const handleRevertColorCorrection = useCallback(() => {
+		if (originalVideoPath) {
+			setVideoPath(originalVideoPath);
+			setColorCorrectionProfile(null);
+			toast.success("Reverted color correction");
+		}
+	}, [originalVideoPath]);
+
 	const selectedZoomDepth = useMemo(
-		() => selectedZoomId ? (zoomRegions.find((z) => z.id === selectedZoomId)?.depth ?? null) : null,
+		() =>
+			selectedZoomId ? (zoomRegions.find((z) => z.id === selectedZoomId)?.depth ?? null) : null,
 		[selectedZoomId, zoomRegions],
 	);
 
 	const selectedSpeedValue = useMemo(
-		() => selectedSpeedId ? (speedRegions.find((r) => r.id === selectedSpeedId)?.speed ?? null) : null,
+		() =>
+			selectedSpeedId ? (speedRegions.find((r) => r.id === selectedSpeedId)?.speed ?? null) : null,
 		[selectedSpeedId, speedRegions],
 	);
 
 	const gifOutputDims = useMemo(
-		() => calculateOutputDimensions(
-			videoPlaybackRef.current?.video?.videoWidth || 1920,
-			videoPlaybackRef.current?.video?.videoHeight || 1080,
-			gifSizePreset,
-			GIF_SIZE_PRESETS,
-		),
+		() =>
+			calculateOutputDimensions(
+				videoPlaybackRef.current?.video?.videoWidth || 1920,
+				videoPlaybackRef.current?.video?.videoHeight || 1080,
+				gifSizePreset,
+				GIF_SIZE_PRESETS,
+			),
 		[gifSizePreset],
 	);
 
@@ -3577,7 +3868,10 @@ export default function VideoEditor() {
 
 	return (
 		<TooltipProvider delayDuration={300}>
-			<div className="flex h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans" style={{ perspective: "2000px" }}>
+			<div
+				className="flex h-screen bg-[#050508] relative overflow-hidden text-[#F2F0ED] selection:bg-[#E0000F]/30 font-sans"
+				style={{ perspective: "2000px" }}
+			>
 				<CreativeWorkspace
 					activePanel={activeWorkspacePanel}
 					onPanelChange={setActiveWorkspacePanel}
@@ -3618,637 +3912,707 @@ export default function VideoEditor() {
 					onAddMotionTemplate={handleAddMotionTemplate}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
-				{/* Ambient orbs (z-0) */}
-				<div className="absolute top-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-[#E0000F] opacity-[0.05] blur-[150px] pointer-events-none mix-blend-screen z-0" />
-				<div className="absolute bottom-[-15%] left-[-10%] w-[35vw] h-[35vw] rounded-full bg-[#E0000F] opacity-[0.03] blur-[120px] pointer-events-none mix-blend-screen z-0" />
-				<div className="absolute top-[30%] right-[10%] w-[25vw] h-[25vw] rounded-full bg-[#BF5AF2] opacity-[0.03] blur-[100px] pointer-events-none mix-blend-screen z-0" />
+					{/* Ambient orbs (z-0) */}
+					<div className="absolute top-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-[#E0000F] opacity-[0.05] blur-[150px] pointer-events-none mix-blend-screen z-0" />
+					<div className="absolute bottom-[-15%] left-[-10%] w-[35vw] h-[35vw] rounded-full bg-[#E0000F] opacity-[0.03] blur-[120px] pointer-events-none mix-blend-screen z-0" />
+					<div className="absolute top-[30%] right-[10%] w-[25vw] h-[25vw] rounded-full bg-[#BF5AF2] opacity-[0.03] blur-[100px] pointer-events-none mix-blend-screen z-0" />
 
-				{/* Ultra-Compact Floating Toolbar Pill (z-50) */}
-				<div
-					className={`relative mx-4 mt-4 h-14 flex-shrink-0 bg-white/[0.03] backdrop-blur-[60px] border border-white/[0.08] rounded-2xl flex items-center justify-between px-6 z-50 pl-[80px] transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none -translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
-					style={{ WebkitAppRegion: "drag", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" } as React.CSSProperties}
-				>
-					{/* Left: Logo + Undo/Redo + Project Name */}
-					<div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-						<div className="flex items-center gap-1.5 select-none">
-							<div className="relative w-4 h-4">
-								<div className="absolute inset-0 rounded-[3px] border border-white/[0.06]" style={{ transform: "rotate(5deg)" }} />
-								<div className="absolute inset-[2px] rounded-[2.5px] border border-white/[0.12]" style={{ transform: "rotate(-5deg)" }} />
-								<div className="absolute inset-[4px] rounded-[2px] bg-[#E0000F]" style={{ transform: "rotate(20deg)" }} />
-							</div>
-							<span className="text-[15px] font-semibold tracking-tight text-white/90">Klipt</span>
-						</div>
-
-						<Separator orientation="vertical" className="h-3 bg-white/[0.08]" />
-
-						<div className="flex items-center gap-0.5">
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<button
-										onClick={handleUndo}
-										disabled={historyPastRef.current.length === 0}
-										className="h-8 w-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors cursor-pointer"
-									>
-										<Undo2 className="w-3 h-3" />
-									</button>
-								</TooltipTrigger>
-								<TooltipContent side="bottom" className="bg-[#1a1a1e] border-white/10 text-white/70 text-xs">
-									Undo ({isMac ? "\u2318" : "Ctrl"}+Z)
-								</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<button
-										onClick={handleRedo}
-										disabled={historyFutureRef.current.length === 0}
-										className="h-8 w-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors cursor-pointer"
-									>
-										<Redo2 className="w-3 h-3" />
-									</button>
-								</TooltipTrigger>
-								<TooltipContent side="bottom" className="bg-[#1a1a1e] border-white/10 text-white/70 text-xs">
-									Redo ({isMac ? "\u2318" : "Ctrl"}+Shift+Z)
-								</TooltipContent>
-							</Tooltip>
-						</div>
-
-						<Separator orientation="vertical" className="h-3 bg-white/[0.08] ml-2 mr-1" />
-						<div className=" flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-						{isEditingProjectName ? (
-							<input
-								autoFocus
-								type="text"
-								value={projectName}
-								onChange={(e) => setProjectName(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") {
-										setIsEditingProjectName(false);
-									}
-									if (e.key === "Escape") {
-										setIsEditingProjectName(false);
-									}
-								}}
-								onBlur={() => setIsEditingProjectName(false)}
-								className="text-[9px] text-white/80 bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-[#E0000F]/50 w-[120px]"
-							/>
-						) : (
-							<button
-								type="button"
-								onClick={() => setIsEditingProjectName(true)}
-								className="text-[9px] text-white/40 hover:text-white/70 transition-colors cursor-text"
-								title="Click to rename project"
-							>
-								{projectName || "Untitled Project"}
-							</button>
-						)}
-						{hasUnsavedChanges && (
-							<div className="w-[6px] h-[6px] rounded-full bg-[#E0000F] flex-shrink-0" />
-						)}
-					</div>
-
-					</div>
-
-					{/* Center: Project Name */}
-					
-					{/* Center: Phantom Prompt Trigger */}
-					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-						<button
-							onClick={() => setShowCommandPalette(true)}
-							className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/10 hover:shadow-[0_4px_20px_rgba(255,255,255,0.05)] transition-all duration-300 group cursor-pointer"
+					{/* Ultra-Compact Floating Toolbar Pill (z-50) */}
+					<div
+						className={`relative mx-4 mt-4 h-14 flex-shrink-0 bg-white/[0.03] backdrop-blur-[60px] border border-white/[0.08] rounded-2xl flex items-center justify-between px-6 z-50 pl-[80px] transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none -translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
+						style={
+							{
+								WebkitAppRegion: "drag",
+								background: "rgba(255,255,255,0.03)",
+								border: "1px solid rgba(255,255,255,0.05)",
+								boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+							} as React.CSSProperties
+						}
+					>
+						{/* Left: Logo + Undo/Redo + Project Name */}
+						<div
+							className="flex items-center gap-2"
 							style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 						>
-							<Search className="w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors" />
-							<span className="text-[12px] font-medium text-white/30 group-hover:text-white/60 tracking-wide transition-colors">Ask AI or search commands...</span>
-							<kbd className="ml-4 text-[10px] font-mono font-semibold text-white/40 bg-white/[0.04] px-2 py-1 rounded border border-white/5 shadow-inner">⌘K</kbd>
-						</button>
-					</div>
-	
+							<div className="flex items-center gap-1.5 select-none">
+								<div className="relative w-4 h-4">
+									<div
+										className="absolute inset-0 rounded-[3px] border border-white/[0.06]"
+										style={{ transform: "rotate(5deg)" }}
+									/>
+									<div
+										className="absolute inset-[2px] rounded-[2.5px] border border-white/[0.12]"
+										style={{ transform: "rotate(-5deg)" }}
+									/>
+									<div
+										className="absolute inset-[4px] rounded-[2px] bg-[#E0000F]"
+										style={{ transform: "rotate(20deg)" }}
+									/>
+								</div>
+								<span className="text-[15px] font-semibold tracking-tight text-white/90">
+									Klipt
+								</span>
+							</div>
 
-					{/* Right: Actions + Export */}
-					<div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-						<LanguageSwitcher />
+							<Separator orientation="vertical" className="h-3 bg-white/[0.08]" />
 
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									onClick={() => void openRecordingsFolder()}
-									className="h-6 w-6 flex items-center justify-center rounded-md text-white/20 hover:text-white/50 transition-colors"
-								>
-									<FolderOpen className="h-3 w-3" />
-								</button>
-							</TooltipTrigger>
-							<TooltipContent side="bottom" className="bg-[#1a1a1e] border-white/10 text-white/70 text-xs">
-								{t("common.app.manageRecordings", "Open recordings folder")}
-							</TooltipContent>
-						</Tooltip>
+							<div className="flex items-center gap-0.5">
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											onClick={handleUndo}
+											disabled={historyPastRef.current.length === 0}
+											className="h-8 w-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors cursor-pointer"
+										>
+											<Undo2 className="w-3 h-3" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent
+										side="bottom"
+										className="bg-[#1a1a1e] border-white/10 text-white/70 text-xs"
+									>
+										Undo ({isMac ? "\u2318" : "Ctrl"}+Z)
+									</TooltipContent>
+								</Tooltip>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											onClick={handleRedo}
+											disabled={historyFutureRef.current.length === 0}
+											className="h-8 w-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-colors cursor-pointer"
+										>
+											<Redo2 className="w-3 h-3" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent
+										side="bottom"
+										className="bg-[#1a1a1e] border-white/10 text-white/70 text-xs"
+									>
+										Redo ({isMac ? "\u2318" : "Ctrl"}+Shift+Z)
+									</TooltipContent>
+								</Tooltip>
+							</div>
 
-						<button
-							type="button"
-							onClick={() => {
-								if (exportedFilePath) {
-									void navigator.clipboard.writeText(exportedFilePath);
-									toast.success("Path copied!");
-								} else {
-									toast.info("Export a video first");
-								}
-							}}
-							className="h-6 px-2 rounded-md flex items-center gap-1 text-white/20 hover:text-white/50 transition-colors text-[9px] font-medium"
-						>
-							<Share className="w-4 h-4" />
-							Share
-						</button>
-
-						<div className="flex items-center">
-							<button
-								type="button"
-								onClick={handleOpenExportDialog}
-								disabled={isExporting}
-								className="h-9 px-5 flex items-center gap-2 rounded-l-lg text-white text-[13px] font-bold hover:brightness-110 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-								style={{ background: "linear-gradient(135deg, #E0000F, #FF4500)" }}
+							<Separator orientation="vertical" className="h-3 bg-white/[0.08] ml-2 mr-1" />
+							<div
+								className=" flex items-center gap-1.5"
+								style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 							>
-								<Download className="w-4 h-4" />
-								Export {exportFormat === "gif" ? "GIF" : "MP4"}
-							</button>
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
+								{isEditingProjectName ? (
+									<input
+										autoFocus
+										type="text"
+										value={projectName}
+										onChange={(e) => setProjectName(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												setIsEditingProjectName(false);
+											}
+											if (e.key === "Escape") {
+												setIsEditingProjectName(false);
+											}
+										}}
+										onBlur={() => setIsEditingProjectName(false)}
+										className="text-[9px] text-white/80 bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none focus:border-[#E0000F]/50 w-[120px]"
+									/>
+								) : (
 									<button
 										type="button"
-										disabled={isExporting}
-										className="h-9 px-2 flex items-center rounded-r-lg text-white border-l border-white/20 hover:brightness-110 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-										style={{ background: "linear-gradient(135deg, #C0000D, #E03D00)" }}
+										onClick={() => setIsEditingProjectName(true)}
+										className="text-[9px] text-white/40 hover:text-white/70 transition-colors cursor-text"
+										title="Click to rename project"
 									>
-										<ChevronDown className="w-4 h-4" />
+										{projectName || "Untitled Project"}
 									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="bg-[#1a1a1e] border-white/10 min-w-[140px]">
-									<DropdownMenuItem
-										className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
-										onSelect={() => {
-											if (exportFormat === "mp4") {
-												handleOpenExportDialog();
-											} else {
-												pendingExportFormatRef.current = true;
-												setExportFormat("mp4");
-											}
-										}}
-									>
-										<Download className="w-3 h-3 mr-2" />
-										Export as MP4
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
-										onSelect={() => {
-											if (exportFormat === "gif") {
-												handleOpenExportDialog();
-											} else {
-												pendingExportFormatRef.current = true;
-												setExportFormat("gif");
-											}
-										}}
-									>
-										<Download className="w-3 h-3 mr-2" />
-										Export as GIF
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+								)}
+								{hasUnsavedChanges && (
+									<div className="w-[6px] h-[6px] rounded-full bg-[#E0000F] flex-shrink-0" />
+								)}
+							</div>
 						</div>
-					</div>
-				</div>
 
-				{/* Main content area (z-10) */}
-				<PanelGroup direction="horizontal" className={`flex-1 min-h-0 relative z-10 px-6 pb-6 pt-[80px] gap-6 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "scale-[1.02]" : "scale-100"}`}>
-					
-					{/* Left panel: Video + Timeline */}
-					<Panel defaultSize={75} minSize={50} className="flex flex-col">
-						<PanelGroup direction="vertical" className="h-full gap-4">
-							
-							{/* Video Panel */}
-							<Panel defaultSize={75} minSize={30}>
-								<div className="w-full h-full flex flex-col items-center justify-center relative p-4">
-									{/* Video preview */}
-									<div
-										className="w-full flex justify-center items-center relative z-10"
-										style={STYLE_PREVIEW_CONTAINER}
+						{/* Center: Project Name */}
+
+						{/* Center: Phantom Prompt Trigger */}
+						<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+							<button
+								onClick={() => setShowCommandPalette(true)}
+								className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/10 hover:shadow-[0_4px_20px_rgba(255,255,255,0.05)] transition-all duration-300 group cursor-pointer"
+								style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+							>
+								<Search className="w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors" />
+								<span className="text-[12px] font-medium text-white/30 group-hover:text-white/60 tracking-wide transition-colors">
+									Ask AI or search commands...
+								</span>
+								<kbd className="ml-4 text-[10px] font-mono font-semibold text-white/40 bg-white/[0.04] px-2 py-1 rounded border border-white/5 shadow-inner">
+									⌘K
+								</kbd>
+							</button>
+						</div>
+
+						{/* Right: Actions + Export */}
+						<div
+							className="flex items-center gap-2"
+							style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+						>
+							<LanguageSwitcher />
+
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={() => void openRecordingsFolder()}
+										className="h-6 w-6 flex items-center justify-center rounded-md text-white/20 hover:text-white/50 transition-colors"
 									>
-										{/* AUDIO-REACTIVE AMBILIGHT (LIVING CANVAS) */}
-										<canvas
-											ref={ambilightCanvasRef}
-											className="absolute pointer-events-none transition-all duration-75"
-											style={{
-												width: "120%",
-												height: "120%",
-												top: "-10%",
-												left: "-10%",
-												filter: "blur(100px) saturate(1.5)",
-												opacity: 0.5,
-												transform: "scale(1.1)",
-												zIndex: 0,
-												display: ambilightEnabled ? "block" : "none",
-											}}
-										/>
-										<div
-											className="relative rounded-2xl"
-											style={{
-												width: "auto",
-												height: "100%",
-												aspectRatio: getAspectRatioValue(
-													aspectRatio,
-													(() => {
-														const previewVideo = videoPlaybackRef.current?.video;
-														if (previewVideo && previewVideo.videoHeight > 0) {
-															return previewVideo.videoWidth / previewVideo.videoHeight;
-														}
-														return 16 / 9;
-													})(),
-												),
-												maxWidth: "100%",
-												margin: "0 auto",
-												boxSizing: "border-box",
-												border: "1px solid rgba(255,255,255,0.04)",
-												boxShadow: "0 25px 80px rgba(0,0,0,0.7), 0 8px 20px rgba(0,0,0,0.4)",
+										<FolderOpen className="h-3 w-3" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent
+									side="bottom"
+									className="bg-[#1a1a1e] border-white/10 text-white/70 text-xs"
+								>
+									{t("common.app.manageRecordings", "Open recordings folder")}
+								</TooltipContent>
+							</Tooltip>
+
+							<button
+								type="button"
+								onClick={() => {
+									if (exportedFilePath) {
+										void navigator.clipboard.writeText(exportedFilePath);
+										toast.success("Path copied!");
+									} else {
+										toast.info("Export a video first");
+									}
+								}}
+								className="h-6 px-2 rounded-md flex items-center gap-1 text-white/20 hover:text-white/50 transition-colors text-[9px] font-medium"
+							>
+								<Share className="w-4 h-4" />
+								Share
+							</button>
+
+							<div className="flex items-center">
+								<button
+									type="button"
+									onClick={handleOpenExportDialog}
+									disabled={isExporting}
+									className="h-9 px-5 flex items-center gap-2 rounded-l-lg text-white text-[13px] font-bold hover:brightness-110 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+									style={{ background: "linear-gradient(135deg, #E0000F, #FF4500)" }}
+								>
+									<Download className="w-4 h-4" />
+									Export {exportFormat === "gif" ? "GIF" : "MP4"}
+								</button>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											type="button"
+											disabled={isExporting}
+											className="h-9 px-2 flex items-center rounded-r-lg text-white border-l border-white/20 hover:brightness-110 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+											style={{ background: "linear-gradient(135deg, #C0000D, #E03D00)" }}
+										>
+											<ChevronDown className="w-4 h-4" />
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent
+										align="end"
+										className="bg-[#1a1a1e] border-white/10 min-w-[140px]"
+									>
+										<DropdownMenuItem
+											className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
+											onSelect={() => {
+												if (exportFormat === "mp4") {
+													handleOpenExportDialog();
+												} else {
+													pendingExportFormatRef.current = true;
+													setExportFormat("mp4");
+												}
 											}}
 										>
-											<VideoPlayback
-												key={videoPath || "no-video"}
-												aspectRatio={aspectRatio}
-												ref={videoPlaybackRef}
-												videoPath={videoPath || ""}
-												onDurationChange={setDuration}
-												onTimeUpdate={setCurrentTime}
-												currentTime={currentTime}
-												onPlayStateChange={setIsPlaying}
-												onError={setError}
-												wallpaper={wallpaper}
-												zoomRegions={effectiveZoomRegions}
-												selectedZoomId={selectedZoomId}
-												onSelectZoom={handleSelectZoom}
-												onZoomFocusChange={handleZoomFocusChange}
-												isPlaying={isPlaying}
-												showShadow={shadowIntensity > 0}
-												shadowIntensity={shadowIntensity}
-												backgroundBlur={backgroundBlur}
-												zoomMotionBlur={zoomMotionBlur}
-												connectZooms={connectZooms}
-												borderRadius={borderRadius}
-												padding={padding}
-												cropRegion={cropRegion}
-												trimRegions={trimRegions}
-												speedRegions={speedRegions}
-												annotationRegions={annotationRegions}
-												selectedAnnotationId={selectedAnnotationId}
-												onSelectAnnotation={handleSelectAnnotation}
-												onAnnotationPositionChange={handleAnnotationPositionChange}
-												onAnnotationSizeChange={handleAnnotationSizeChange}
-												cursorTelemetry={effectiveCursorTelemetry}
-												showCursor={showCursor}
-												cursorSize={cursorSize}
-												cursorSmoothing={cursorSmoothing}
-												cursorMotionBlur={cursorMotionBlur}
-												cursorClickBounce={cursorClickBounce}
-												cursorSway={cursorSway}
-												webcamPath={webcamPath}
-												webcamVisible={webcamVisible}
-												webcamShape={webcamShape}
-												webcamSize={webcamSize}
-												webcamOpacity={webcamOpacity}
-												webcamBorderColor={webcamBorderColor}
-												webcamBorderWidth={webcamBorderWidth}
-												webcamShadow={webcamShadow}
-												webcamPosition={webcamPosition}
-												onWebcamPositionChange={setWebcamPosition}
-												captionCues={translatedCaptionCues ?? captionCues}
-												captionSettings={captionSettings}
+											<Download className="w-3 h-3 mr-2" />
+											Export as MP4
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											className="text-xs text-white/80 hover:text-white focus:bg-white/10 focus:text-white cursor-pointer"
+											onSelect={() => {
+												if (exportFormat === "gif") {
+													handleOpenExportDialog();
+												} else {
+													pendingExportFormatRef.current = true;
+													setExportFormat("gif");
+												}
+											}}
+										>
+											<Download className="w-3 h-3 mr-2" />
+											Export as GIF
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</div>
+						</div>
+					</div>
+
+					{/* Main content area (z-10) */}
+					<PanelGroup
+						direction="horizontal"
+						className={`flex-1 min-h-0 relative z-10 px-6 pb-6 pt-[80px] gap-6 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "scale-[1.02]" : "scale-100"}`}
+					>
+						{/* Left panel: Video + Timeline */}
+						<Panel defaultSize={75} minSize={50} className="flex flex-col">
+							<PanelGroup direction="vertical" className="h-full gap-4">
+								{/* Video Panel */}
+								<Panel defaultSize={75} minSize={30}>
+									<div className="w-full h-full flex flex-col items-center justify-center relative p-4">
+										{/* Video preview */}
+										<div
+											className="w-full flex justify-center items-center relative z-10"
+											style={STYLE_PREVIEW_CONTAINER}
+										>
+											{/* AUDIO-REACTIVE AMBILIGHT (LIVING CANVAS) */}
+											<canvas
+												ref={ambilightCanvasRef}
+												className="absolute pointer-events-none transition-all duration-75"
+												style={{
+													width: "120%",
+													height: "120%",
+													top: "-10%",
+													left: "-10%",
+													filter: "blur(100px) saturate(1.5)",
+													opacity: 0.5,
+													transform: "scale(1.1)",
+													zIndex: 0,
+													display: ambilightEnabled ? "block" : "none",
+												}}
 											/>
+											<div
+												className="relative rounded-2xl"
+												style={{
+													width: "auto",
+													height: "100%",
+													aspectRatio: getAspectRatioValue(
+														aspectRatio,
+														(() => {
+															const previewVideo = videoPlaybackRef.current?.video;
+															if (previewVideo && previewVideo.videoHeight > 0) {
+																return previewVideo.videoWidth / previewVideo.videoHeight;
+															}
+															return 16 / 9;
+														})(),
+													),
+													maxWidth: "100%",
+													margin: "0 auto",
+													boxSizing: "border-box",
+													border: "1px solid rgba(255,255,255,0.04)",
+													boxShadow: "0 25px 80px rgba(0,0,0,0.7), 0 8px 20px rgba(0,0,0,0.4)",
+												}}
+											>
+												<VideoPlayback
+													key={videoPath || "no-video"}
+													aspectRatio={aspectRatio}
+													ref={videoPlaybackRef}
+													videoPath={videoPath || ""}
+													onDurationChange={setDuration}
+													onTimeUpdate={setCurrentTime}
+													currentTime={currentTime}
+													onPlayStateChange={setIsPlaying}
+													onError={setError}
+													wallpaper={wallpaper}
+													zoomRegions={effectiveZoomRegions}
+													selectedZoomId={selectedZoomId}
+													onSelectZoom={handleSelectZoom}
+													onZoomFocusChange={handleZoomFocusChange}
+													isPlaying={isPlaying}
+													showShadow={shadowIntensity > 0}
+													shadowIntensity={shadowIntensity}
+													backgroundBlur={backgroundBlur}
+													zoomMotionBlur={zoomMotionBlur}
+													connectZooms={connectZooms}
+													borderRadius={borderRadius}
+													padding={padding}
+													cropRegion={cropRegion}
+													trimRegions={trimRegions}
+													speedRegions={speedRegions}
+													annotationRegions={annotationRegions}
+													selectedAnnotationId={selectedAnnotationId}
+													onSelectAnnotation={handleSelectAnnotation}
+													onAnnotationPositionChange={handleAnnotationPositionChange}
+													onAnnotationSizeChange={handleAnnotationSizeChange}
+													cursorTelemetry={effectiveCursorTelemetry}
+													showCursor={showCursor}
+													cursorSize={cursorSize}
+													cursorSmoothing={cursorSmoothing}
+													cursorMotionBlur={cursorMotionBlur}
+													cursorClickBounce={cursorClickBounce}
+													cursorSway={cursorSway}
+													webcamPath={webcamPath}
+													webcamVisible={webcamVisible}
+													webcamShape={webcamShape}
+													webcamSize={webcamSize}
+													webcamOpacity={webcamOpacity}
+													webcamBorderColor={webcamBorderColor}
+													webcamBorderWidth={webcamBorderWidth}
+													webcamShadow={webcamShadow}
+													webcamPosition={webcamPosition}
+													onWebcamPositionChange={setWebcamPosition}
+													captionCues={translatedCaptionCues ?? captionCues}
+													captionSettings={captionSettings}
+												/>
+											</div>
+										</div>
+										{/* Playback controls */}
+										<div
+											className={`w-full flex justify-center items-center relative z-10 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
+											style={STYLE_PLAYBACK_CONTROLS_WRAPPER}
+										>
+											<div style={STYLE_PLAYBACK_CONTROLS_INNER}>
+												<PlaybackControls
+													isPlaying={isPlaying}
+													currentTime={currentTime}
+													duration={duration}
+													onTogglePlayPause={togglePlayPause}
+													onSeek={handleSeek}
+												/>
+											</div>
 										</div>
 									</div>
-									{/* Playback controls */}
+								</Panel>
+
+								{/* Horizontal resize handle */}
+								<PanelResizeHandle
+									className={`h-4 flex items-center justify-center cursor-row-resize group my-1 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+								>
+									<div className="w-12 h-1.5 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
+								</PanelResizeHandle>
+
+								{/* Timeline Panel */}
+								<Panel
+									defaultSize={25}
+									minSize={15}
+									className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-y-8 blur-md pointer-events-none" : "opacity-100 translate-y-0 blur-0"}`}
+								>
 									<div
-										className={`w-full flex justify-center items-center relative z-10 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 blur-sm pointer-events-none translate-y-4" : "opacity-100 blur-0 translate-y-0"}`}
-										style={STYLE_PLAYBACK_CONTROLS_WRAPPER}
+										className="h-full min-h-0 rounded-[24px] overflow-hidden flex flex-col relative transition-all"
+										style={{
+											background: "rgba(255,255,255,0.02)",
+											border: "1px solid rgba(255,255,255,0.05)",
+											boxShadow: "0 -4px 20px rgba(0,0,0,0.3)",
+										}}
 									>
-										<div style={STYLE_PLAYBACK_CONTROLS_INNER}>
-											<PlaybackControls
-												isPlaying={isPlaying}
-												currentTime={currentTime}
-												duration={duration}
-												onTogglePlayPause={togglePlayPause}
-												onSeek={handleSeek}
-											/>
-										</div>
+										<TimelineEditor
+											videoDuration={duration}
+											currentTime={currentTime}
+											onSeek={handleSeek}
+											cursorTelemetry={effectiveCursorTelemetry}
+											zoomRegions={effectiveZoomRegions}
+											onZoomAdded={handleZoomAdded}
+											onZoomSuggested={handleZoomSuggested}
+											onZoomSpanChange={handleZoomSpanChange}
+											onZoomDelete={handleZoomDelete}
+											selectedZoomId={selectedZoomId}
+											onSelectZoom={handleSelectZoom}
+											trimRegions={trimRegions}
+											onTrimAdded={handleTrimAdded}
+											onTrimSpanChange={handleTrimSpanChange}
+											onTrimDelete={handleTrimDelete}
+											selectedTrimId={selectedTrimId}
+											onSelectTrim={handleSelectTrim}
+											cuttingRoomFloor={cuttingRoomFloor}
+											onRestoreFromFloor={handleRestoreFromFloor}
+											speedRegions={speedRegions}
+											onSpeedAdded={handleSpeedAdded}
+											onSpeedSpanChange={handleSpeedSpanChange}
+											onSpeedDelete={handleSpeedDelete}
+											selectedSpeedId={selectedSpeedId}
+											onSelectSpeed={handleSelectSpeed}
+											audioRegions={audioRegions}
+											onAudioAdded={handleAudioAdded}
+											onAudioSpanChange={handleAudioSpanChange}
+											onAudioDelete={handleAudioDelete}
+											onAudioVolumeChange={handleAudioVolumeChange}
+											onAudioFadeChange={handleAudioFadeChange}
+											selectedAudioId={selectedAudioId}
+											onSelectAudio={handleSelectAudio}
+											soundEffectRegions={soundEffectRegions}
+											onSfxSpanChange={(id, span) => {
+												setSoundEffectRegions((prev) =>
+													prev.map((r) =>
+														r.id === id
+															? {
+																	...r,
+																	startMs: Math.round(span.start),
+																	endMs: Math.round(span.end),
+																}
+															: r,
+													),
+												);
+											}}
+											onSfxDelete={(id) => {
+												setSoundEffectRegions((prev) => prev.filter((r) => r.id !== id));
+											}}
+											transitionRegions={transitionRegions}
+											onTransitionDelete={(id) => {
+												setTransitionRegions((prev) => prev.filter((r) => r.id !== id));
+											}}
+											annotationRegions={annotationRegions}
+											onAnnotationAdded={handleAnnotationAdded}
+											onAnnotationSpanChange={handleAnnotationSpanChange}
+											onAnnotationDelete={handleAnnotationDelete}
+											selectedAnnotationId={selectedAnnotationId}
+											onSelectAnnotation={handleSelectAnnotation}
+											aspectRatio={aspectRatio}
+											onAspectRatioChange={setAspectRatio}
+											workspaceNotes={workspaceNotes}
+											timelineComments={timelineComments}
+										/>
 									</div>
-								</div>
-							</Panel>
+								</Panel>
+							</PanelGroup>
+						</Panel>
 
-							{/* Horizontal resize handle */}
-							<PanelResizeHandle className={`h-4 flex items-center justify-center cursor-row-resize group my-1 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-								<div className="w-12 h-1.5 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
-							</PanelResizeHandle>
-
-							{/* Timeline Panel */}
-							<Panel defaultSize={25} minSize={15} className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-y-8 blur-md pointer-events-none" : "opacity-100 translate-y-0 blur-0"}`}>
-								<div
-							className="h-full min-h-0 rounded-[24px] overflow-hidden flex flex-col relative transition-all"
-							style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 -4px 20px rgba(0,0,0,0.3)" }}
+						<PanelResizeHandle
+							className={`w-4 flex items-center justify-center cursor-col-resize group mx-1 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}
 						>
-							<TimelineEditor
-								videoDuration={duration}
-								currentTime={currentTime}
-								onSeek={handleSeek}
-								cursorTelemetry={effectiveCursorTelemetry}
-								zoomRegions={effectiveZoomRegions}
-								onZoomAdded={handleZoomAdded}
-								onZoomSuggested={handleZoomSuggested}
-								onAutoZoomFace={handleAutoZoomFace}
-								onZoomSpanChange={handleZoomSpanChange}
-								onZoomDelete={handleZoomDelete}
-								selectedZoomId={selectedZoomId}
-								onSelectZoom={handleSelectZoom}
-								trimRegions={trimRegions}
-								onTrimAdded={handleTrimAdded}
-								onTrimSpanChange={handleTrimSpanChange}
-								onTrimDelete={handleTrimDelete}
-								selectedTrimId={selectedTrimId}
-								onSelectTrim={handleSelectTrim}
-								cuttingRoomFloor={cuttingRoomFloor}
-								onRestoreFromFloor={handleRestoreFromFloor}
-								speedRegions={speedRegions}
-								onSpeedAdded={handleSpeedAdded}
-								onSpeedSpanChange={handleSpeedSpanChange}
-								onSpeedDelete={handleSpeedDelete}
-								selectedSpeedId={selectedSpeedId}
-								onSelectSpeed={handleSelectSpeed}
-								audioRegions={audioRegions}
-								onAudioAdded={handleAudioAdded}
-								onAudioSpanChange={handleAudioSpanChange}
-								onAudioDelete={handleAudioDelete}
-								onAudioVolumeChange={handleAudioVolumeChange}
-								onAudioFadeChange={handleAudioFadeChange}
-								selectedAudioId={selectedAudioId}
-								onSelectAudio={handleSelectAudio}
-								soundEffectRegions={soundEffectRegions}
-								onSfxSpanChange={(id, span) => {
-									setSoundEffectRegions((prev) =>
-										prev.map((r) =>
-											r.id === id ? { ...r, startMs: Math.round(span.start), endMs: Math.round(span.end) } : r,
-										),
-									);
-								}}
-								onSfxDelete={(id) => {
-									setSoundEffectRegions((prev) => prev.filter((r) => r.id !== id));
-								}}
-								transitionRegions={transitionRegions}
-								onTransitionDelete={(id) => {
-									setTransitionRegions((prev) => prev.filter((r) => r.id !== id));
-								}}
-								annotationRegions={annotationRegions}
-								onAnnotationAdded={handleAnnotationAdded}
-								onAnnotationSpanChange={handleAnnotationSpanChange}
-								onAnnotationDelete={handleAnnotationDelete}
-								selectedAnnotationId={selectedAnnotationId}
-								onSelectAnnotation={handleSelectAnnotation}
-								aspectRatio={aspectRatio}
-								onAspectRatioChange={setAspectRatio}
-								workspaceNotes={workspaceNotes}
-								timelineComments={timelineComments}
-								sceneMarkers={sceneMarkers}
-								onAutoSilenceCut={handleAutoSilenceCut}
-							/>
-						</div>
-							</Panel>
+							<div className="w-1.5 h-12 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
+						</PanelResizeHandle>
 
-						</PanelGroup>
-					</Panel>
-
-					<PanelResizeHandle className={`w-4 flex items-center justify-center cursor-col-resize group mx-1 transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-						<div className="w-1.5 h-12 rounded-full bg-white/[0.04] group-hover:bg-white/[0.2] transition-colors" />
-					</PanelResizeHandle>
-
-					{/* Right panel: Settings */}
-					<Panel defaultSize={25} minSize={20} className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-x-8 blur-md pointer-events-none" : "opacity-100 translate-x-0 blur-0"}`}>
-						<div 
-							className="h-full rounded-[24px] overflow-hidden flex flex-col relative transition-all duration-500"
-							style={{
-								background: "rgba(18,18,20,0.85)",
-								backdropFilter: "blur(40px)",
-								WebkitBackdropFilter: "blur(40px)",
-								border: "1px solid rgba(255,255,255,0.08)",
-								boxShadow: "0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
-							}}
+						{/* Right panel: Settings */}
+						<Panel
+							defaultSize={25}
+							minSize={20}
+							className={`transition-[opacity,transform,filter] duration-700 ease-out will-change-[opacity,transform,filter] ${isFocusVoid ? "opacity-0 translate-x-8 blur-md pointer-events-none" : "opacity-100 translate-x-0 blur-0"}`}
 						>
-							<SettingsPanel
-										selected={wallpaper}
-										onWallpaperChange={setWallpaper}
-										selectedZoomDepth={selectedZoomDepth}
-										onZoomDepthChange={handleZoomDepthChange}
-										selectedZoomId={selectedZoomId}
-										onZoomDelete={handleZoomDelete}
-										selectedTrimId={selectedTrimId}
-										onTrimDelete={handleTrimDelete}
-										shadowIntensity={shadowIntensity}
-										onShadowChange={setShadowIntensity}
-										backgroundBlur={backgroundBlur}
-										onBackgroundBlurChange={setBackgroundBlur}
-										zoomMotionBlur={zoomMotionBlur}
-										onZoomMotionBlurChange={setZoomMotionBlur}
-										connectZooms={connectZooms}
-										onConnectZoomsChange={setConnectZooms}
-										showCursor={showCursor}
-										onShowCursorChange={setShowCursor}
-										loopCursor={loopCursor}
-										onLoopCursorChange={setLoopCursor}
-										cursorSize={cursorSize}
-										onCursorSizeChange={setCursorSize}
-										cursorSmoothing={cursorSmoothing}
-										onCursorSmoothingChange={setCursorSmoothing}
-										cursorMotionBlur={cursorMotionBlur}
-										onCursorMotionBlurChange={setCursorMotionBlur}
-										cursorClickBounce={cursorClickBounce}
-										onCursorClickBounceChange={setCursorClickBounce}
-										cursorSway={cursorSway}
-										onCursorSwayChange={setCursorSway}
-										cursorStyle={cursorStyle}
-										onCursorStyleChange={setCursorStyle}
-										borderRadius={borderRadius}
-										onBorderRadiusChange={setBorderRadius}
-										padding={padding}
-										onPaddingChange={setPadding}
-										cropRegion={cropRegion}
-										onCropChange={setCropRegion}
-										aspectRatio={aspectRatio}
-										onAspectRatioChange={setAspectRatio}
-										videoElement={videoPlaybackRef.current?.video || null}
-										exportQuality={exportQuality}
-										onExportQualityChange={setExportQuality}
-										exportFormat={exportFormat}
-										onExportFormatChange={setExportFormat}
-										gifFrameRate={gifFrameRate}
-										onGifFrameRateChange={setGifFrameRate}
-										gifLoop={gifLoop}
-										onGifLoopChange={setGifLoop}
-										gifSizePreset={gifSizePreset}
-										onGifSizePresetChange={setGifSizePreset}
-										gifOutputDimensions={gifOutputDims}
-										onExport={handleOpenExportDialog}
-										canFastExport={isFastExportAvailable}
-										onFastExport={handleFastExport}
-										selectedAnnotationId={selectedAnnotationId}
-										annotationRegions={annotationRegions}
-										onAnnotationContentChange={handleAnnotationContentChange}
-										onAnnotationTypeChange={handleAnnotationTypeChange}
-										onAnnotationStyleChange={handleAnnotationStyleChange}
-										onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
-										onAnnotationDelete={handleAnnotationDelete}
-										onSaveProject={handleSaveProject}
-										onLoadProject={() => setShowProjectBrowser(true)}
-										selectedSpeedId={selectedSpeedId}
-										selectedSpeedValue={selectedSpeedValue}
-										onSpeedChange={handleSpeedChange}
-										onSpeedDelete={handleSpeedDelete}
-										webcamPath={webcamPath}
-										webcamVisible={webcamVisible}
-										onWebcamVisibleChange={setWebcamVisible}
-										webcamShape={webcamShape}
-										onWebcamShapeChange={setWebcamShape}
-										webcamSize={webcamSize}
-										onWebcamSizeChange={setWebcamSize}
-										webcamOpacity={webcamOpacity}
-										onWebcamOpacityChange={setWebcamOpacity}
-										webcamBorderColor={webcamBorderColor}
-										onWebcamBorderColorChange={setWebcamBorderColor}
-										webcamBorderWidth={webcamBorderWidth}
-										onWebcamBorderWidthChange={setWebcamBorderWidth}
-										webcamShadow={webcamShadow}
-										onWebcamShadowChange={setWebcamShadow}
-										webcamBgMode={webcamBgMode}
-										onWebcamBgModeChange={setWebcamBgMode}
-										webcamBgBlur={webcamBgBlur}
-										onWebcamBgBlurChange={setWebcamBgBlur}
-										webcamBgColor={webcamBgColor}
-										onWebcamBgColorChange={setWebcamBgColor}
-										ambilightEnabled={ambilightEnabled}
-										onAmbilightEnabledChange={setAmbilightEnabled}
-										isExporting={isExporting}
-										videoUrl={videoPath}
-										audioEnhanced={audioEnhanced}
-										enhancedAudioUrl={enhancedAudioUrl}
-										onEnhanceAudio={handleEnhanceAudio}
-										onUndoEnhanceAudio={handleUndoEnhanceAudio}
-										captionSettings={captionSettings}
-										onCaptionSettingsChange={setCaptionSettings}
-										onGenerateCaptions={handleGenerateCaptions}
-										isTranscribing={isTranscribingCaptions}
-										transcriptionProgress={captionTranscriptionProgress}
-										transcriptionLabel={captionTranscriptionLabel}
-										onTranslateCaptions={handleTranslateCaptions}
-										isTranslating={isTranslatingCaptions}
-										translationProgress={captionTranslationProgress}
-										translatedLanguage={captionTranslationLang}
-										onGenerateDub={handleGenerateDub}
-										isDubbing={isDubbing}
-										dubbingProgress={dubbingProgress}
-										dubbedAudioPath={dubbedAudioPath}
-										useDubbedAudio={useDubbedAudio}
-										onUseDubbedAudioChange={setUseDubbedAudio}
-									/>
-						</div>
-					</Panel>
+							<div
+								className="h-full rounded-[24px] overflow-hidden flex flex-col relative transition-all duration-500"
+								style={{
+									background: "rgba(18,18,20,0.85)",
+									backdropFilter: "blur(40px)",
+									WebkitBackdropFilter: "blur(40px)",
+									border: "1px solid rgba(255,255,255,0.08)",
+									boxShadow: "0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
+								}}
+							>
+								<SettingsPanel
+									selected={wallpaper}
+									onWallpaperChange={setWallpaper}
+									selectedZoomDepth={selectedZoomDepth}
+									onZoomDepthChange={handleZoomDepthChange}
+									selectedZoomId={selectedZoomId}
+									onZoomDelete={handleZoomDelete}
+									selectedTrimId={selectedTrimId}
+									onTrimDelete={handleTrimDelete}
+									shadowIntensity={shadowIntensity}
+									onShadowChange={setShadowIntensity}
+									backgroundBlur={backgroundBlur}
+									onBackgroundBlurChange={setBackgroundBlur}
+									zoomMotionBlur={zoomMotionBlur}
+									onZoomMotionBlurChange={setZoomMotionBlur}
+									connectZooms={connectZooms}
+									onConnectZoomsChange={setConnectZooms}
+									showCursor={showCursor}
+									onShowCursorChange={setShowCursor}
+									loopCursor={loopCursor}
+									onLoopCursorChange={setLoopCursor}
+									cursorSize={cursorSize}
+									onCursorSizeChange={setCursorSize}
+									cursorSmoothing={cursorSmoothing}
+									onCursorSmoothingChange={setCursorSmoothing}
+									cursorMotionBlur={cursorMotionBlur}
+									onCursorMotionBlurChange={setCursorMotionBlur}
+									cursorClickBounce={cursorClickBounce}
+									onCursorClickBounceChange={setCursorClickBounce}
+									cursorSway={cursorSway}
+									onCursorSwayChange={setCursorSway}
+									cursorStyle={cursorStyle}
+									onCursorStyleChange={setCursorStyle}
+									borderRadius={borderRadius}
+									onBorderRadiusChange={setBorderRadius}
+									padding={padding}
+									onPaddingChange={setPadding}
+									cropRegion={cropRegion}
+									onCropChange={setCropRegion}
+									aspectRatio={aspectRatio}
+									onAspectRatioChange={setAspectRatio}
+									videoElement={videoPlaybackRef.current?.video || null}
+									exportQuality={exportQuality}
+									onExportQualityChange={setExportQuality}
+									exportFormat={exportFormat}
+									onExportFormatChange={setExportFormat}
+									gifFrameRate={gifFrameRate}
+									onGifFrameRateChange={setGifFrameRate}
+									gifLoop={gifLoop}
+									onGifLoopChange={setGifLoop}
+									gifSizePreset={gifSizePreset}
+									onGifSizePresetChange={setGifSizePreset}
+									gifOutputDimensions={gifOutputDims}
+									onExport={handleOpenExportDialog}
+									canFastExport={isFastExportAvailable}
+									onFastExport={handleFastExport}
+									selectedAnnotationId={selectedAnnotationId}
+									annotationRegions={annotationRegions}
+									onAnnotationContentChange={handleAnnotationContentChange}
+									onAnnotationTypeChange={handleAnnotationTypeChange}
+									onAnnotationStyleChange={handleAnnotationStyleChange}
+									onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+									onAnnotationDelete={handleAnnotationDelete}
+									onSaveProject={handleSaveProject}
+									onLoadProject={() => setShowProjectBrowser(true)}
+									selectedSpeedId={selectedSpeedId}
+									selectedSpeedValue={selectedSpeedValue}
+									onSpeedChange={handleSpeedChange}
+									onSpeedDelete={handleSpeedDelete}
+									webcamPath={webcamPath}
+									webcamVisible={webcamVisible}
+									onWebcamVisibleChange={setWebcamVisible}
+									webcamShape={webcamShape}
+									onWebcamShapeChange={setWebcamShape}
+									webcamSize={webcamSize}
+									onWebcamSizeChange={setWebcamSize}
+									webcamOpacity={webcamOpacity}
+									onWebcamOpacityChange={setWebcamOpacity}
+									webcamBorderColor={webcamBorderColor}
+									onWebcamBorderColorChange={setWebcamBorderColor}
+									webcamBorderWidth={webcamBorderWidth}
+									onWebcamBorderWidthChange={setWebcamBorderWidth}
+									webcamShadow={webcamShadow}
+									onWebcamShadowChange={setWebcamShadow}
+									webcamBgMode={webcamBgMode}
+									onWebcamBgModeChange={setWebcamBgMode}
+									webcamBgBlur={webcamBgBlur}
+									onWebcamBgBlurChange={setWebcamBgBlur}
+									webcamBgColor={webcamBgColor}
+									onWebcamBgColorChange={setWebcamBgColor}
+									ambilightEnabled={ambilightEnabled}
+									onAmbilightEnabledChange={setAmbilightEnabled}
+									isExporting={isExporting}
+									videoUrl={videoPath}
+									audioEnhanced={audioEnhanced}
+									enhancedAudioUrl={enhancedAudioUrl}
+									onEnhanceAudio={handleEnhanceAudio}
+									onUndoEnhanceAudio={handleUndoEnhanceAudio}
+									captionSettings={captionSettings}
+									onCaptionSettingsChange={setCaptionSettings}
+									onGenerateCaptions={handleGenerateCaptions}
+									isTranscribing={isTranscribingCaptions}
+									transcriptionProgress={captionTranscriptionProgress}
+									transcriptionLabel={captionTranscriptionLabel}
+									onTranslateCaptions={handleTranslateCaptions}
+									isTranslating={isTranslatingCaptions}
+									translationProgress={captionTranslationProgress}
+									translatedLanguage={captionTranslationLang}
+									onGenerateDub={handleGenerateDub}
+									isDubbing={isDubbing}
+									dubbingProgress={dubbingProgress}
+									dubbedAudioPath={dubbedAudioPath}
+									useDubbedAudio={useDubbedAudio}
+									onUseDubbedAudioChange={setUseDubbedAudio}
+									faceBlurRegions={faceBlurRegions}
+									onDetectFaces={handleDetectFaces}
+									isDetectingFaces={isDetectingFaces}
+									faceDetectionProgress={faceDetectionProgress}
+									onFaceBlurToggle={handleFaceBlurToggle}
+									onFaceBlurStyleChange={handleFaceBlurStyleChange}
+									onFaceBlurDelete={handleFaceBlurDelete}
+									colorCorrectionProfile={colorCorrectionProfile}
+									onColorCorrect={handleColorCorrect}
+									onRevertColorCorrection={handleRevertColorCorrection}
+									isColorCorrecting={isColorCorrecting}
+								/>
+							</div>
+						</Panel>
+					</PanelGroup>
 
-				</PanelGroup>
+					{/* Overlays */}
+					<ExportDialog
+						isOpen={showExportDialog}
+						onClose={handleExportDialogClose}
+						progress={exportProgress}
+						isExporting={isExporting}
+						error={exportError}
+						onCancel={handleCancelExport}
+						onRetrySave={handleRetrySaveExport}
+						canRetrySave={hasPendingExportSave}
+						exportFormat={exportFormat}
+						exportedFilePath={exportedFilePath}
+					/>
 
-				{/* Overlays */}
-				<ExportDialog
-					isOpen={showExportDialog}
-					onClose={handleExportDialogClose}
-					progress={exportProgress}
-					isExporting={isExporting}
-					error={exportError}
-					onCancel={handleCancelExport}
-					onRetrySave={handleRetrySaveExport}
-					canRetrySave={hasPendingExportSave}
-					exportFormat={exportFormat}
-					exportedFilePath={exportedFilePath}
-				/>
-
-				<CommandPalette
-					open={showCommandPalette}
-					onClose={() => setShowCommandPalette(false)}
-					onExportMp4={() => {
-						setExportFormat("mp4");
-						handleOpenExportDialog();
-					}}
-					onExportGif={() => {
-						setExportFormat("gif");
-						handleOpenExportDialog();
-					}}
-					onAddZoomRegion={() => {
-						const startMs = currentTime * 1000;
-						const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
-						handleZoomAdded({ start: startMs, end: startMs + regionDuration });
-					}}
-					onAddTrimRegion={() => {
-						const startMs = currentTime * 1000;
-						const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
-						handleTrimAdded({ start: startMs, end: startMs + regionDuration });
-					}}
-					onAddSpeedRegion={() => {
-						const startMs = currentTime * 1000;
-						const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
-						handleSpeedAdded({ start: startMs, end: startMs + regionDuration });
-					}}
-					onAddAnnotation={() => {
-						const startMs = currentTime * 1000;
-						const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
-						handleAnnotationAdded({ start: startMs, end: startMs + regionDuration });
-					}}
-					onPlayPause={() => {
-						const playback = videoPlaybackRef.current;
-						if (playback?.video) {
-							if (playback.video.paused) {
-								playback.play().catch(console.error);
-							} else {
-								playback.pause();
+					<CommandPalette
+						open={showCommandPalette}
+						onClose={() => setShowCommandPalette(false)}
+						onExportMp4={() => {
+							setExportFormat("mp4");
+							handleOpenExportDialog();
+						}}
+						onExportGif={() => {
+							setExportFormat("gif");
+							handleOpenExportDialog();
+						}}
+						onAddZoomRegion={() => {
+							const startMs = currentTime * 1000;
+							const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
+							handleZoomAdded({ start: startMs, end: startMs + regionDuration });
+						}}
+						onAddTrimRegion={() => {
+							const startMs = currentTime * 1000;
+							const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
+							handleTrimAdded({ start: startMs, end: startMs + regionDuration });
+						}}
+						onAddSpeedRegion={() => {
+							const startMs = currentTime * 1000;
+							const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
+							handleSpeedAdded({ start: startMs, end: startMs + regionDuration });
+						}}
+						onAddAnnotation={() => {
+							const startMs = currentTime * 1000;
+							const regionDuration = Math.min(2000, (duration - currentTime) * 1000);
+							handleAnnotationAdded({ start: startMs, end: startMs + regionDuration });
+						}}
+						onPlayPause={() => {
+							const playback = videoPlaybackRef.current;
+							if (playback?.video) {
+								if (playback.video.paused) {
+									playback.play().catch(console.error);
+								} else {
+									playback.pause();
+								}
 							}
-						}
-					}}
-					onUndo={handleUndo}
-					onRedo={handleRedo}
-					onEnhanceAudio={() => {
-						toast.info("Open the Settings panel to enhance audio.");
-					}}
-					onGenerateThumbnails={() => {
-						toast.info("Open the Settings panel to generate thumbnails.");
-					}}
-					onSaveProject={() => void handleSaveProject()}
-					onLoadProject={() => void handleLoadProject()}
-					onOpenRecordingsFolder={() => void openRecordingsFolder()}
-				/>
+						}}
+						onUndo={handleUndo}
+						onRedo={handleRedo}
+						onEnhanceAudio={() => {
+							toast.info("Open the Settings panel to enhance audio.");
+						}}
+						onGenerateThumbnails={() => {
+							toast.info("Open the Settings panel to generate thumbnails.");
+						}}
+						onSaveProject={() => void handleSaveProject()}
+						onLoadProject={() => void handleLoadProject()}
+						onOpenRecordingsFolder={() => void openRecordingsFolder()}
+					/>
 
-				<ProjectBrowserDialog
-					isOpen={showProjectBrowser}
-					onClose={() => setShowProjectBrowser(false)}
-					onOpenProject={async (path: string) => {
-						try {
-							const result = await window.electronAPI.openSpecificProject(path);
-							if (!result.success) {
-								toast.error(result.message || "Failed to load project");
-								return;
+					<ProjectBrowserDialog
+						isOpen={showProjectBrowser}
+						onClose={() => setShowProjectBrowser(false)}
+						onOpenProject={async (path: string) => {
+							try {
+								const result = await window.electronAPI.openSpecificProject(path);
+								if (!result.success) {
+									toast.error(result.message || "Failed to load project");
+									return;
+								}
+								const restored = await applyLoadedProject(result.project, result.path ?? path);
+								if (!restored) {
+									toast.error("Invalid project file format");
+									return;
+								}
+								toast.success(`Project loaded from ${result.path ?? path}`);
+							} catch (err) {
+								console.error("Failed to open project:", err);
+								toast.error("Failed to open project");
 							}
-							const restored = await applyLoadedProject(result.project, result.path ?? path);
-							if (!restored) {
-								toast.error("Invalid project file format");
-								return;
-							}
-							toast.success(`Project loaded from ${result.path ?? path}`);
-						} catch (err) {
-							console.error("Failed to open project:", err);
-							toast.error("Failed to open project");
-						}
-					}}
-					currentProjectPath={currentProjectPath}
-				/>
+						}}
+						currentProjectPath={currentProjectPath}
+					/>
 
-				<Toaster theme="dark" className="pointer-events-auto" />
+					<Toaster theme="dark" className="pointer-events-auto" />
 				</div>
 			</div>
 		</TooltipProvider>

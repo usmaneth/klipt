@@ -249,6 +249,39 @@ export const ZOOM_DEPTH_SCALES: Record<ZoomDepth, number> = {
 	6: 5.0,
 };
 
+export type FaceBlurStyle = "gaussian" | "pixelate" | "blackbar";
+
+export interface FaceBlurRegion {
+	id: string;
+	startMs: number;
+	endMs: number;
+	x: number; // normalized 0-1
+	y: number; // normalized 0-1
+	width: number; // normalized 0-1
+	height: number; // normalized 0-1
+	blurStyle: FaceBlurStyle;
+	enabled: boolean;
+}
+
+export const FACE_BLUR_STYLE_OPTIONS: Array<{ value: FaceBlurStyle; label: string }> = [
+	{ value: "gaussian", label: "Gaussian Blur" },
+	{ value: "pixelate", label: "Pixelate" },
+	{ value: "blackbar", label: "Black Bar" },
+];
+
+export type ColorCorrectionProfile = "auto" | "warm" | "cool" | "vivid";
+
+export const COLOR_CORRECTION_PROFILES: Array<{
+	value: ColorCorrectionProfile;
+	label: string;
+	description: string;
+}> = [
+	{ value: "auto", label: "Auto", description: "Automatic levels correction" },
+	{ value: "warm", label: "Warm", description: "Warm color temperature" },
+	{ value: "cool", label: "Cool", description: "Cool color temperature" },
+	{ value: "vivid", label: "Vivid", description: "Enhanced saturation & contrast" },
+];
+
 export const DEFAULT_ZOOM_DEPTH: ZoomDepth = 3;
 
 export function clampFocusToDepth(focus: ZoomFocus, depth: ZoomDepth): ZoomFocus {

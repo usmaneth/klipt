@@ -5,6 +5,8 @@ import {
 	Clapperboard,
 	Crop,
 	Download,
+	Eye,
+	EyeOff,
 	Film,
 	FolderOpen,
 	Globe,
@@ -12,11 +14,14 @@ import {
 	Mic,
 	Palette,
 	RectangleVertical,
+	RotateCcw,
 	Save,
+	ScanFace,
 	Smartphone,
 	Square,
 	Star,
 	Subtitles,
+	Sun,
 	Type,
 	Upload,
 	Volume2,
@@ -31,6 +36,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BgMode } from "@/lib/ai/backgroundRemoval";
+import { TRANSLATION_LANGUAGES } from "@/lib/ai/translationService";
+import { DUBBING_LANGUAGES } from "@/lib/ai/voiceDubbing";
 import { getAssetPath, getRenderableAssetUrl } from "@/lib/assetPath";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
@@ -40,6 +47,8 @@ import { type AspectRatio } from "@/utils/aspectRatioUtils";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { CropControl } from "./CropControl";
+import type { CaptionSettings } from "./captionStyle";
+import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { SliderControl } from "./SliderControl";
@@ -48,13 +57,17 @@ import { ThumbnailPanel } from "./ThumbnailPanel";
 import type {
 	AnnotationRegion,
 	AnnotationType,
+	ColorCorrectionProfile,
 	CropRegion,
 	CursorStyle,
+	FaceBlurRegion,
+	FaceBlurStyle,
 	FigureData,
 	PlaybackSpeed,
 	ZoomDepth,
 } from "./types";
 import {
+	COLOR_CORRECTION_PROFILES,
 	CURSOR_STYLE_OPTIONS,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
 	DEFAULT_CURSOR_MOTION_BLUR,
@@ -62,13 +75,10 @@ import {
 	DEFAULT_CURSOR_SMOOTHING,
 	DEFAULT_CURSOR_SWAY,
 	DEFAULT_ZOOM_MOTION_BLUR,
+	FACE_BLUR_STYLE_OPTIONS,
 	SPEED_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
-import type { CaptionSettings } from "./captionStyle";
-import { DEFAULT_CAPTION_SETTINGS } from "./captionStyle";
-import { TRANSLATION_LANGUAGES } from "@/lib/ai/translationService";
-import { DUBBING_LANGUAGES } from "@/lib/ai/voiceDubbing";
 import { WebcamBackgroundPanel } from "./WebcamBackgroundPanel";
 import { WebcamPanel, type WebcamPanelProps } from "./WebcamPanel";
 
@@ -238,6 +248,19 @@ interface SettingsPanelProps {
 	dubbedAudioPath?: string | null;
 	useDubbedAudio?: boolean;
 	onUseDubbedAudioChange?: (enabled: boolean) => void;
+	// Face Detection & Auto-Blur
+	faceBlurRegions?: FaceBlurRegion[];
+	onDetectFaces?: () => void;
+	isDetectingFaces?: boolean;
+	faceDetectionProgress?: number | null;
+	onFaceBlurToggle?: (id: string, enabled: boolean) => void;
+	onFaceBlurStyleChange?: (id: string, style: FaceBlurStyle) => void;
+	onFaceBlurDelete?: (id: string) => void;
+	// Auto Color Correction
+	colorCorrectionProfile?: ColorCorrectionProfile | null;
+	onColorCorrect?: (profile: ColorCorrectionProfile) => void;
+	onRevertColorCorrection?: () => void;
+	isColorCorrecting?: boolean;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -410,6 +433,17 @@ export function SettingsPanel({
 	dubbedAudioPath,
 	useDubbedAudio = false,
 	onUseDubbedAudioChange,
+	faceBlurRegions = [],
+	onDetectFaces,
+	isDetectingFaces = false,
+	faceDetectionProgress,
+	onFaceBlurToggle,
+	onFaceBlurStyleChange,
+	onFaceBlurDelete,
+	colorCorrectionProfile,
+	onColorCorrect,
+	onRevertColorCorrection,
+	isColorCorrecting = false,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { t } = useI18n();
@@ -706,44 +740,43 @@ export function SettingsPanel({
 	};
 
 	return (
-		<div
-			className="flex-[2] min-w-0 flex flex-col h-full overflow-hidden relative bg-transparent"
-		>
+		<div className="flex-[2] min-w-0 flex flex-col h-full overflow-hidden relative bg-transparent">
 			{/* Top tab navigation — floating glow pills */}
 			<div className="flex-shrink-0">
 				<div className="flex items-center justify-between px-6 py-5 flex-shrink-0 bg-white/[0.02] border-b border-white/[0.04]">
-					<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">Settings</span>
+					<span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-sans">
+						Settings
+					</span>
 					<KeyboardShortcutsHelp />
 				</div>
 
 				<div className="px-6 pt-5 pb-1">
 					<div className="flex items-center p-1 bg-black/40 rounded-xl shadow-inner border border-white/[0.05] mb-2 relative">
-					{(["style", "motion", "audio", "create", "export"] as const).map((tab) => {
-						const isActive = activeTab === tab;
-						return (
-							<button
-								key={tab}
-								onClick={() => setActiveTab(tab)}
-								className={cn(
-									"flex-1 flex items-center justify-center py-1.5 rounded-lg transition-all duration-300 cursor-pointer",
-									isActive
-										? "bg-white/10 text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] scale-100 border border-white/[0.05]"
-										: "bg-transparent text-white/30 hover:text-white/60 scale-95"
-								)}
-							>
-								
-								<span className="relative z-10 flex items-center gap-2">
-									{TAB_ICONS[tab]}
-									<span className="text-[10px] uppercase tracking-[0.1em] font-bold hidden sm:block">
-										{tab}
+						{(["style", "motion", "audio", "create", "export"] as const).map((tab) => {
+							const isActive = activeTab === tab;
+							return (
+								<button
+									key={tab}
+									onClick={() => setActiveTab(tab)}
+									className={cn(
+										"flex-1 flex items-center justify-center py-1.5 rounded-lg transition-all duration-300 cursor-pointer",
+										isActive
+											? "bg-white/10 text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] scale-100 border border-white/[0.05]"
+											: "bg-transparent text-white/30 hover:text-white/60 scale-95",
+									)}
+								>
+									<span className="relative z-10 flex items-center gap-2">
+										{TAB_ICONS[tab]}
+										<span className="text-[10px] uppercase tracking-[0.1em] font-bold hidden sm:block">
+											{tab}
+										</span>
 									</span>
-								</span>
-							</button>
-						);
-					})}
+								</button>
+							);
+						})}
+					</div>
 				</div>
 			</div>
-		</div>
 
 			{/* Tab content area */}
 			<ScrollArea className="flex-1">
@@ -926,55 +959,55 @@ export function SettingsPanel({
 									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.roundness")}
-													value={borderRadius}
-													defaultValue={12.5}
-													min={0}
-													max={25}
-													step={0.5}
-													onChange={(v) => onBorderRadiusChange?.(v)}
-													formatValue={(v) => `${v}px`}
-													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
-												/>
+												label={tSettings("effects.roundness")}
+												value={borderRadius}
+												defaultValue={12.5}
+												min={0}
+												max={25}
+												step={0.5}
+												onChange={(v) => onBorderRadiusChange?.(v)}
+												formatValue={(v) => `${v}px`}
+												parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.padding")}
-													value={padding}
-													defaultValue={50}
-													min={0}
-													max={100}
-													step={1}
-													onChange={(v) => onPaddingChange?.(v)}
-													formatValue={(v) => `${v}%`}
-													parseInput={(t) => parseFloat(t.replace(/%$/, ""))}
-												/>
+												label={tSettings("effects.padding")}
+												value={padding}
+												defaultValue={50}
+												min={0}
+												max={100}
+												step={1}
+												onChange={(v) => onPaddingChange?.(v)}
+												formatValue={(v) => `${v}%`}
+												parseInput={(t) => parseFloat(t.replace(/%$/, ""))}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.shadow")}
-													value={shadowIntensity}
-													defaultValue={0}
-													min={0}
-													max={1}
-													step={0.01}
-													onChange={(v) => onShadowChange?.(v)}
-													formatValue={(v) => `${Math.round(v * 100)}%`}
-													parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
-												/>
+												label={tSettings("effects.shadow")}
+												value={shadowIntensity}
+												defaultValue={0}
+												min={0}
+												max={1}
+												step={0.01}
+												onChange={(v) => onShadowChange?.(v)}
+												formatValue={(v) => `${Math.round(v * 100)}%`}
+												parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.backgroundBlur")}
-													value={backgroundBlur}
-													defaultValue={0}
-													min={0}
-													max={8}
-													step={0.25}
-													onChange={(v) => onBackgroundBlurChange?.(v)}
-													formatValue={(v) => `${v.toFixed(1)}px`}
-													parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
-												/>
+												label={tSettings("effects.backgroundBlur")}
+												value={backgroundBlur}
+												defaultValue={0}
+												min={0}
+												max={8}
+												step={0.25}
+												onChange={(v) => onBackgroundBlurChange?.(v)}
+												formatValue={(v) => `${v.toFixed(1)}px`}
+												parseInput={(t) => parseFloat(t.replace(/px$/, ""))}
+											/>
 										</div>
 									</div>
 								</div>
@@ -1059,9 +1092,132 @@ export function SettingsPanel({
 									</Accordion>
 								)}
 
+								{/* ===== FACE DETECTION & AUTO-BLUR ===== */}
+								{onDetectFaces && (
+									<div>
+										<SectionHeader>Face Detection</SectionHeader>
+										<div className="space-y-2">
+											<Button
+												onClick={onDetectFaces}
+												disabled={isDetectingFaces}
+												variant="outline"
+												className="w-full gap-1.5 bg-white/[0.03] text-white/70 border-white/[0.06] hover:bg-white/[0.06] hover:text-white transition-all duration-150 h-8 text-[11px] rounded-lg"
+											>
+												<ScanFace className="w-3.5 h-3.5" />
+												{isDetectingFaces
+													? faceDetectionProgress != null
+														? `Detecting... ${faceDetectionProgress}%`
+														: "Detecting..."
+													: "Detect Faces"}
+											</Button>
+
+											{faceBlurRegions.length > 0 && (
+												<div className="space-y-1.5 max-h-[160px] overflow-y-auto custom-scrollbar">
+													{faceBlurRegions.map((region, idx) => (
+														<div
+															key={region.id}
+															className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"
+														>
+															<button
+																type="button"
+																onClick={() => onFaceBlurToggle?.(region.id, !region.enabled)}
+																className="shrink-0 text-white/60 hover:text-white transition-colors"
+																title={region.enabled ? "Disable blur" : "Enable blur"}
+															>
+																{region.enabled ? (
+																	<Eye className="w-3.5 h-3.5" />
+																) : (
+																	<EyeOff className="w-3.5 h-3.5 opacity-40" />
+																)}
+															</button>
+															<span className="text-[11px] text-white/60 flex-1 min-w-0 truncate">
+																Face {idx + 1}
+															</span>
+															<select
+																value={region.blurStyle}
+																onChange={(e) =>
+																	onFaceBlurStyleChange?.(
+																		region.id,
+																		e.target.value as FaceBlurStyle,
+																	)
+																}
+																className="text-[10px] bg-white/[0.06] border border-white/[0.08] rounded px-1 py-0.5 text-white/70 outline-none"
+															>
+																{FACE_BLUR_STYLE_OPTIONS.map((opt) => (
+																	<option key={opt.value} value={opt.value}>
+																		{opt.label}
+																	</option>
+																))}
+															</select>
+															<button
+																type="button"
+																onClick={() => onFaceBlurDelete?.(region.id)}
+																className="shrink-0 text-white/40 hover:text-red-400 transition-colors"
+																title="Remove"
+															>
+																<X className="w-3 h-3" />
+															</button>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+
+								{/* ===== AUTO COLOR CORRECTION ===== */}
+								{onColorCorrect && (
+									<div>
+										<SectionHeader>Color Correction</SectionHeader>
+										<div className="space-y-2">
+											<div className="grid grid-cols-4 gap-1.5">
+												{COLOR_CORRECTION_PROFILES.map((profile) => (
+													<button
+														key={profile.value}
+														type="button"
+														onClick={() => onColorCorrect(profile.value)}
+														disabled={isColorCorrecting}
+														className={cn(
+															"flex flex-col items-center gap-1 p-2 rounded-lg border text-[10px] font-medium transition-all duration-150",
+															colorCorrectionProfile === profile.value
+																? "bg-white/[0.08] border-white/20 text-white"
+																: "bg-white/[0.03] border-white/[0.06] text-white/50 hover:bg-white/[0.06] hover:text-white/70",
+															isColorCorrecting && "opacity-50 cursor-not-allowed",
+														)}
+														title={profile.description}
+													>
+														<Sun className="w-3.5 h-3.5" />
+														{profile.label}
+													</button>
+												))}
+											</div>
+
+											{isColorCorrecting && (
+												<div className="text-[10px] text-white/40 text-center py-1">
+													Applying color correction...
+												</div>
+											)}
+
+											{colorCorrectionProfile && !isColorCorrecting && onRevertColorCorrection && (
+												<Button
+													onClick={onRevertColorCorrection}
+													variant="outline"
+													className="w-full gap-1.5 bg-white/[0.03] text-white/50 border-white/[0.06] hover:bg-white/[0.06] hover:text-white transition-all duration-150 h-7 text-[10px] rounded-lg"
+												>
+													<RotateCcw className="w-3 h-3" />
+													Revert Color Correction
+												</Button>
+											)}
+										</div>
+									</div>
+								)}
+
 								{/* Thumbnails (inside Accordion wrapper for compatibility) */}
 								<Accordion type="multiple" defaultValue={["thumbnails"]}>
-									<ThumbnailPanel videoUrl={videoUrl ?? null} onSaveThumbnail={handleSaveThumbnail} />
+									<ThumbnailPanel
+										videoUrl={videoUrl ?? null}
+										onSaveThumbnail={handleSaveThumbnail}
+									/>
 								</Accordion>
 							</motion.div>
 						)}
@@ -1099,7 +1255,11 @@ export function SettingsPanel({
 																? "bg-white/[0.08] text-white font-semibold"
 																: "bg-white/[0.03] text-white/30",
 														)}
-														style={isActive ? { border: "1px solid rgba(255,255,255,0.15)" } : { border: "1px solid transparent" }}
+														style={
+															isActive
+																? { border: "1px solid rgba(255,255,255,0.15)" }
+																: { border: "1px solid transparent" }
+														}
 													>
 														{option.label}
 													</button>
@@ -1147,16 +1307,16 @@ export function SettingsPanel({
 									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.zoomMotionBlur")}
-													value={zoomMotionBlur}
-													defaultValue={DEFAULT_ZOOM_MOTION_BLUR}
-													min={0}
-													max={2}
-													step={0.05}
-													onChange={(v) => onZoomMotionBlurChange?.(v)}
-													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
-													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-												/>
+												label={tSettings("effects.zoomMotionBlur")}
+												value={zoomMotionBlur}
+												defaultValue={DEFAULT_ZOOM_MOTION_BLUR}
+												min={0}
+												max={2}
+												step={0.05}
+												onChange={(v) => onZoomMotionBlurChange?.(v)}
+												formatValue={(v) => `${v.toFixed(2)}\u00d7`}
+												parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
+											/>
 										</div>
 										<div className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
 											<span className="text-[11px] font-medium text-white/50 tracking-wide">
@@ -1281,7 +1441,15 @@ export function SettingsPanel({
 												<span className="text-[11px] font-medium text-white/50 tracking-wide">
 													{tSettings("effects.showCursor")}
 												</span>
-												<kbd className="px-1 py-[1px] text-[7px] font-mono text-white/20 rounded-[3px]" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>C</kbd>
+												<kbd
+													className="px-1 py-[1px] text-[7px] font-mono text-white/20 rounded-[3px]"
+													style={{
+														background: "rgba(255,255,255,0.04)",
+														border: "1px solid rgba(255,255,255,0.08)",
+													}}
+												>
+													C
+												</kbd>
 											</div>
 											<Switch
 												checked={showCursor}
@@ -1301,75 +1469,75 @@ export function SettingsPanel({
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.cursorSize")}
-													value={cursorSize}
-													defaultValue={DEFAULT_CURSOR_SIZE}
-													min={0.5}
-													max={10}
-													step={0.05}
-													onChange={(v) => onCursorSizeChange?.(v)}
-													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
-													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-												/>
+												label={tSettings("effects.cursorSize")}
+												value={cursorSize}
+												defaultValue={DEFAULT_CURSOR_SIZE}
+												min={0.5}
+												max={10}
+												step={0.05}
+												onChange={(v) => onCursorSizeChange?.(v)}
+												formatValue={(v) => `${v.toFixed(2)}\u00d7`}
+												parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.cursorSmoothing")}
-													value={cursorSmoothing}
-													defaultValue={DEFAULT_CURSOR_SMOOTHING}
-													min={0}
-													max={2}
-													step={0.01}
-													onChange={(v) => onCursorSmoothingChange?.(v)}
-													formatValue={(v) => (v <= 0 ? "Off" : v.toFixed(2))}
-													parseInput={(t) => parseFloat(t)}
-												/>
+												label={tSettings("effects.cursorSmoothing")}
+												value={cursorSmoothing}
+												defaultValue={DEFAULT_CURSOR_SMOOTHING}
+												min={0}
+												max={2}
+												step={0.01}
+												onChange={(v) => onCursorSmoothingChange?.(v)}
+												formatValue={(v) => (v <= 0 ? "Off" : v.toFixed(2))}
+												parseInput={(t) => parseFloat(t)}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.cursorMotionBlur")}
-													value={cursorMotionBlur}
-													defaultValue={DEFAULT_CURSOR_MOTION_BLUR}
-													min={0}
-													max={2}
-													step={0.05}
-													onChange={(v) => onCursorMotionBlurChange?.(v)}
-													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
-													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-												/>
+												label={tSettings("effects.cursorMotionBlur")}
+												value={cursorMotionBlur}
+												defaultValue={DEFAULT_CURSOR_MOTION_BLUR}
+												min={0}
+												max={2}
+												step={0.05}
+												onChange={(v) => onCursorMotionBlurChange?.(v)}
+												formatValue={(v) => `${v.toFixed(2)}\u00d7`}
+												parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.cursorClickBounce")}
-													value={cursorClickBounce}
-													defaultValue={DEFAULT_CURSOR_CLICK_BOUNCE}
-													min={0}
-													max={5}
-													step={0.05}
-													onChange={(v) => onCursorClickBounceChange?.(v)}
-													formatValue={(v) => `${v.toFixed(2)}\u00d7`}
-													parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
-												/>
+												label={tSettings("effects.cursorClickBounce")}
+												value={cursorClickBounce}
+												defaultValue={DEFAULT_CURSOR_CLICK_BOUNCE}
+												min={0}
+												max={5}
+												step={0.05}
+												onChange={(v) => onCursorClickBounceChange?.(v)}
+												formatValue={(v) => `${v.toFixed(2)}\u00d7`}
+												parseInput={(t) => parseFloat(t.replace(/\u00d7$/, ""))}
+											/>
 										</div>
 										<div className="py-4 px-5 bg-transparent border-b border-white/[0.04] transition-colors duration-200 group/slider last:border-0">
 											<SliderControl
-													label={tSettings("effects.cursorSway")}
-													value={toCursorSwaySliderValue(cursorSway)}
-													defaultValue={toCursorSwaySliderValue(DEFAULT_CURSOR_SWAY)}
-													min={0}
-													max={toCursorSwaySliderValue(2)}
-													step={toCursorSwaySliderValue(0.05)}
-													onChange={(v) => onCursorSwayChange?.(fromCursorSwaySliderValue(v))}
-													formatValue={(v) => (v <= 0 ? "Off" : `${v.toFixed(2)}\u00d7`)}
-													parseInput={(t) => {
-														const normalized = t.trim().toLowerCase();
-														if (normalized === "off") {
-															return 0;
-														}
+												label={tSettings("effects.cursorSway")}
+												value={toCursorSwaySliderValue(cursorSway)}
+												defaultValue={toCursorSwaySliderValue(DEFAULT_CURSOR_SWAY)}
+												min={0}
+												max={toCursorSwaySliderValue(2)}
+												step={toCursorSwaySliderValue(0.05)}
+												onChange={(v) => onCursorSwayChange?.(fromCursorSwaySliderValue(v))}
+												formatValue={(v) => (v <= 0 ? "Off" : `${v.toFixed(2)}\u00d7`)}
+												parseInput={(t) => {
+													const normalized = t.trim().toLowerCase();
+													if (normalized === "off") {
+														return 0;
+													}
 
-														return parseFloat(t.replace(/\u00d7$/, ""));
-													}}
-												/>
+													return parseFloat(t.replace(/\u00d7$/, ""));
+												}}
+											/>
 										</div>
 										{/* Cursor Style Selector */}
 										<div className="px-5 py-4 bg-transparent border-b border-white/[0.04] last:border-0">
@@ -1398,29 +1566,67 @@ export function SettingsPanel({
 																)}
 															>
 																{option.value === "default" && (
-																	<svg width="16" height="20" viewBox="0 0 16 20" fill="none" className="text-white/60">
-																		<path d="M1 1L1 15L5.5 10.5L9.5 18L12 17L8 9L14 9L1 1Z" fill="currentColor" stroke="currentColor" strokeWidth="0.5" />
+																	<svg
+																		width="16"
+																		height="20"
+																		viewBox="0 0 16 20"
+																		fill="none"
+																		className="text-white/60"
+																	>
+																		<path
+																			d="M1 1L1 15L5.5 10.5L9.5 18L12 17L8 9L14 9L1 1Z"
+																			fill="currentColor"
+																			stroke="currentColor"
+																			strokeWidth="0.5"
+																		/>
 																	</svg>
 																)}
 																{option.value === "dot" && (
 																	<div className="w-4 h-4 rounded-full bg-white/60" />
 																)}
 																{option.value === "figma" && (
-																	<svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-white/60">
-																		<line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" strokeWidth="1.5" />
-																		<line x1="0" y1="8" x2="16" y2="8" stroke="currentColor" strokeWidth="1.5" />
+																	<svg
+																		width="16"
+																		height="16"
+																		viewBox="0 0 16 16"
+																		fill="none"
+																		className="text-white/60"
+																	>
+																		<line
+																			x1="8"
+																			y1="0"
+																			x2="8"
+																			y2="16"
+																			stroke="currentColor"
+																			strokeWidth="1.5"
+																		/>
+																		<line
+																			x1="0"
+																			y1="8"
+																			x2="16"
+																			y2="8"
+																			stroke="currentColor"
+																			strokeWidth="1.5"
+																		/>
 																	</svg>
 																)}
 																{option.value === "mono" && (
 																	<svg width="16" height="20" viewBox="0 0 16 20" fill="none">
-																		<path d="M1 1L1 15L5.5 10.5L9.5 18L12 17L8 9L14 9L1 1Z" fill="black" stroke="white" strokeWidth="1.5" />
+																		<path
+																			d="M1 1L1 15L5.5 10.5L9.5 18L12 17L8 9L14 9L1 1Z"
+																			fill="black"
+																			stroke="white"
+																			strokeWidth="1.5"
+																		/>
 																	</svg>
 																)}
 															</div>
-															<span className={cn(
-																"text-[8px] font-medium uppercase tracking-wider",
-																isActive ? "text-white/60" : "text-white/25",
-															)}>
+															<span
+																className={cn(
+																	"text-[8px] font-medium uppercase tracking-wider",
+																	isActive ? "text-white/60" : "text-white/25",
+																)}
+															>
 																{option.label}
 															</span>
 														</button>
@@ -1450,8 +1656,12 @@ export function SettingsPanel({
 								) : (
 									<div className="flex flex-col items-center justify-center py-12 text-center">
 										<Mic className="w-8 h-8 text-white/10 mb-3" />
-										<p className="text-[12px] text-white/30 font-medium">No audio settings available</p>
-										<p className="text-[10px] text-white/15 mt-1">Audio enhancement is not enabled for this recording</p>
+										<p className="text-[12px] text-white/30 font-medium">
+											No audio settings available
+										</p>
+										<p className="text-[10px] text-white/15 mt-1">
+											Audio enhancement is not enabled for this recording
+										</p>
 									</div>
 								)}
 
@@ -1488,7 +1698,8 @@ export function SettingsPanel({
 													>
 														<Mic className="w-3 h-3" />
 														{isTranscribing
-															? (transcriptionLabel ?? `Transcribing${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`)
+															? (transcriptionLabel ??
+																`Transcribing${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`)
 															: "Generate Captions"}
 													</Button>
 												</div>
@@ -1523,7 +1734,9 @@ export function SettingsPanel({
 													</div>
 													{translatedLanguage && !isTranslating && (
 														<p className="text-[9px] text-white/30 mt-1.5">
-															Translated to {TRANSLATION_LANGUAGES.find((l) => l.code === translatedLanguage)?.label ?? translatedLanguage}
+															Translated to{" "}
+															{TRANSLATION_LANGUAGES.find((l) => l.code === translatedLanguage)
+																?.label ?? translatedLanguage}
 														</p>
 													)}
 												</div>
@@ -1705,9 +1918,7 @@ export function SettingsPanel({
 														})
 													}
 													formatValue={(v) => `${Math.round(v * 100)}%`}
-													parseInput={(t) =>
-														parseFloat(t.replace(/%$/, "")) / 100
-													}
+													parseInput={(t) => parseFloat(t.replace(/%$/, "")) / 100}
 												/>
 											</div>
 										</div>
@@ -1730,9 +1941,7 @@ export function SettingsPanel({
 													</div>
 													<Switch
 														checked={useDubbedAudio}
-														onCheckedChange={(enabled) =>
-															onUseDubbedAudioChange?.(enabled)
-														}
+														onCheckedChange={(enabled) => onUseDubbedAudioChange?.(enabled)}
 														className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
 													/>
 												</div>
@@ -1849,11 +2058,25 @@ export function SettingsPanel({
 								<div>
 									<SectionHeader>Quick Presets</SectionHeader>
 									<div className="grid grid-cols-3 gap-1.5">
-										{([
-											{ ratio: "9:16" as const, label: "TikTok", icon: <Smartphone className="w-4 h-4" /> },
-											{ ratio: "1:1" as const, label: "Square", icon: <Square className="w-4 h-4" /> },
-											{ ratio: "4:5" as const, label: "Reel", icon: <RectangleVertical className="w-4 h-4" /> },
-										] as const).map((preset) => (
+										{(
+											[
+												{
+													ratio: "9:16" as const,
+													label: "TikTok",
+													icon: <Smartphone className="w-4 h-4" />,
+												},
+												{
+													ratio: "1:1" as const,
+													label: "Square",
+													icon: <Square className="w-4 h-4" />,
+												},
+												{
+													ratio: "4:5" as const,
+													label: "Reel",
+													icon: <RectangleVertical className="w-4 h-4" />,
+												},
+											] as const
+										).map((preset) => (
 											<button
 												key={preset.ratio}
 												type="button"
@@ -1872,7 +2095,9 @@ export function SettingsPanel({
 												)}
 											>
 												{preset.icon}
-												<span className="text-[9px] font-bold uppercase tracking-wider">{preset.label}</span>
+												<span className="text-[9px] font-bold uppercase tracking-wider">
+													{preset.label}
+												</span>
 												<span className="text-[8px] text-white/25">{preset.ratio}</span>
 											</button>
 										))}
@@ -1883,7 +2108,7 @@ export function SettingsPanel({
 								<div>
 									<SectionHeader>Caption Styles</SectionHeader>
 									<div className="space-y-1.5">
-										{([
+										{[
 											{
 												name: "Bold Impact",
 												fontSize: 48,
@@ -1912,7 +2137,7 @@ export function SettingsPanel({
 												backgroundOpacity: 0.4,
 												animation: "none" as const,
 											},
-										]).map((template) => (
+										].map((template) => (
 											<button
 												key={template.name}
 												type="button"
@@ -1935,8 +2160,13 @@ export function SettingsPanel({
 													<Type className="w-3.5 h-3.5 text-white/40" />
 												</div>
 												<div className="flex-1 text-left">
-													<span className="text-[11px] font-medium text-white/70 block">{template.name}</span>
-													<span className="text-[9px] text-white/25">{template.fontSize}px {template.animation !== "none" ? `\u00b7 ${template.animation}` : ""}</span>
+													<span className="text-[11px] font-medium text-white/70 block">
+														{template.name}
+													</span>
+													<span className="text-[9px] text-white/25">
+														{template.fontSize}px{" "}
+														{template.animation !== "none" ? `\u00b7 ${template.animation}` : ""}
+													</span>
 												</div>
 											</button>
 										))}
@@ -1969,8 +2199,12 @@ export function SettingsPanel({
 												<Smartphone className="w-4 h-4 text-[#E0000F]/70" />
 											</div>
 											<div className="flex-1 text-left">
-												<span className="text-[11px] font-semibold text-white/80 block">TikTok Ready</span>
-												<span className="text-[9px] text-white/30">9:16 + bold captions + pop animation</span>
+												<span className="text-[11px] font-semibold text-white/80 block">
+													TikTok Ready
+												</span>
+												<span className="text-[9px] text-white/30">
+													9:16 + bold captions + pop animation
+												</span>
 											</div>
 										</button>
 
@@ -1996,8 +2230,12 @@ export function SettingsPanel({
 												<Square className="w-4 h-4 text-white/40" />
 											</div>
 											<div className="flex-1 text-left">
-												<span className="text-[11px] font-semibold text-white/80 block">Instagram Post</span>
-												<span className="text-[9px] text-white/30">1:1 + subtle captions + fade</span>
+												<span className="text-[11px] font-semibold text-white/80 block">
+													Instagram Post
+												</span>
+												<span className="text-[9px] text-white/30">
+													1:1 + subtle captions + fade
+												</span>
 											</div>
 										</button>
 
@@ -2023,8 +2261,12 @@ export function SettingsPanel({
 												<RectangleVertical className="w-4 h-4 text-white/40" />
 											</div>
 											<div className="flex-1 text-left">
-												<span className="text-[11px] font-semibold text-white/80 block">Instagram Reel</span>
-												<span className="text-[9px] text-white/30">4:5 + medium captions + rise</span>
+												<span className="text-[11px] font-semibold text-white/80 block">
+													Instagram Reel
+												</span>
+												<span className="text-[9px] text-white/30">
+													4:5 + medium captions + rise
+												</span>
 											</div>
 										</button>
 
@@ -2050,8 +2292,12 @@ export function SettingsPanel({
 												<Film className="w-4 h-4 text-white/40" />
 											</div>
 											<div className="flex-1 text-left">
-												<span className="text-[11px] font-semibold text-white/80 block">YouTube Short</span>
-												<span className="text-[9px] text-white/30">16:9 + clean captions + fade</span>
+												<span className="text-[11px] font-semibold text-white/80 block">
+													YouTube Short
+												</span>
+												<span className="text-[9px] text-white/30">
+													16:9 + clean captions + fade
+												</span>
 											</div>
 										</button>
 									</div>
@@ -2068,7 +2314,8 @@ export function SettingsPanel({
 										>
 											<Mic className="w-4 h-4" />
 											{isTranscribing
-												? (transcriptionLabel ?? `Generating${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`)
+												? (transcriptionLabel ??
+													`Generating${transcriptionProgress != null ? ` (${Math.round(transcriptionProgress)}%)` : "..."}`)
 												: "Generate Auto Captions"}
 										</Button>
 										<p className="text-[9px] text-white/20 mt-2 text-center">
@@ -2118,12 +2365,12 @@ export function SettingsPanel({
 									<div>
 										<SectionHeader>Quality</SectionHeader>
 										<div className="flex gap-1.5">
-											{([
+											{[
 												{ value: "medium" as const, label: tSettings("export.quality.low") },
 												{ value: "good" as const, label: tSettings("export.quality.medium") },
 												{ value: "high" as const, label: tSettings("export.quality.high") },
 												{ value: "source" as const, label: tSettings("export.quality.original") },
-											]).map((q) => (
+											].map((q) => (
 												<button
 													key={q.value}
 													onClick={() => onExportQualityChange?.(q.value)}
@@ -2175,7 +2422,9 @@ export function SettingsPanel({
 																	: "text-white/30 hover:text-white/50",
 															)}
 														>
-															{key === "original" ? "Orig" : key.charAt(0).toUpperCase() + key.slice(1, 3)}
+															{key === "original"
+																? "Orig"
+																: key.charAt(0).toUpperCase() + key.slice(1, 3)}
 														</button>
 													))}
 												</div>
@@ -2185,7 +2434,9 @@ export function SettingsPanel({
 													{gifOutputDimensions.width} \u00d7 {gifOutputDimensions.height}px
 												</span>
 												<div className="flex items-center gap-2">
-													<span className="text-[10px] text-white/30">{tSettings("export.loop")}</span>
+													<span className="text-[10px] text-white/30">
+														{tSettings("export.loop")}
+													</span>
 													<Switch
 														checked={gifLoop}
 														onCheckedChange={onGifLoopChange}
@@ -2204,7 +2455,10 @@ export function SettingsPanel({
 
 			{/* Export section — pinned to bottom */}
 			{activeTab === "export" && (
-				<div className="flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "12px 14px" }}>
+				<div
+					className="flex-shrink-0"
+					style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "12px 14px" }}
+				>
 					{/* Split export button */}
 					<div className="relative">
 						<div className="flex mb-2" style={{ gap: "1px" }}>
@@ -2244,7 +2498,9 @@ export function SettingsPanel({
 									}}
 									className={cn(
 										"w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors",
-										exportFormat === "mp4" ? "bg-white/[0.08] text-white" : "text-white/50 hover:bg-white/[0.05] hover:text-white/80",
+										exportFormat === "mp4"
+											? "bg-white/[0.08] text-white"
+											: "text-white/50 hover:bg-white/[0.05] hover:text-white/80",
 									)}
 								>
 									<Film className="w-3.5 h-3.5" />
@@ -2257,7 +2513,9 @@ export function SettingsPanel({
 									}}
 									className={cn(
 										"w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors",
-										exportFormat === "gif" ? "bg-white/[0.08] text-white" : "text-white/50 hover:bg-white/[0.05] hover:text-white/80",
+										exportFormat === "gif"
+											? "bg-white/[0.08] text-white"
+											: "text-white/50 hover:bg-white/[0.05] hover:text-white/80",
 									)}
 								>
 									<Image className="w-3.5 h-3.5" />

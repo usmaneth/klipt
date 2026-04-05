@@ -399,4 +399,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	detectFaceRegions: (filePath: string, intervalMs?: number) => {
 		return ipcRenderer.invoke("detect-face-regions", { filePath, intervalMs });
 	},
+	extractFramesForFaceDetection: (
+		filePath: string,
+		options?: { intervalMs?: number; maxFrames?: number },
+	) => {
+		return ipcRenderer.invoke("extract-frames-for-face-detection", filePath, options);
+	},
+	autoColorCorrect: (filePath: string, profile: "auto" | "warm" | "cool" | "vivid") => {
+		return ipcRenderer.invoke("auto-color-correct", filePath, profile);
+	},
+	cleanupFaceDetectionFrames: (frameDir: string) => {
+		return ipcRenderer.invoke("cleanup-face-detection-frames", frameDir);
+	},
 });
