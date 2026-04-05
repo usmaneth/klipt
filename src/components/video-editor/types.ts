@@ -256,6 +256,62 @@ export const ZOOM_DEPTH_SCALES: Record<ZoomDepth, number> = {
 	6: 5.0,
 };
 
+// ── Live Annotation Types (recording overlay) ────────────────────────────
+
+export type LiveAnnotationTool =
+	| "pen"
+	| "arrow"
+	| "rect"
+	| "circle"
+	| "text"
+	| "highlight";
+
+export const LIVE_ANNOTATION_TOOLS: Array<{
+	value: LiveAnnotationTool;
+	label: string;
+}> = [
+	{ value: "pen", label: "Pen" },
+	{ value: "arrow", label: "Arrow" },
+	{ value: "rect", label: "Rectangle" },
+	{ value: "circle", label: "Circle" },
+	{ value: "text", label: "Text" },
+	{ value: "highlight", label: "Highlight" },
+];
+
+export interface LiveAnnotation {
+	id: string;
+	type: LiveAnnotationTool;
+	points: Array<{ x: number; y: number }>; // normalized 0-1
+	color: string;
+	strokeWidth: number;
+	startMs: number;
+	durationMs: number; // how long it stays visible (-1 = permanent)
+	text?: string; // for text annotations
+}
+
+export type LiveAnnotationFadeOption = 3000 | 5000 | 10000 | -1;
+
+export const LIVE_ANNOTATION_FADE_OPTIONS: Array<{
+	value: LiveAnnotationFadeOption;
+	label: string;
+}> = [
+	{ value: 3000, label: "3s" },
+	{ value: 5000, label: "5s" },
+	{ value: 10000, label: "10s" },
+	{ value: -1, label: "Permanent" },
+];
+
+export const LIVE_ANNOTATION_PRESET_COLORS = [
+	"#E0000F",
+	"#FF9500",
+	"#FFD700",
+	"#34C759",
+	"#007AFF",
+	"#AF52DE",
+];
+
+// ── Face Blur Types ──────────────────────────────────────────────────────
+
 export type FaceBlurStyle = "gaussian" | "pixelate" | "blackbar";
 
 export interface FaceBlurRegion {

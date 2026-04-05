@@ -1,11 +1,11 @@
-import { BarChart3, Check, ChevronDown, ClipboardCopy, Cloud, Copy, Download, Eye, Globe, Loader2, Lock, ShieldCheck, Users, X } from "lucide-react";
+import { BarChart3, Check, CheckCircle2, ChevronDown, ClipboardCopy, Cloud, Copy, Download, Eye, Globe, Loader2, Lock, Rocket, ShieldCheck, Users, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ExportProgress } from "@/lib/exporter";
 import { useScopedT } from "../../contexts/I18nContext";
 
-type SuccessTab = "share" | "cloud" | "protect";
+type SuccessTab = "share" | "cloud" | "protect" | "instant";
 
 const CLOUD_PRESETS: Record<string, { label: string; endpoint: string }> = {
 	aws: { label: "AWS S3", endpoint: "https://s3.amazonaws.com" },
@@ -80,6 +80,11 @@ export function ExportDialog({
 	const [cloudPreset, setCloudPreset] = useState("other");
 	const [uploadProgress, setUploadProgress] = useState(0);
 	const [isTestingConnection, setIsTestingConnection] = useState(false);
+	const [bgUploadProgress, setBgUploadProgress] = useState(0);
+	const [isBgUploading, setIsBgUploading] = useState(false);
+	const [bgUploadUrl, setBgUploadUrl] = useState<string | null>(null);
+	const [bgUploadCopied, setBgUploadCopied] = useState(false);
+	const bgUploadCleanupRef = useRef<(() => void) | null>(null);
 	const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const analyticsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -586,6 +591,7 @@ export function ExportDialog({
 							{([
 								{ id: "share" as const, label: "Share", icon: Globe },
 								{ id: "cloud" as const, label: "Cloud", icon: Cloud },
+								{ id: "instant" as const, label: "Instant", icon: Rocket },
 								{ id: "protect" as const, label: "Protect", icon: ShieldCheck },
 							]).map(({ id, label, icon: Icon }) => (
 								<button
@@ -896,6 +902,137 @@ export function ExportDialog({
 												)}
 											</Button>
 										</div>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Instant Share tab */}
+						{activeTab === "instant" && (
+							<div className="space-y-3">
+								{bgUploadUrl ? (
+									<div className="space-y-3">
+										<div className="flex items-center gap-3 bg-emerald-500/[0.06] rounded-xl px-4 py-3 border border-emerald-500/15">
+											<div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+												<CheckCircle2 className="w-4 h-4 text-emerald-400" style={{ animation: 'scaleCheck 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }} />
+											</div>
+											<div className="flex-1 min-w-0">
+												<span className="text-xs font-medium text-emerald-300/80 block">Upload Complete</span>
+												<span className="text-[11px] text-emerald-300/50 font-mono truncate block">{bgUploadUrl}</span>
+											</div>
+										</div>
+										<Button
+											variant="secondary"
+											onClick={async () => {
+												try {
+													await navigator.clipboard.writeText(bgUploadUrl);
+													setBgUploadCopied(true);
+													setTimeout(() => setBgUploadCopied(false), 1500);
+													toast.success("Link copied to clipboard");
+												} catch (err) {
+													toast.error(`Failed to copy: ${String(err)}`);
+												}
+											}}
+											className="w-full px-3 py-2 text-xs rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300/80 border border-emerald-500/15"
+										>
+											{bgUploadCopied ? (
+												<>
+													<Check className="w-3 h-3 mr-1.5 text-emerald-400" />
+													Copied!
+												</>
+											) : (
+												<>
+													<ClipboardCopy className="w-3 h-3 mr-1.5" />
+													Copy Share Link
+												</>
+											)}
+										</Button>
+									</div>
+								) : (
+									<div className="space-y-3">
+										<div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.06]">
+											<div className="flex items-start gap-3 mb-3">
+												<div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center ring-1 ring-white/[0.08] shrink-0">
+													<Rocket className="w-4 h-4 text-white/40" />
+												</div>
+												<div>
+													<div className="text-xs font-medium text-white/70 mb-0.5">Instant Share</div>
+													<p className="text-[11px] text-white/35 leading-relaxed">
+														Upload to your S3 storage in the background and get a shareable link instantly.
+													</p>
+												</div>
+											</div>
+											{isBgUploading && (
+												<div className="space-y-1.5 mb-3">
+													<div className="flex justify-between text-[10px] text-white/40">
+														<span>Uploading...</span>
+														<span className="font-mono">{bgUploadProgress}%</span>
+													</div>
+													<div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+														<div
+															className="h-full bg-gradient-to-r from-sky-500 to-sky-400 rounded-full transition-all duration-300 ease-out"
+															style={{ width: `${bgUploadProgress}%` }}
+														/>
+													</div>
+												</div>
+											)}
+											<Button
+												variant="secondary"
+												onClick={async () => {
+													if (!exportedFilePath) return;
+													if (!s3Config.endpoint || !s3Config.bucket || !s3Config.accessKeyId || !s3Config.secretAccessKey) {
+														toast.error("Please configure S3 settings in the Cloud tab first");
+														return;
+													}
+													setIsBgUploading(true);
+													setBgUploadProgress(0);
+													if (successTimerRef.current) {
+														clearTimeout(successTimerRef.current);
+														successTimerRef.current = null;
+													}
+													// Listen for progress
+													if (window.electronAPI?.onBackgroundUploadProgress) {
+														bgUploadCleanupRef.current = window.electronAPI.onBackgroundUploadProgress(
+															(prog) => setBgUploadProgress(prog.percent),
+														);
+													}
+													try {
+														const result = await window.electronAPI.startBackgroundUpload(exportedFilePath, s3Config);
+														if (result.success && result.url) {
+															setBgUploadUrl(result.url);
+															toast.success("Upload complete - link ready!");
+														} else {
+															toast.error(result.error || "Background upload failed");
+														}
+													} catch (err) {
+														toast.error(`Upload failed: ${String(err)}`);
+													} finally {
+														setIsBgUploading(false);
+														if (bgUploadCleanupRef.current) {
+															bgUploadCleanupRef.current();
+															bgUploadCleanupRef.current = null;
+														}
+													}
+												}}
+												disabled={isBgUploading || !exportedFilePath}
+												className="w-full px-3 py-2 text-xs rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300/80 border border-sky-500/15"
+											>
+												{isBgUploading ? (
+													<>
+														<Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+														Uploading...
+													</>
+												) : (
+													<>
+														<Rocket className="w-3 h-3 mr-1.5" />
+														Upload Now
+													</>
+												)}
+											</Button>
+										</div>
+										<p className="text-[10px] text-white/20 text-center">
+											Configure S3 credentials in the Cloud tab
+										</p>
 									</div>
 								)}
 							</div>

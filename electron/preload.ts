@@ -419,4 +419,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	cleanupFaceDetectionFrames: (frameDir: string) => {
 		return ipcRenderer.invoke("cleanup-face-detection-frames", frameDir);
 	},
+	startBackgroundUpload: (
+		filePath: string,
+		config: {
+			endpoint: string;
+			bucket: string;
+			accessKeyId: string;
+			secretAccessKey: string;
+			region?: string;
+			pathStyle?: boolean;
+		},
+	) => {
+		return ipcRenderer.invoke("start-background-upload", filePath, config);
+	},
+	cancelBackgroundUpload: () => {
+		return ipcRenderer.invoke("cancel-background-upload");
+	},
+	onBackgroundUploadProgress: (callback: (progress: { percent: number }) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, payload: { percent: number }) =>
+			callback(payload);
+		ipcRenderer.on("background-upload-progress", listener);
+		return () => ipcRenderer.removeListener("background-upload-progress", listener);
+	},
 });

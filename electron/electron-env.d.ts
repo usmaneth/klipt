@@ -407,6 +407,21 @@ interface Window {
 			profile: "auto" | "warm" | "cool" | "vivid",
 		) => Promise<{ success: boolean; correctedPath?: string; error?: string }>;
 		cleanupFaceDetectionFrames: (frameDir: string) => Promise<{ success: boolean }>;
+		startBackgroundUpload: (
+			filePath: string,
+			config: {
+				endpoint: string;
+				bucket: string;
+				accessKeyId: string;
+				secretAccessKey: string;
+				region?: string;
+				pathStyle?: boolean;
+			},
+		) => Promise<{ success: boolean; url?: string; error?: string }>;
+		cancelBackgroundUpload: () => Promise<{ success: boolean }>;
+		onBackgroundUploadProgress: (
+			callback: (progress: { percent: number }) => void,
+		) => () => void;
 	};
 }
 

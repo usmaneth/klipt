@@ -560,6 +560,12 @@ export function SettingsPanel({
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
 	const [activeTab, setActiveTab] = useState<SettingsTab>("style");
 	const [showExportFormatMenu, setShowExportFormatMenu] = useState(false);
+	const [autoUploadEnabled, setAutoUploadEnabled] = useState(() => {
+		try {
+			const saved = localStorage.getItem("klipt-auto-upload");
+			return saved ? JSON.parse(saved) === true : false;
+		} catch { return false; }
+	});
 
 	useEffect(() => {
 		const nextTab = getBackgroundTabForWallpaper(selected);
@@ -2588,6 +2594,29 @@ export function SettingsPanel({
 										</div>
 									</div>
 								)}
+
+								{/* Instant Share */}
+								<div>
+									<SectionHeader>Instant Share</SectionHeader>
+									<div className="space-y-2.5">
+										<div className="flex items-center justify-between">
+											<span className="text-[10px] text-white/30">Auto-upload recordings</span>
+											<Switch
+												checked={autoUploadEnabled}
+												onCheckedChange={(checked) => {
+													setAutoUploadEnabled(checked);
+													try {
+														localStorage.setItem("klipt-auto-upload", JSON.stringify(checked));
+													} catch { /* ignore */ }
+												}}
+												className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
+											/>
+										</div>
+										<p className="text-[9px] text-white/15 leading-relaxed">
+											When enabled, recordings will be automatically uploaded to your S3 storage after export. Configure S3 credentials in the export dialog&apos;s Cloud tab.
+										</p>
+									</div>
+								</div>
 							</motion.div>
 						)}
 					</AnimatePresence>

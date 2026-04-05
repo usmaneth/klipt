@@ -5355,4 +5355,297 @@ export function registerIpcHandlers(
 			}
 		},
 	);
+
+	// ── Background Upload (chunked, with progress) ──────────────────────────
+
+	let backgroundUploadCancelled = false;
+
+	ipcMain.handle(
+		"start-background-upload",
+		async (
+			event,
+			filePath: string,
+			config: S3Config,
+		): Promise<{ success: boolean; url?: string; error?: string }> => {
+			backgroundUploadCancelled = false;
+			try {
+				const stat = await fs.stat(filePath);
+				const totalSize = stat.size;
+				const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+
+				const fileName = path.basename(filePath);
+				const region = config.region || "us-east-1";
+				const service = "s3";
+				const endpointUrl = new URL(config.endpoint);
+				const useHttps = endpointUrl.protocol === "https:";
+				const host = endpointUrl.host;
+
+				const objectKey = fileName;
+				const requestPath = config.pathStyle
+					? `/${config.bucket}/${encodeURIComponent(objectKey)}`
+					: `/${encodeURIComponent(objectKey)}`;
+				const effectiveHost = config.pathStyle
+					? host
+					: `${config.bucket}.${host}`;
+
+				// For small files, use single PUT (same as existing upload-to-s3)
+				if (totalSize <= CHUNK_SIZE) {
+					const fileBuffer = await fs.readFile(filePath);
+					if (backgroundUploadCancelled) {
+						return { success: false, error: "Upload cancelled" };
+					}
+
+					// Send progress events
+					const sender = event.sender;
+					sender.send("background-upload-progress", { percent: 10 });
+
+					const ext = path.extname(filePath).toLowerCase();
+					const mimeTypes: Record<string, string> = {
+						".mp4": "video/mp4",
+						".gif": "image/gif",
+						".webm": "video/webm",
+						".mov": "video/quicktime",
+					};
+					const contentType = mimeTypes[ext] || "application/octet-stream";
+
+					const now = new Date();
+					const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+					const dateStamp = amzDate.slice(0, 8);
+					const payloadHash = sha256Hex(fileBuffer);
+
+					const canonicalHeaders =
+						`content-type:${contentType}\n` +
+						`host:${effectiveHost}\n` +
+						`x-amz-content-sha256:${payloadHash}\n` +
+						`x-amz-date:${amzDate}\n`;
+					const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+
+					const canonicalRequest = [
+						"PUT",
+						requestPath,
+						"",
+						canonicalHeaders,
+						signedHeaders,
+						payloadHash,
+					].join("\n");
+
+					const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+					const stringToSign = [
+						"AWS4-HMAC-SHA256",
+						amzDate,
+						credentialScope,
+						sha256Hex(Buffer.from(canonicalRequest, "utf8")),
+					].join("\n");
+
+					const signingKey = getSignatureKey(config.secretAccessKey, dateStamp, region, service);
+					const signature = hmacSHA256(signingKey, stringToSign).toString("hex");
+					const authorization =
+						`AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, ` +
+						`SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+					const defaultPort = useHttps ? 443 : 80;
+					const port = endpointUrl.port ? Number(endpointUrl.port) : defaultPort;
+					const httpModule = useHttps ? https : http;
+
+					sender.send("background-upload-progress", { percent: 30 });
+
+					const responseCode = await new Promise<number>((resolve, reject) => {
+						const req = httpModule.request(
+							{
+								hostname: config.pathStyle
+									? endpointUrl.hostname
+									: `${config.bucket}.${endpointUrl.hostname}`,
+								port,
+								path: requestPath,
+								method: "PUT",
+								headers: {
+									"Content-Type": contentType,
+									"Content-Length": fileBuffer.length,
+									Host: effectiveHost,
+									"x-amz-content-sha256": payloadHash,
+									"x-amz-date": amzDate,
+									Authorization: authorization,
+								},
+							},
+							(res) => {
+								let body = "";
+								res.on("data", (chunk: Buffer) => {
+									body += chunk.toString();
+								});
+								res.on("end", () => {
+									if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+										resolve(res.statusCode);
+									} else {
+										reject(new Error(`S3 upload failed with status ${res.statusCode}: ${body}`));
+									}
+								});
+							},
+						);
+						req.on("error", reject);
+
+						// Write in chunks to track progress
+						let written = 0;
+						const chunkSize = 64 * 1024;
+						const writeChunk = () => {
+							if (backgroundUploadCancelled) {
+								req.destroy();
+								reject(new Error("Upload cancelled"));
+								return;
+							}
+							const end = Math.min(written + chunkSize, fileBuffer.length);
+							const chunk = fileBuffer.subarray(written, end);
+							written = end;
+							const percent = 30 + Math.round((written / fileBuffer.length) * 65);
+							sender.send("background-upload-progress", { percent });
+							if (written < fileBuffer.length) {
+								req.write(chunk, () => writeChunk());
+							} else {
+								req.end(chunk);
+							}
+						};
+						writeChunk();
+					});
+
+					const publicUrl = config.pathStyle
+						? `${endpointUrl.origin}/${config.bucket}/${encodeURIComponent(objectKey)}`
+						: `${endpointUrl.protocol}//${config.bucket}.${host}/${encodeURIComponent(objectKey)}`;
+
+					sender.send("background-upload-progress", { percent: 100 });
+					console.log(`[background-upload] Upload succeeded (HTTP ${responseCode}): ${publicUrl}`);
+					return { success: true, url: publicUrl };
+				}
+
+				// For large files, read and upload in chunks (simplified multipart approach)
+				// Falls back to reading entire file and streaming since we reuse the existing
+				// S3 signing approach which doesn't use multipart API
+				const fileBuffer = await fs.readFile(filePath);
+				if (backgroundUploadCancelled) {
+					return { success: false, error: "Upload cancelled" };
+				}
+
+				const sender = event.sender;
+				const ext = path.extname(filePath).toLowerCase();
+				const mimeTypes: Record<string, string> = {
+					".mp4": "video/mp4",
+					".gif": "image/gif",
+					".webm": "video/webm",
+					".mov": "video/quicktime",
+				};
+				const contentType = mimeTypes[ext] || "application/octet-stream";
+
+				const now = new Date();
+				const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+				const dateStamp = amzDate.slice(0, 8);
+				const payloadHash = sha256Hex(fileBuffer);
+
+				const canonicalHeaders =
+					`content-type:${contentType}\n` +
+					`host:${effectiveHost}\n` +
+					`x-amz-content-sha256:${payloadHash}\n` +
+					`x-amz-date:${amzDate}\n`;
+				const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+
+				const canonicalRequest = [
+					"PUT",
+					requestPath,
+					"",
+					canonicalHeaders,
+					signedHeaders,
+					payloadHash,
+				].join("\n");
+
+				const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+				const stringToSign = [
+					"AWS4-HMAC-SHA256",
+					amzDate,
+					credentialScope,
+					sha256Hex(Buffer.from(canonicalRequest, "utf8")),
+				].join("\n");
+
+				const signingKey = getSignatureKey(config.secretAccessKey, dateStamp, region, service);
+				const signature = hmacSHA256(signingKey, stringToSign).toString("hex");
+				const authorization =
+					`AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, ` +
+					`SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+				const defaultPort = useHttps ? 443 : 80;
+				const port = endpointUrl.port ? Number(endpointUrl.port) : defaultPort;
+				const httpModule = useHttps ? https : http;
+
+				const responseCode = await new Promise<number>((resolve, reject) => {
+					const req = httpModule.request(
+						{
+							hostname: config.pathStyle
+								? endpointUrl.hostname
+								: `${config.bucket}.${endpointUrl.hostname}`,
+							port,
+							path: requestPath,
+							method: "PUT",
+							headers: {
+								"Content-Type": contentType,
+								"Content-Length": fileBuffer.length,
+								Host: effectiveHost,
+								"x-amz-content-sha256": payloadHash,
+								"x-amz-date": amzDate,
+								Authorization: authorization,
+							},
+						},
+						(res) => {
+							let body = "";
+							res.on("data", (chunk: Buffer) => {
+								body += chunk.toString();
+							});
+							res.on("end", () => {
+								if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+									resolve(res.statusCode);
+								} else {
+									reject(new Error(`S3 upload failed with status ${res.statusCode}: ${body}`));
+								}
+							});
+						},
+					);
+					req.on("error", reject);
+
+					// Write in chunks to track progress
+					let written = 0;
+					const writeChunkSize = 64 * 1024;
+					const writeChunk = () => {
+						if (backgroundUploadCancelled) {
+							req.destroy();
+							reject(new Error("Upload cancelled"));
+							return;
+						}
+						const end = Math.min(written + writeChunkSize, fileBuffer.length);
+						const chunk = fileBuffer.subarray(written, end);
+						written = end;
+						const percent = Math.round((written / fileBuffer.length) * 95);
+						sender.send("background-upload-progress", { percent });
+						if (written < fileBuffer.length) {
+							req.write(chunk, () => writeChunk());
+						} else {
+							req.end(chunk);
+						}
+					};
+					writeChunk();
+				});
+
+				const publicUrl = config.pathStyle
+					? `${endpointUrl.origin}/${config.bucket}/${encodeURIComponent(objectKey)}`
+					: `${endpointUrl.protocol}//${config.bucket}.${host}/${encodeURIComponent(objectKey)}`;
+
+				sender.send("background-upload-progress", { percent: 100 });
+				console.log(`[background-upload] Large file upload succeeded (HTTP ${responseCode}): ${publicUrl}`);
+				return { success: true, url: publicUrl };
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				console.error("[background-upload] Failed:", message);
+				return { success: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle("cancel-background-upload", () => {
+		backgroundUploadCancelled = true;
+		return { success: true };
+	});
 }
