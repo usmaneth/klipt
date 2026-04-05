@@ -87,6 +87,10 @@ import {
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_ZOOM_DEPTH,
+	type AutoStopDuration,
+	type ClickHighlightSize,
+	DEFAULT_CLICK_HIGHLIGHT_SETTINGS,
+	DEFAULT_RECORDING_TIMER_SETTINGS,
 	type FaceBlurRegion,
 	type FaceBlurStyle,
 	type FigureData,
@@ -102,6 +106,7 @@ import {
 	type ZoomFocus,
 	type ZoomRegion,
 } from "./types";
+import { ClickHighlightOverlay, type ClickEvent } from "./ClickHighlightOverlay";
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import {
 	buildLoopedCursorTelemetry,
@@ -262,6 +267,25 @@ export default function VideoEditor() {
 		useState<ColorCorrectionProfile | null>(null);
 	const [isColorCorrecting, setIsColorCorrecting] = useState(false);
 	const [originalVideoPath, setOriginalVideoPath] = useState<string | null>(null);
+
+	// Click Highlight state
+	const [clickHighlightEnabled, setClickHighlightEnabled] = useState(
+		DEFAULT_CLICK_HIGHLIGHT_SETTINGS.enabled,
+	);
+	const [clickHighlightColor, setClickHighlightColor] = useState(
+		DEFAULT_CLICK_HIGHLIGHT_SETTINGS.color,
+	);
+	const [clickHighlightSize, setClickHighlightSize] = useState<ClickHighlightSize>(
+		DEFAULT_CLICK_HIGHLIGHT_SETTINGS.size,
+	);
+
+	// Recording Timer state
+	const [recordingAutoStopMs, setRecordingAutoStopMs] = useState<AutoStopDuration>(
+		DEFAULT_RECORDING_TIMER_SETTINGS.autoStopMs,
+	);
+	const [recordingShowTimerOverlay, setRecordingShowTimerOverlay] = useState(
+		DEFAULT_RECORDING_TIMER_SETTINGS.showTimerOverlay,
+	);
 
 	useEffect(() => {
 		let timeout: NodeJS.Timeout;
@@ -1136,6 +1160,20 @@ export default function VideoEditor() {
 			displayedTimelineWindow.startMs,
 		);
 	}, [loopCursor, normalizedCursorTelemetry, displayedTimelineWindow]);
+
+	// Extract click events from cursor telemetry for click highlight overlay
+	const clickEvents = useMemo<ClickEvent[]>(() => {
+		if (!clickHighlightEnabled) return [];
+		return effectiveCursorTelemetry
+			.filter(
+				(p) =>
+					p.interactionType === "click" ||
+					p.interactionType === "double-click" ||
+					p.interactionType === "right-click" ||
+					p.interactionType === "middle-click",
+			)
+			.map((p) => ({ timeMs: p.timeMs, x: p.cx, y: p.cy }));
+	}, [effectiveCursorTelemetry, clickHighlightEnabled]);
 
 	const effectiveZoomRegions = useMemo(() => {
 		if (!loopCursor || zoomRegions.length === 0) {
@@ -4256,6 +4294,13 @@ export default function VideoEditor() {
 													captionCues={translatedCaptionCues ?? captionCues}
 													captionSettings={captionSettings}
 												/>
+												<ClickHighlightOverlay
+													clicks={clickEvents}
+													currentTimeMs={currentTime * 1000}
+													enabled={clickHighlightEnabled}
+													color={clickHighlightColor}
+													size={clickHighlightSize}
+												/>
 											</div>
 										</div>
 										{/* Playback controls */}
@@ -4518,6 +4563,16 @@ export default function VideoEditor() {
 									onColorCorrect={handleColorCorrect}
 									onRevertColorCorrection={handleRevertColorCorrection}
 									isColorCorrecting={isColorCorrecting}
+									clickHighlightEnabled={clickHighlightEnabled}
+									onClickHighlightEnabledChange={setClickHighlightEnabled}
+									clickHighlightColor={clickHighlightColor}
+									onClickHighlightColorChange={setClickHighlightColor}
+									clickHighlightSize={clickHighlightSize}
+									onClickHighlightSizeChange={setClickHighlightSize}
+									recordingAutoStopMs={recordingAutoStopMs}
+									onRecordingAutoStopChange={setRecordingAutoStopMs}
+									recordingShowTimerOverlay={recordingShowTimerOverlay}
+									onRecordingShowTimerOverlayChange={setRecordingShowTimerOverlay}
 								/>
 							</div>
 						</Panel>

@@ -269,6 +269,49 @@ export const FACE_BLUR_STYLE_OPTIONS: Array<{ value: FaceBlurStyle; label: strin
 	{ value: "blackbar", label: "Black Bar" },
 ];
 
+export type ClickHighlightSize = "small" | "medium" | "large";
+
+export interface ClickHighlightSettings {
+	enabled: boolean;
+	color: string;
+	size: ClickHighlightSize;
+}
+
+export const DEFAULT_CLICK_HIGHLIGHT_SETTINGS: ClickHighlightSettings = {
+	enabled: false,
+	color: "#E0000F",
+	size: "medium",
+};
+
+export const CLICK_HIGHLIGHT_SIZE_MAP: Record<ClickHighlightSize, { start: number; end: number }> =
+	{
+		small: { start: 6, end: 24 },
+		medium: { start: 10, end: 40 },
+		large: { start: 16, end: 60 },
+	};
+
+export type AutoStopDuration = 0 | 60000 | 120000 | 300000 | 600000 | 1800000 | 3600000;
+
+export interface RecordingTimerSettings {
+	autoStopMs: AutoStopDuration;
+	showTimerOverlay: boolean;
+}
+
+export const DEFAULT_RECORDING_TIMER_SETTINGS: RecordingTimerSettings = {
+	autoStopMs: 0,
+	showTimerOverlay: false,
+};
+
+export const AUTO_STOP_OPTIONS: Array<{ value: AutoStopDuration; label: string }> = [
+	{ value: 0, label: "Off" },
+	{ value: 60000, label: "1 min" },
+	{ value: 120000, label: "2 min" },
+	{ value: 300000, label: "5 min" },
+	{ value: 600000, label: "10 min" },
+	{ value: 1800000, label: "30 min" },
+	{ value: 3600000, label: "1 hr" },
+];
+
 export type ColorCorrectionProfile = "auto" | "warm" | "cool" | "vivid";
 
 export const COLOR_CORRECTION_PROFILES: Array<{

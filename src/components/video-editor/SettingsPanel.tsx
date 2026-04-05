@@ -12,6 +12,7 @@ import {
 	Globe,
 	Image,
 	Mic,
+	Mouse,
 	Palette,
 	RectangleVertical,
 	RotateCcw,
@@ -22,6 +23,7 @@ import {
 	Star,
 	Subtitles,
 	Sun,
+	Timer,
 	Type,
 	Upload,
 	Volume2,
@@ -57,6 +59,8 @@ import { ThumbnailPanel } from "./ThumbnailPanel";
 import type {
 	AnnotationRegion,
 	AnnotationType,
+	AutoStopDuration,
+	ClickHighlightSize,
 	ColorCorrectionProfile,
 	CropRegion,
 	CursorStyle,
@@ -67,6 +71,7 @@ import type {
 	ZoomDepth,
 } from "./types";
 import {
+	AUTO_STOP_OPTIONS,
 	COLOR_CORRECTION_PROFILES,
 	CURSOR_STYLE_OPTIONS,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
@@ -261,6 +266,18 @@ interface SettingsPanelProps {
 	onColorCorrect?: (profile: ColorCorrectionProfile) => void;
 	onRevertColorCorrection?: () => void;
 	isColorCorrecting?: boolean;
+	// Click Highlight
+	clickHighlightEnabled?: boolean;
+	onClickHighlightEnabledChange?: (enabled: boolean) => void;
+	clickHighlightColor?: string;
+	onClickHighlightColorChange?: (color: string) => void;
+	clickHighlightSize?: ClickHighlightSize;
+	onClickHighlightSizeChange?: (size: ClickHighlightSize) => void;
+	// Recording Timer
+	recordingAutoStopMs?: AutoStopDuration;
+	onRecordingAutoStopChange?: (ms: AutoStopDuration) => void;
+	recordingShowTimerOverlay?: boolean;
+	onRecordingShowTimerOverlayChange?: (show: boolean) => void;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -444,6 +461,18 @@ export function SettingsPanel({
 	onColorCorrect,
 	onRevertColorCorrection,
 	isColorCorrecting = false,
+	// Click Highlight
+	clickHighlightEnabled = false,
+	onClickHighlightEnabledChange,
+	clickHighlightColor = "#E0000F",
+	onClickHighlightColorChange,
+	clickHighlightSize = "medium",
+	onClickHighlightSizeChange,
+	// Recording Timer
+	recordingAutoStopMs = 0 as AutoStopDuration,
+	onRecordingAutoStopChange,
+	recordingShowTimerOverlay = false,
+	onRecordingShowTimerOverlayChange,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { t } = useI18n();
@@ -1633,6 +1662,118 @@ export function SettingsPanel({
 													);
 												})}
 											</div>
+										</div>
+									</div>
+								</div>
+
+								{/* Click Highlight */}
+								<div>
+									<SectionHeader>Click Highlight</SectionHeader>
+									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border-b border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<div className="flex items-center gap-2">
+												<Mouse className="w-3.5 h-3.5 text-white/40" />
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
+													Highlight Clicks
+												</span>
+											</div>
+											<Switch
+												checked={clickHighlightEnabled}
+												onCheckedChange={onClickHighlightEnabledChange}
+												className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
+											/>
+										</div>
+										{clickHighlightEnabled && (
+											<>
+												{/* Color picker */}
+												<div className="px-5 py-4 border-b border-white/[0.04]">
+													<div className="flex items-center justify-between mb-2.5">
+														<span className="text-[11px] font-medium text-white/40">Ring Color</span>
+													</div>
+													<Block
+														color={clickHighlightColor}
+														colors={COLOR_PALETTE}
+														onChange={(c) => onClickHighlightColorChange?.(c.hex)}
+														style={BLOCK_COLOR_STYLE}
+													/>
+												</div>
+												{/* Size selector */}
+												<div className="px-5 py-4 bg-transparent">
+													<div className="flex items-center justify-between mb-2.5">
+														<span className="text-[11px] font-medium text-white/40">Ring Size</span>
+													</div>
+													<div className="grid grid-cols-3 gap-1.5">
+														{(["small", "medium", "large"] as const).map((s) => {
+															const isActive = clickHighlightSize === s;
+															return (
+																<button
+																	key={s}
+																	type="button"
+																	onClick={() => onClickHighlightSizeChange?.(s)}
+																	className={cn(
+																		"flex items-center justify-center py-1.5 rounded-lg text-[10px] font-medium uppercase tracking-wider transition-all duration-150",
+																		isActive
+																			? "bg-white/[0.08] border border-white/[0.15] text-white/60"
+																			: "bg-white/[0.02] border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08] text-white/25",
+																	)}
+																>
+																	{s}
+																</button>
+															);
+														})}
+													</div>
+												</div>
+											</>
+										)}
+									</div>
+								</div>
+
+								{/* Recording Timer */}
+								<div>
+									<SectionHeader>Recording Timer</SectionHeader>
+									<div className="flex flex-col bg-white/[0.02] rounded-3xl border border-white/[0.04] overflow-hidden my-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+										{/* Auto-stop duration */}
+										<div className="px-5 py-4 border-b border-white/[0.04]">
+											<div className="flex items-center justify-between mb-2.5">
+												<div className="flex items-center gap-2">
+													<Timer className="w-3.5 h-3.5 text-white/40" />
+													<span className="text-[11px] font-medium text-white/40">Auto-stop</span>
+												</div>
+											</div>
+											<div className="grid grid-cols-4 gap-1">
+												{AUTO_STOP_OPTIONS.map((opt) => {
+													const isActive = recordingAutoStopMs === opt.value;
+													return (
+														<button
+															key={opt.value}
+															type="button"
+															onClick={() => onRecordingAutoStopChange?.(opt.value)}
+															className={cn(
+																"flex items-center justify-center py-1.5 rounded-lg text-[10px] font-medium tracking-wide transition-all duration-150",
+																isActive
+																	? "bg-white/[0.08] border border-white/[0.15] text-white/60"
+																	: "bg-white/[0.02] border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08] text-white/25",
+															)}
+														>
+															{opt.label}
+														</button>
+													);
+												})}
+											</div>
+										</div>
+										{/* Show timer overlay toggle */}
+										<div className="flex items-center justify-between p-3 bg-white/[0.02] border-b border-white/[0.04] rounded-xl hover:bg-white/[0.04] transition-all duration-300">
+											<div className="flex items-center gap-2">
+												<Eye className="w-3.5 h-3.5 text-white/40" />
+												<span className="text-[11px] font-medium text-white/50 tracking-wide">
+													Show Timer Overlay
+												</span>
+											</div>
+											<Switch
+												checked={recordingShowTimerOverlay}
+												onCheckedChange={onRecordingShowTimerOverlayChange}
+												className="data-[state=checked]:bg-[#E0000F] data-[state=checked]:shadow-[0_0_8px_rgba(224,0,15,0.25)] data-[state=unchecked]:bg-white/[0.08] scale-90"
+											/>
 										</div>
 									</div>
 								</div>
