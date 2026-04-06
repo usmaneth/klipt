@@ -825,11 +825,14 @@ export default function VideoEditor() {
 				const result = await window.electronAPI.getCurrentVideoPath();
 				if (result.success && result.path) {
 					const sourcePath = fromFileUrl(result.path);
+					const videoUrl = toFileUrl(sourcePath);
+					console.log("[VideoEditor] Loading video:", { rawPath: result.path, sourcePath, videoUrl });
 					setVideoSourcePath(sourcePath);
-					setVideoPath(toFileUrl(sourcePath));
+					setVideoPath(videoUrl);
 					setCurrentProjectPath(null);
 					setLastSavedSnapshot(null);
 				} else {
+					console.warn("[VideoEditor] No video path returned from getCurrentVideoPath");
 					setError("No video to load. Please record or select a video.");
 				}
 			} catch (err) {
@@ -3935,13 +3938,17 @@ export default function VideoEditor() {
 	}
 	if (error) {
 		return (
-			<div className="flex items-center justify-center h-screen bg-background">
-				<div className="flex flex-col items-center gap-3">
-					<div className="text-destructive">{error}</div>
+			<div className="flex items-center justify-center h-screen" style={{ background: "#121214" }}>
+				<div className="flex flex-col items-center gap-4 max-w-md text-center px-6">
+					<div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+						<svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+					</div>
+					<div className="text-red-400 text-sm">{error}</div>
+					<p className="text-white/40 text-xs">Make sure the video file exists and is a supported format (MP4, WebM, MOV).</p>
 					<button
 						type="button"
 						onClick={handleLoadProject}
-						className="px-3 py-1.5 rounded-md bg-white text-black text-sm hover:bg-white/90"
+						className="px-4 py-2 rounded-xl bg-white/10 text-white/80 text-sm hover:bg-white/15 transition-colors"
 					>
 						Load Project File
 					</button>

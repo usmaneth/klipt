@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
 	app,
 	BrowserWindow,
@@ -421,7 +421,10 @@ app.whenReady().then(async () => {
 	protocol.handle("klipt-media", (request) => {
 		const url = new URL(request.url);
 		const filePath = decodeURIComponent(url.pathname);
-		return net.fetch(`file://${filePath}`);
+		// Use pathToFileURL to properly encode the path for file:// URLs
+		// (handles spaces, unicode, and special characters correctly)
+		const fileUrl = pathToFileURL(filePath).toString();
+		return net.fetch(fileUrl);
 	});
 
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {

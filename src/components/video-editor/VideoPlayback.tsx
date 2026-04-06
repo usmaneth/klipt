@@ -1336,7 +1336,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					onDurationChange={(e) => {
 						onDurationChange(e.currentTarget.duration);
 					}}
-					onError={() => onError("Failed to load video")}
+					onError={(e) => {
+						const mediaError = e.currentTarget.error;
+						const code = mediaError?.code ?? "unknown";
+						const msg = mediaError?.message ?? "";
+						console.error(`[VideoPlayback] Failed to load video: code=${code} msg=${msg} src=${videoPath}`);
+						onError(`Failed to load video (error ${code})`);
+					}}
 				/>
 			</div>
 		);
