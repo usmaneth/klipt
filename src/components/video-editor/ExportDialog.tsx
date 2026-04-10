@@ -29,6 +29,12 @@ interface ExportDialogProps {
 	videoDuration?: number;
 }
 
+interface ViewerAnalytics {
+	totalViews: number;
+	uniqueViewers: number;
+	viewEvents: Array<{ timestamp: number; ip?: string; userAgent?: string }>;
+}
+
 export function ExportDialog({
 	isOpen,
 	onClose,
@@ -57,14 +63,10 @@ export function ExportDialog({
 	const [s3Config, setS3Config] = useState(() => {
 		try {
 			const saved = localStorage.getItem("klipt-s3-config");
-			if (saved) return JSON.parse(saved) as {
-				endpoint: string;
-				bucket: string;
-				accessKeyId: string;
-				secretAccessKey: string;
-				region: string;
-				pathStyle: boolean;
-			};
+			if (saved) {
+					const parsed = JSON.parse(saved);
+					return { ...parsed, secretAccessKey: "" };
+				}
 		} catch { /* ignore */ }
 		return {
 			endpoint: "",
@@ -152,7 +154,7 @@ export function ExportDialog({
 			setShowSuccess(true);
 			const timer = setTimeout(() => {
 				// Don't auto-close if user has started sharing or cloud upload
-				if (!shareUrl && !uploadedUrl) {
+				if (!shareUrl && !uploadedUrl && !encryptedFilePath && !isBgUploading) {
 					setShowSuccess(false);
 					onClose();
 				}
@@ -313,18 +315,18 @@ export function ExportDialog({
 			return;
 		}
 		setIsUploading(true);
+		setUploadProgress(0);
 		if (successTimerRef.current) {
 			clearTimeout(successTimerRef.current);
 			successTimerRef.current = null;
 		}
 		try {
 			// Save config (without secret key) to localStorage for reuse
-			localStorage.setItem(
-				"klipt-s3-config",
-				JSON.stringify(s3Config),
-			);
+			const { secretAccessKey: _, ...safeConfig } = s3Config;
+			localStorage.setItem("klipt-s3-config", JSON.stringify(safeConfig));
 			const result = await window.electronAPI.uploadToS3(exportedFilePath, s3Config);
 			if (result.success && result.url) {
+				setUploadProgress(100);
 				setUploadedUrl(result.url);
 				toast.success("Uploaded to cloud storage");
 			} else {

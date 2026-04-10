@@ -37,7 +37,6 @@ export function CountdownOverlay() {
 		<div
 			className="fixed inset-0 flex items-center justify-center select-none cursor-pointer"
 			onClick={handleCancel}
-			onKeyDown={(e) => e.key === "Escape" && handleCancel()}
 		>
 			<div
 				className="flex items-center justify-center rounded-3xl"

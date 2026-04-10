@@ -61,12 +61,14 @@ interface GifExporterConfig {
 }
 
 async function seekVideo(video: HTMLVideoElement, timeSeconds: number): Promise<void> {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		if (Math.abs(video.currentTime - timeSeconds) < 0.01) {
 			resolve();
 			return;
 		}
-		video.onseeked = () => resolve();
+		const timeout = setTimeout(() => reject(new Error("Seek timed out")), 5000);
+		video.onerror = () => { clearTimeout(timeout); reject(new Error("Video error during seek")); };
+		video.onseeked = () => { clearTimeout(timeout); resolve(); };
 		video.currentTime = timeSeconds;
 	});
 }
@@ -187,7 +189,7 @@ export class GifExporter {
 
 			// Initialize GIF encoder
 			// Loop: 0 = infinite loop, 1 = play once (no loop)
-			const repeat = this.config.loop ? 0 : 1;
+			const repeat = this.config.loop ? 0 : -1;
 			const cores = navigator.hardwareConcurrency || 4;
 			const WORKER_COUNT = Math.max(1, Math.min(8, cores - 1));
 
@@ -253,8 +255,11 @@ export class GifExporter {
 					}
 
 					const sourceTimestampUs = sourceTimestampMs * 1000;
-					await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
-					videoFrame.close();
+					try {
+						await this.renderer!.renderFrame(videoFrame, sourceTimestampUs);
+					} finally {
+						videoFrame.close();
+					}
 
 					// Render captions on the composite canvas after all other layers
 					if (captionPages.length > 0 && this.config.captionSettings) {

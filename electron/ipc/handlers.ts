@@ -2143,9 +2143,15 @@ export function registerIpcHandlers(
 
 					wgcCaptureProcess.stdout.on("data", (chunk: Buffer) => {
 						wgcCaptureOutputBuffer += chunk.toString();
+						if (wgcCaptureOutputBuffer.length > 100_000) {
+							wgcCaptureOutputBuffer = wgcCaptureOutputBuffer.slice(-50_000);
+						}
 					});
 					wgcCaptureProcess.stderr.on("data", (chunk: Buffer) => {
 						wgcCaptureOutputBuffer += chunk.toString();
+						if (wgcCaptureOutputBuffer.length > 100_000) {
+							wgcCaptureOutputBuffer = wgcCaptureOutputBuffer.slice(-50_000);
+						}
 					});
 
 					await waitForWgcCaptureStart(wgcCaptureProcess);
@@ -2253,9 +2259,15 @@ export function registerIpcHandlers(
 
 				nativeCaptureProcess.stdout.on("data", (chunk: Buffer) => {
 					nativeCaptureOutputBuffer += chunk.toString();
+					if (nativeCaptureOutputBuffer.length > 100_000) {
+						nativeCaptureOutputBuffer = nativeCaptureOutputBuffer.slice(-50_000);
+					}
 				});
 				nativeCaptureProcess.stderr.on("data", (chunk: Buffer) => {
 					nativeCaptureOutputBuffer += chunk.toString();
+					if (nativeCaptureOutputBuffer.length > 100_000) {
+						nativeCaptureOutputBuffer = nativeCaptureOutputBuffer.slice(-50_000);
+					}
 				});
 
 				await waitForNativeCaptureStart(nativeCaptureProcess);
@@ -2307,6 +2319,7 @@ export function registerIpcHandlers(
 				}
 
 				wgcPendingVideoPath = finalVideoPath;
+				await finalizeStoredVideo(finalVideoPath);
 				return { success: true, path: finalVideoPath };
 			} catch (error) {
 				console.error("Failed to stop WGC capture:", error);
@@ -2470,9 +2483,15 @@ export function registerIpcHandlers(
 
 			ffmpegCaptureProcess.stdout.on("data", (chunk: Buffer) => {
 				ffmpegCaptureOutputBuffer += chunk.toString();
+				if (ffmpegCaptureOutputBuffer.length > 100_000) {
+					ffmpegCaptureOutputBuffer = ffmpegCaptureOutputBuffer.slice(-50_000);
+				}
 			});
 			ffmpegCaptureProcess.stderr.on("data", (chunk: Buffer) => {
 				ffmpegCaptureOutputBuffer += chunk.toString();
+				if (ffmpegCaptureOutputBuffer.length > 100_000) {
+					ffmpegCaptureOutputBuffer = ffmpegCaptureOutputBuffer.slice(-50_000);
+				}
 			});
 
 			// Attach lifecycle handler so unexpected crashes clean up state and notify renderer
@@ -2582,7 +2601,14 @@ export function registerIpcHandlers(
 				return { success: false, message: "No recorded video found" };
 			}
 
-			const latestVideo = videoFiles.sort().reverse()[0];
+			const withStats = await Promise.all(
+				videoFiles.map(async (f) => ({
+					name: f,
+					mtime: (await fs.stat(path.join(recordingsDir, f))).mtimeMs,
+				}))
+			);
+			withStats.sort((a, b) => b.mtime - a.mtime);
+			const latestVideo = withStats[0]?.name;
 			const videoPath = path.join(recordingsDir, latestVideo);
 
 			return { success: true, path: videoPath };
@@ -2616,6 +2642,7 @@ export function registerIpcHandlers(
 			linuxCursorScreenPoint = null;
 			snapshotCursorTelemetryForPersistence();
 			activeCursorSamples = [];
+			pendingCursorSamples = [];
 		}
 
 		const source = selectedSource || { name: "Screen" };
@@ -2901,7 +2928,7 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("read-local-file", async (_, filePath: string) => {
 		try {
-			const resolved = path.resolve(filePath);
+			const resolved = await fs.realpath(path.resolve(filePath));
 			const recordingsDir = await getRecordingsDir();
 			const allowedDirs = [
 				path.resolve(recordingsDir),
@@ -3375,12 +3402,26 @@ export function registerIpcHandlers(
 		});
 
 		return new Promise<{ success: boolean; cancelled?: boolean }>((resolve) => {
+			let resolved = false;
 			let remaining = seconds;
+
+			countdownWin.on("closed", () => {
+				if (!resolved) {
+					resolved = true;
+					if (countdownTimer) {
+						clearInterval(countdownTimer);
+						countdownTimer = null;
+					}
+					countdownInProgress = false;
+					resolve({ success: false, cancelled: true });
+				}
+			});
 
 			countdownWin.webContents.send("countdown-tick", remaining);
 
 			countdownTimer = setInterval(() => {
 				if (countdownCancelled) {
+					resolved = true;
 					if (countdownTimer) {
 						clearInterval(countdownTimer);
 						countdownTimer = null;
@@ -3394,6 +3435,7 @@ export function registerIpcHandlers(
 				remaining--;
 
 				if (remaining <= 0) {
+					resolved = true;
 					if (countdownTimer) {
 						clearInterval(countdownTimer);
 						countdownTimer = null;
@@ -3496,9 +3538,7 @@ export function registerIpcHandlers(
 	ipcMain.handle("transcribe-audio", async (_event, rawVideoPath: string) => {
 		// Convert file:// URL to filesystem path if needed
 		let videoPath = rawVideoPath;
-		if (videoPath.startsWith("file://")) {
-			videoPath = decodeURIComponent(videoPath.replace(/^file:\/\//, ""));
-		}
+		videoPath = videoPath.startsWith("file://") ? fileURLToPath(videoPath) : videoPath;
 
 		const mainWindow = getMainWindow();
 		const sendProgress = (percent: number) => {
@@ -3986,9 +4026,7 @@ export function registerIpcHandlers(
 			try {
 				// Resolve video path
 				let videoPath = rawVideoPath;
-				if (videoPath.startsWith("file://")) {
-					videoPath = decodeURIComponent(videoPath.replace(/^file:\/\//, ""));
-				}
+				videoPath = videoPath.startsWith("file://") ? fileURLToPath(videoPath) : videoPath;
 
 				// Phase 1: Extract audio from video
 				sendProgress("extracting", 5, "Extracting audio from video...");
@@ -4330,6 +4368,7 @@ export function registerIpcHandlers(
 		currentShareFilePath = null;
 		shareComments = [];
 		shareReactions = {};
+		shareAnalyticsStore.clear();
 	}
 
 	function parseBody(req: http.IncomingMessage): Promise<string> {
@@ -4422,6 +4461,9 @@ export function registerIpcHandlers(
 						const userAgent = req.headers["user-agent"] || "unknown";
 						analytics.totalViews++;
 						analytics.viewEvents.push({ timestamp: Date.now(), ip, userAgent });
+						if (analytics.viewEvents.length > 1000) {
+							analytics.viewEvents = analytics.viewEvents.slice(-500);
+						}
 						const uniqueIps = new Set(analytics.viewEvents.map((e) => e.ip));
 						analytics.uniqueViewers = uniqueIps.size;
 					}
@@ -4459,7 +4501,7 @@ export function registerIpcHandlers(
 							res.writeHead(200, {
 								"Content-Type": contentType,
 								"Content-Length": fileStat.size,
-								"Content-Disposition": `inline; filename="${fileName}"`,
+								"Content-Disposition": `inline; filename="${fileName.replace(/["\r\n]/g, "_")}"`,
 								"Accept-Ranges": "bytes",
 							});
 							const stream = fsSync.createReadStream(filePath);
@@ -4544,7 +4586,7 @@ export function registerIpcHandlers(
 				port?: number;
 				error?: string;
 			}>((resolve) => {
-				server.listen(0, () => {
+				server.listen(0, "127.0.0.1", () => {
 					const addr = server.address();
 					if (!addr || typeof addr === "string") {
 						server.close();
@@ -5348,6 +5390,11 @@ export function registerIpcHandlers(
 		"cleanup-face-detection-frames",
 		async (_, frameDir: string): Promise<{ success: boolean }> => {
 			try {
+				const resolved = path.resolve(frameDir);
+				const tempDir = path.join(app.getPath("temp"), "klipt");
+				if (!resolved.startsWith(tempDir + path.sep) && resolved !== tempDir) {
+					return { success: false };
+				}
 				await fs.rm(frameDir, { recursive: true, force: true });
 				return { success: true };
 			} catch {

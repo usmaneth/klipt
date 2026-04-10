@@ -278,7 +278,10 @@ async function wasmDenoise(
 	onProgress?.(0);
 
 	// 1. Fetch and decode audio
-	const response = await fetch(videoUrl);
+	const fetchUrl = videoUrl.startsWith("file://") || videoUrl.startsWith("klipt-media://")
+		? videoUrl.replace(/^klipt-media:\/\//, "file://")
+		: videoUrl;
+	const response = await fetch(fetchUrl);
 	const arrayBuffer = await response.arrayBuffer();
 	onProgress?.(5);
 

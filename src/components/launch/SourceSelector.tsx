@@ -18,7 +18,7 @@ interface DesktopSource {
 	windowTitle?: string;
 }
 
-function parseSourceMetadata(source: ProcessedDesktopSource) {
+function parseSourceMetadata(source: DesktopSource) {
 	if (source.sourceType === "window" && (source.appName || source.windowTitle)) {
 		return {
 			sourceType: "window" as const,

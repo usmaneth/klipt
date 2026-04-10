@@ -1,5 +1,5 @@
 import { ChevronsLeft, ChevronsRight, Pause, Play } from "lucide-react";
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useScopedT } from "@/contexts/I18nContext";
 
 interface PlaybackControlsProps {
@@ -22,6 +22,12 @@ const PlaybackControls = memo(function PlaybackControls({
 	const [scrubSpeed, setScrubSpeed] = useState(0);
 	const lastValueRef = useRef<number>(0);
 	const speedDecayRef = useRef<number>(0);
+
+	useEffect(() => {
+		return () => {
+			cancelAnimationFrame(speedDecayRef.current);
+		};
+	}, []);
 
 	function formatTime(seconds: number) {
 		if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return "0:00";

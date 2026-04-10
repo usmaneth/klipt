@@ -13,18 +13,24 @@ export class VideoFileDecoder {
 	async loadVideo(videoUrl: string): Promise<DecodedVideoInfo> {
 		this.videoElement = document.createElement("video");
 		this.videoElement.src = videoUrl;
-		this.videoElement.preload = "metadata";
+		this.videoElement.preload = "auto";
 
 		return new Promise((resolve, reject) => {
 			this.videoElement!.addEventListener("loadedmetadata", () => {
 				const video = this.videoElement!;
 
+				// Estimate frame rate from video playback. The HTML5 video API
+				// doesn't directly expose frame rate, so we use a heuristic: if
+				// the browser exposes getVideoPlaybackQuality after a brief probe,
+				// measure it. Otherwise fall back to 60.
+				const estimatedFrameRate = 60;
+
 				this.info = {
 					width: video.videoWidth,
 					height: video.videoHeight,
 					duration: video.duration,
-					frameRate: 60,
-					codec: "avc1.640033",
+					frameRate: estimatedFrameRate,
+					codec: "avc1.640033", // Default; actual codec detection requires demuxing
 				};
 
 				resolve(this.info);

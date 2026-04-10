@@ -301,13 +301,12 @@ export class FrameRenderer {
 
 					if (type === "linear") {
 						gradient = bgCtx.createLinearGradient(0, 0, 0, this.config.height);
-						parts.forEach((part, index) => {
-							if (part.startsWith("to ") || part.includes("deg")) return;
-
+						const colorParts = parts.filter(p => !p.startsWith("to ") && !p.includes("deg"));
+						colorParts.forEach((part, index) => {
 							const colorMatch = part.match(/^(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-z]+)/);
 							if (colorMatch) {
 								const color = colorMatch[1];
-								const position = index / (parts.length - 1);
+								const position = index / (colorParts.length - 1);
 								gradient.addColorStop(position, color);
 							}
 						});
@@ -683,15 +682,15 @@ export class FrameRenderer {
 
 		state.appliedScale =
 			Math.abs(projectedTransform.scale - prevScale) < ZOOM_SCALE_DEADZONE
-				? projectedTransform.scale
+				? prevScale
 				: projectedTransform.scale;
 		state.x =
 			Math.abs(projectedTransform.x - prevX) < ZOOM_TRANSLATION_DEADZONE_PX
-				? projectedTransform.x
+				? prevX
 				: projectedTransform.x;
 		state.y =
 			Math.abs(projectedTransform.y - prevY) < ZOOM_TRANSLATION_DEADZONE_PX
-				? projectedTransform.y
+				? prevY
 				: projectedTransform.y;
 
 		this.lastMotionVector = {

@@ -358,10 +358,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [zoomRegions, selectedZoomId]);
 
 		useImperativeHandle(ref, () => ({
-			video: videoRef.current,
-			app: appRef.current,
-			videoSprite: videoSpriteRef.current,
-			videoContainer: videoContainerRef.current,
+			get video() { return videoRef.current; },
+			get app() { return appRef.current; },
+			get videoSprite() { return videoSpriteRef.current; },
+			get videoContainer() { return videoContainerRef.current; },
 			containerRef,
 			play: async () => {
 				const vid = videoRef.current;
@@ -884,7 +884,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					motionBlurFilterRef.current.destroy();
 					motionBlurFilterRef.current = null;
 				}
-				videoTexture.destroy(false);
+				videoTexture.destroy(true);
 
 				videoSpriteRef.current = null;
 			};
@@ -1032,15 +1032,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 
 				const appliedScale =
 					Math.abs(projectedTransform.scale - prevScale) < ZOOM_SCALE_DEADZONE
-						? projectedTransform.scale
+						? prevScale
 						: projectedTransform.scale;
 				const appliedX =
 					Math.abs(projectedTransform.x - prevX) < ZOOM_TRANSLATION_DEADZONE_PX
-						? projectedTransform.x
+						? prevX
 						: projectedTransform.x;
 				const appliedY =
 					Math.abs(projectedTransform.y - prevY) < ZOOM_TRANSLATION_DEADZONE_PX
-						? projectedTransform.y
+						? prevY
 						: projectedTransform.y;
 
 				const motionIntensity = Math.max(
@@ -1192,6 +1192,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			? { backgroundImage: `url(${resolvedWallpaper || ""})` }
 			: { background: resolvedWallpaper || "" };
 
+		// Intentionally computed in the render body (not useMemo) because it reads
+		// from refs whose values lock once on video load, making the perf cost negligible.
 		const nativeAspectRatio = (() => {
 			const locked = lockedVideoDimensionsRef.current;
 			if (locked && locked.height > 0) {

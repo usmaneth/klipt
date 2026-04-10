@@ -17,7 +17,7 @@ export class AudioProcessor {
 	 * 2) speed regions present -> pitch-preserving rendered timeline pipeline
 	 */
 	async process(
-		demuxer: WebDemuxer,
+		demuxer: WebDemuxer | null,
 		muxer: VideoMuxer,
 		videoUrl: string,
 		trimRegions?: TrimRegion[],
@@ -55,7 +55,9 @@ export class AudioProcessor {
 		}
 
 		// No speed edits or audio regions: keep the original demux/decode/encode path with trim timestamp remap.
-		await this.processTrimOnlyAudio(demuxer, muxer, sortedTrims, readEndSec);
+		if (demuxer) {
+			await this.processTrimOnlyAudio(demuxer, muxer, sortedTrims, readEndSec);
+		}
 	}
 
 	// Legacy trim-only path used when no speed regions are configured.
@@ -166,6 +168,10 @@ export class AudioProcessor {
 		for (const { chunk, meta } of encodedChunks) {
 			if (this.cancelled) break;
 			await muxer.addAudioChunk(chunk, meta);
+		}
+
+		if (this.cancelled) {
+			encodedChunks.length = 0;
 		}
 	}
 
@@ -610,10 +616,9 @@ export class AudioProcessor {
 		return trims.some((trim) => timestampMs >= trim.startMs && timestampMs < trim.endMs);
 	}
 
-	private computeTrimOffset(timestampMs: number, trims: TrimRegion[]) {
-		const sorted = [...trims].sort((a, b) => a.startMs - b.startMs);
+	private computeTrimOffset(timestampMs: number, sortedTrims: TrimRegion[]) {
 		let offset = 0;
-		for (const trim of sorted) {
+		for (const trim of sortedTrims) {
 			if (trim.endMs <= timestampMs) {
 				offset += trim.endMs - trim.startMs;
 			}
@@ -627,6 +632,9 @@ export class AudioProcessor {
 	 */
 	async processEnhancedAudio(enhancedAudioUrl: string, muxer: VideoMuxer): Promise<void> {
 		const response = await fetch(enhancedAudioUrl);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch enhanced audio: ${response.status} ${response.statusText}`);
+		}
 		const arrayBuffer = await response.arrayBuffer();
 
 		const audioCtx = new AudioContext();
@@ -713,6 +721,10 @@ export class AudioProcessor {
 		for (const { chunk, meta } of encodedChunks) {
 			if (this.cancelled) break;
 			await muxer.addAudioChunk(chunk, meta);
+		}
+
+		if (this.cancelled) {
+			encodedChunks.length = 0;
 		}
 	}
 

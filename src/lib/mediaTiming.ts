@@ -26,7 +26,7 @@ export function getEffectiveRecordingDurationMs({
 	const safeEndTime = Math.max(safeStartTime, endTimeMs);
 	const activePauseDuration =
 		Number.isFinite(pauseStartedAtMs) && pauseStartedAtMs !== null
-			? Math.max(0, safeEndTime - pauseStartedAtMs)
+			? Math.max(0, safeEndTime - Math.max(safeStartTime, pauseStartedAtMs))
 			: 0;
 
 	return Math.max(

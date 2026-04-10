@@ -66,6 +66,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const hasPromptedForReselect = useRef(false);
 	const hasShownWgcFallbackToast = useRef(false);
 	const countdownDelayLoaded = useRef(false);
+	const microphoneEnabledRef = useRef(microphoneEnabled);
+	microphoneEnabledRef.current = microphoneEnabled;
+	const systemAudioEnabledRef = useRef(systemAudioEnabled);
+	systemAudioEnabledRef.current = systemAudioEnabled;
+	const microphoneDeviceIdRef = useRef(microphoneDeviceId);
+	microphoneDeviceIdRef.current = microphoneDeviceId;
 
 	const preparePermissions = useCallback(async (options: { startup?: boolean } = {}) => {
 		const platform = await window.electronAPI.getPlatform();
@@ -132,10 +138,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		return preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
 	};
 
-	const computeBitrate = (width: number, height: number) => {
+	const computeBitrate = (width: number, height: number, actualFrameRate?: number) => {
 		const pixels = width * height;
+		const fps = actualFrameRate ?? TARGET_FRAME_RATE;
 		const highFrameRateBoost =
-			TARGET_FRAME_RATE >= HIGH_FRAME_RATE_THRESHOLD ? HIGH_FRAME_RATE_BOOST : 1;
+			fps >= HIGH_FRAME_RATE_THRESHOLD ? HIGH_FRAME_RATE_BOOST : 1;
 
 		if (pixels >= FOUR_K_PIXELS) {
 			return Math.round(BITRATE_4K * highFrameRateBoost);
@@ -201,7 +208,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		}
 
 		if (mediaRecorder.current?.state === "recording") {
-			cleanupCapturedMedia();
+			// Stop the recorder FIRST so it can flush the final data chunk,
+			// then clean up media tracks in the onstop handler.
 			mediaRecorder.current.stop();
 			setRecording(false);
 			window.electronAPI?.setRecordingState(false);
@@ -288,6 +296,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		hasPromptedForReselect.current = false;
 		startInFlight.current = true;
 		setStarting(true);
+
+		// Snapshot current audio settings from refs to avoid stale closures
+		// across async gaps (e.g. countdown await).
+		const microphoneEnabled = microphoneEnabledRef.current;
+		const systemAudioEnabled = systemAudioEnabledRef.current;
+		const microphoneDeviceId = microphoneDeviceIdRef.current;
 
 		try {
 			const selectedSource = await window.electronAPI.getSelectedSource();
@@ -545,7 +559,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			width = Math.floor(width / CODEC_ALIGNMENT) * CODEC_ALIGNMENT;
 			height = Math.floor(height / CODEC_ALIGNMENT) * CODEC_ALIGNMENT;
 
-			const videoBitsPerSecond = computeBitrate(width, height);
+			const videoBitsPerSecond = computeBitrate(width, height, frameRate ?? undefined);
 			const mimeType = selectMimeType();
 
 			console.log(
@@ -602,6 +616,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			};
 			recorder.onerror = () => {
 				setRecording(false);
+				cleanupCapturedMedia();
+				window.electronAPI?.setRecordingState(false);
 			};
 			recorder.start(RECORDER_TIMESLICE_MS);
 			startTime.current = Date.now();
@@ -645,7 +661,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 		}
 
-		startRecording();
+		void startRecording();
 	};
 
 	return {

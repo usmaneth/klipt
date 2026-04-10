@@ -91,24 +91,27 @@ export function LaunchWindow() {
 		}
 	}, [webcamRecorder.stream]);
 
-	// Coordinate webcam with screen recording start/stop
+	// Coordinate webcam with screen recording start/stop.
+	// Destructure stable useCallback refs to avoid re-firing on every render
+	// (webcamRecorder is a new object each render).
+	const { startRecording: startWebcamRecording, stopAndSave: stopWebcamAndSave } = webcamRecorder;
 	useEffect(() => {
 		const wasRecording = prevRecordingRef.current;
 		prevRecordingRef.current = recording;
 
 		if (!wasRecording && recording && cameraEnabled) {
-			void webcamRecorder.startRecording();
+			void startWebcamRecording();
 		}
 
 		if (wasRecording && !recording && cameraEnabled) {
 			void (async () => {
-				const webcamPath = await webcamRecorder.stopAndSave();
+				const webcamPath = await stopWebcamAndSave();
 				if (webcamPath) {
 					await window.electronAPI.setCurrentWebcamPath(webcamPath);
 				}
 			})();
 		}
-	}, [recording, cameraEnabled, webcamRecorder]);
+	}, [recording, cameraEnabled, startWebcamRecording, stopWebcamAndSave]);
 
 	const toggleCamera = useCallback(() => {
 		if (!recording) {
@@ -173,9 +176,11 @@ export function LaunchWindow() {
 		};
 
 		void checkSelectedSource();
+		// Skip polling during active recording — the source can't change.
+		if (recording) return;
 		const interval = setInterval(checkSelectedSource, 500);
 		return () => clearInterval(interval);
-	}, []);
+	}, [recording]);
 
 	useEffect(() => {
 		let cancelled = false;

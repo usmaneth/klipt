@@ -317,9 +317,10 @@ export default function VideoEditor() {
 		let source: MediaElementAudioSourceNode;
 		let analyser: AnalyserNode;
 		let checkInterval: NodeJS.Timeout;
+		let cancelled = false;
 
 		const initAudio = (video: HTMLVideoElement) => {
-			if (analyserRef.current) return;
+			if (cancelled || analyserRef.current) return;
 			try {
 				audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 				analyser = audioCtx.createAnalyser();
@@ -346,6 +347,7 @@ export default function VideoEditor() {
 		}, 500);
 
 		return () => {
+			cancelled = true;
 			clearInterval(checkInterval);
 			if (audioCtx) audioCtx.close().catch(() => {});
 		};
@@ -755,6 +757,8 @@ export default function VideoEditor() {
 		speedRegions,
 		audioRegions,
 		annotationRegions,
+		soundEffectRegions,
+		transitionRegions,
 		timelineComments,
 		aspectRatio,
 		exportQuality,
@@ -1016,6 +1020,9 @@ export default function VideoEditor() {
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			soundEffectRegions,
+			transitionRegions,
+			timelineComments,
 			aspectRatio,
 			exportQuality,
 			exportFormat,
@@ -1296,6 +1303,7 @@ export default function VideoEditor() {
 
 	// Initialize default wallpaper with resolved asset path
 	useEffect(() => {
+		if (wallpaper) return;
 		let mounted = true;
 		(async () => {
 			try {
@@ -1336,6 +1344,8 @@ export default function VideoEditor() {
 		if (id) {
 			setSelectedTrimId(null);
 			setSelectedAudioId(null);
+			setSelectedSpeedId(null);
+			setSelectedAnnotationId(null);
 		}
 	}, []);
 
@@ -2435,40 +2445,40 @@ export default function VideoEditor() {
 				.catch(() => {
 					toast.error("Failed to copy to clipboard");
 				});
-		} else if (suggestion.type === "chapter") {
-			// Create a text annotation on the timeline showing the chapter title
-			const id = `annotation-${nextAnnotationIdRef.current++}`;
-			const zIndex = nextAnnotationZIndexRef.current++;
-			// Extract chapter title from label (format: "Chapter N: Title")
-			const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
-			const chapterTitle = titleMatch?.[1] ?? suggestion.label;
-			const newRegion: AnnotationRegion = {
-				id,
-				startMs: suggestion.startMs,
-				endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
-				type: "text",
-				content: chapterTitle,
-				position: { x: 50, y: 10 },
-				size: { width: 60, height: 12 },
-				style: {
-					...DEFAULT_ANNOTATION_STYLE,
-					fontSize: 48,
-					fontWeight: "bold",
-					color: "#ffffff",
-					backgroundColor: "rgba(0, 0, 0, 0.6)",
-				},
-				zIndex,
-			};
-			setAnnotationRegions((prev) => [...prev, newRegion]);
-			setSelectedAnnotationId(id);
-			setSelectedZoomId(null);
-			setSelectedTrimId(null);
-			// Seek to the chapter start
-			const video = videoPlaybackRef.current?.video;
-			if (video) {
-				video.currentTime = suggestion.startMs / 1000;
+			} else if (suggestion.type === "chapter") {
+				// Create a text annotation on the timeline showing the chapter title
+				const id = `annotation-${nextAnnotationIdRef.current++}`;
+				const zIndex = nextAnnotationZIndexRef.current++;
+				// Extract chapter title from label (format: "Chapter N: Title")
+				const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
+				const chapterTitle = titleMatch?.[1] ?? suggestion.label;
+				const newRegion: AnnotationRegion = {
+					id,
+					startMs: suggestion.startMs,
+					endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
+					type: "text",
+					content: chapterTitle,
+					position: { x: 50, y: 10 },
+					size: { width: 60, height: 12 },
+					style: {
+						...DEFAULT_ANNOTATION_STYLE,
+						fontSize: 48,
+						fontWeight: "bold",
+						color: "#ffffff",
+						backgroundColor: "rgba(0, 0, 0, 0.6)",
+					},
+					zIndex,
+				};
+				setAnnotationRegions((prev) => [...prev, newRegion]);
+				setSelectedAnnotationId(id);
+				setSelectedZoomId(null);
+				setSelectedTrimId(null);
+				// Seek to the chapter start
+				const video = videoPlaybackRef.current?.video;
+				if (video) {
+					video.currentTime = suggestion.startMs / 1000;
+				}
 			}
-		}
 		// Remove the suggestion after accepting
 		setAiSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
 	}, []);

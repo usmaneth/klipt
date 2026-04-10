@@ -66,7 +66,7 @@ export function useWebcamDevices(enabled: boolean = true) {
 			mounted = false;
 			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
 		};
-	}, [enabled, selectedDeviceId]);
+	}, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps -- selectedDeviceId excluded: the only internal mutation is "default → real id" on first load, which would cause a redundant getUserMedia cycle
 
 	return {
 		devices,

@@ -37,6 +37,7 @@ import {
 	createHomeWindow,
 	createHudOverlayWindow,
 	createSourceSelectorWindow,
+	registerWindowsIpcHandlers,
 } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -84,6 +85,8 @@ let tray: Tray | null = null;
 let selectedSourceName = "";
 let editorHasUnsavedChanges = false;
 let isForceClosing = false;
+let pendingSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingSaveHandler: (() => void) | null = null;
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
@@ -98,11 +101,13 @@ function closeEditorWindowBypassingUnsavedPrompt(window: BrowserWindow | null) {
 	isForceClosing = true;
 	editorHasUnsavedChanges = false;
 	window.close();
+	// Safety net: reset flag if "closed" event doesn't fire within 5s
+	setTimeout(() => { isForceClosing = false; }, 5000);
 }
 
 // Tray Icons
-const defaultTrayIcon = getTrayIcon("app-icons/klipt-32.png");
-const recordingTrayIcon = getTrayIcon("rec-button.png");
+let defaultTrayIcon: Electron.NativeImage;
+let recordingTrayIcon: Electron.NativeImage;
 
 ipcMain.on("set-has-unsaved-changes", (_event, hasChanges: boolean) => {
 	editorHasUnsavedChanges = hasChanges;
@@ -328,11 +333,14 @@ function createEditorWindowWrapper() {
 		closeEditorWindowBypassingUnsavedPrompt(mainWindow);
 		mainWindow = null;
 	}
-	mainWindow = createEditorWindow();
+	const editorWin = createEditorWindow();
+	mainWindow = editorWin;
 	editorHasUnsavedChanges = false;
 
-	mainWindow.on("closed", () => {
-		if (mainWindow?.isDestroyed()) {
+	editorWin.on("closed", () => {
+		// Only null mainWindow if it still points to THIS editor window,
+		// not a newer window that was created after this one was closed.
+		if (mainWindow === editorWin) {
 			mainWindow = null;
 		}
 		isForceClosing = false;
@@ -357,16 +365,26 @@ function createEditorWindowWrapper() {
 		});
 
 		if (choice === 0) {
+			// Clean up any previous pending save listener to avoid leaks from rapid Cmd+W
+			if (pendingSaveTimeout) clearTimeout(pendingSaveTimeout);
+			if (pendingSaveHandler) ipcMain.removeListener("save-before-close-done", pendingSaveHandler);
+
 			mainWindow!.webContents.send("request-save-before-close");
 			const onSaveDone = () => {
 				clearTimeout(saveTimeout);
+				pendingSaveTimeout = null;
+				pendingSaveHandler = null;
 				closeEditorWindowBypassingUnsavedPrompt(mainWindow);
 			};
 			const saveTimeout = setTimeout(() => {
 				ipcMain.removeListener("save-before-close-done", onSaveDone);
+				pendingSaveTimeout = null;
+				pendingSaveHandler = null;
 				console.warn("Save before close timed out after 10s, closing anyway");
 				closeEditorWindowBypassingUnsavedPrompt(mainWindow);
 			}, 10_000);
+			pendingSaveTimeout = saveTimeout;
+			pendingSaveHandler = onSaveDone;
 			ipcMain.once("save-before-close-done", onSaveDone);
 		} else if (choice === 1) {
 			closeEditorWindowBypassingUnsavedPrompt(mainWindow);
@@ -376,12 +394,16 @@ function createEditorWindowWrapper() {
 
 function createHudOverlayWindowWrapper() {
 	if (mainWindow && !mainWindow.isDestroyed()) {
-		mainWindow.close();
+		// Use bypass to avoid triggering the unsaved-changes dialog
+		// when transitioning from the editor to the HUD overlay for recording.
+		closeEditorWindowBypassingUnsavedPrompt(mainWindow);
+		mainWindow = null;
 	}
-	mainWindow = createHudOverlayWindow();
+	const hudWin = createHudOverlayWindow();
+	mainWindow = hudWin;
 
-	mainWindow.on("closed", () => {
-		if (mainWindow?.isDestroyed()) {
+	hudWin.on("closed", () => {
+		if (mainWindow === hudWin) {
 			mainWindow = null;
 		}
 	});
@@ -447,7 +469,10 @@ app.whenReady().then(async () => {
 	ipcMain.on("hud-overlay-close", () => {
 		app.quit();
 	});
+	registerWindowsIpcHandlers();
 	syncDockIcon();
+	defaultTrayIcon = getTrayIcon("app-icons/klipt-32.png");
+	recordingTrayIcon = getTrayIcon("rec-button.png");
 	createTray();
 	updateTrayMenu();
 	setupApplicationMenu();

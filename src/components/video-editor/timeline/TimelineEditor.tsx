@@ -1516,9 +1516,14 @@ const TimelineEditor = memo(function TimelineEditor({
 		const audioDurationMs = await new Promise<number>((resolve) => {
 			const audio = new Audio(toFileUrl(result.path));
 			audio.addEventListener("loadedmetadata", () => {
-				resolve(Math.round(audio.duration * 1000));
+				const duration = Math.round(audio.duration * 1000);
+				audio.src = "";
+				audio.load();
+				resolve(duration);
 			});
 			audio.addEventListener("error", () => {
+				audio.src = "";
+				audio.load();
 				resolve(0);
 			});
 		});
@@ -2092,7 +2097,7 @@ const TimelineEditor = memo(function TimelineEditor({
 					onItemSpanChange={handleItemSpanChange}
 					allRegionSpans={allRegionSpans}
 				>
-					{isFloorRevealed && <CuttingRoomFloor clips={cuttingRoomFloor} onRestore={onRestoreFromFloor as any} />}
+					{isFloorRevealed && onRestoreFromFloor && <CuttingRoomFloor clips={cuttingRoomFloor} onRestore={onRestoreFromFloor} />}
 
 					{workspaceNotes && workspaceNotes.length > 0 && (
 						<NoteMarkers notes={workspaceNotes} />

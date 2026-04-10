@@ -303,6 +303,24 @@ export function AnnotationCanvas({
 					onChange={(e) => setTextValue(e.target.value)}
 					onKeyDown={handleTextKeyDown}
 					onBlur={() => {
+						if (textValue.trim()) {
+							const points = currentPointsRef.current;
+							if (points.length > 0) {
+								const ann: LiveAnnotation = {
+									id: generateId(),
+									type: "text",
+									points: [...points],
+									color,
+									strokeWidth,
+									startMs: Date.now() - recordingStartMs,
+									durationMs: fadeDuration,
+									text: textValue.trim(),
+								};
+								onAnnotationComplete(ann);
+								onTextSubmit?.(textValue.trim(), points[0].x, points[0].y);
+							}
+							currentPointsRef.current = [];
+						}
 						setTextInput((p) => ({ ...p, visible: false }));
 						setTextValue("");
 					}}

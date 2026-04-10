@@ -57,12 +57,14 @@ interface VideoExporterConfig extends ExportConfig {
 }
 
 async function seekVideo(video: HTMLVideoElement, timeSeconds: number): Promise<void> {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		if (Math.abs(video.currentTime - timeSeconds) < 0.01) {
 			resolve();
 			return;
 		}
-		video.onseeked = () => resolve();
+		const timeout = setTimeout(() => reject(new Error("Seek timed out")), 5000);
+		video.onerror = () => { clearTimeout(timeout); reject(new Error("Video error during seek")); };
+		video.onseeked = () => { clearTimeout(timeout); resolve(); };
 		video.currentTime = timeSeconds;
 	});
 }
@@ -235,6 +237,12 @@ export class VideoExporter {
 						videoFrame.close();
 					}
 
+					// Initialize transition snapshot from the very first frame
+					if (frameIndex === 0 && transitionSnapshotCanvas) {
+						const snapCtx = transitionSnapshotCanvas.getContext("2d")!;
+						snapCtx.drawImage(this.renderer!.getCanvas(), 0, 0);
+					}
+
 					// Render captions on the composite canvas after all other layers
 					if (captionPages.length > 0 && this.config.captionSettings) {
 						const compositeCanvas = this.renderer!.getCanvas();
@@ -331,7 +339,7 @@ export class VideoExporter {
 					if (demuxer || hasAudioRegions || hasSfx) {
 						await this.awaitWithWindowsTimeout(
 							this.audioProcessor.process(
-								demuxer!,
+								demuxer ?? null,
 								this.muxer!,
 								this.config.videoUrl,
 								this.config.trimRegions,
@@ -405,16 +413,9 @@ export class VideoExporter {
 	private async encodeRenderedFrame(timestamp: number, frameDuration: number, frameIndex: number) {
 		const canvas = this.renderer!.getCanvas();
 
-		// @ts-expect-error - colorSpace not in TypeScript definitions but works at runtime
 		const exportFrame = new VideoFrame(canvas, {
 			timestamp,
 			duration: frameDuration,
-			colorSpace: {
-				primaries: "bt709",
-				transfer: "iec61966-2-1",
-				matrix: "rgb",
-				fullRange: true,
-			},
 		});
 
 		while (
@@ -427,7 +428,12 @@ export class VideoExporter {
 
 		if (this.encoder && this.encoder.state === "configured") {
 			this.encodeQueue++;
-			this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
+			try {
+				this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
+			} catch (e) {
+				this.encodeQueue--;
+				throw e;
+			}
 		} else {
 			console.warn(`[Frame ${frameIndex}] Encoder not ready! State: ${this.encoder?.state}`);
 		}
@@ -481,12 +487,29 @@ export class VideoExporter {
 					this.videoColorSpace = meta.decoderConfig.colorSpace;
 				}
 
+				// Copy chunk data synchronously before it may be neutered
+				const chunkData = new Uint8Array(chunk.byteLength);
+				chunk.copyTo(chunkData);
+				const chunkMeta = {
+					type: chunk.type,
+					timestamp: chunk.timestamp,
+					duration: chunk.duration ?? undefined,
+					byteLength: chunk.byteLength,
+				};
+
 				// Stream chunks to muxer in order without retaining an ever-growing promise array
 				const isFirstChunk = this.chunkCount === 0;
 				this.chunkCount++;
 
 				this.pendingMuxing = this.pendingMuxing.then(async () => {
 					try {
+						const copiedChunk = new EncodedVideoChunk({
+							type: chunkMeta.type,
+							timestamp: chunkMeta.timestamp,
+							duration: chunkMeta.duration,
+							data: chunkData,
+						});
+
 						if (isFirstChunk && this.videoDescription) {
 							// Add decoder config for the first chunk
 							const colorSpace = this.videoColorSpace || {
@@ -506,9 +529,9 @@ export class VideoExporter {
 								},
 							};
 
-							await this.muxer!.addVideoChunk(chunk, metadata);
+							await this.muxer!.addVideoChunk(copiedChunk, metadata);
 						} else {
-							await this.muxer!.addVideoChunk(chunk, meta);
+							await this.muxer!.addVideoChunk(copiedChunk, meta);
 						}
 					} catch (error) {
 						console.error("Muxing error:", error);
@@ -617,7 +640,14 @@ export class VideoExporter {
 			this.renderer = null;
 		}
 
-		this.muxer = null;
+		if (this.muxer) {
+			try {
+				this.muxer.finalize();
+			} catch (e) {
+				console.warn("Error finalizing muxer:", e);
+			}
+			this.muxer = null;
+		}
 		this.audioProcessor = null;
 		this.encodeQueue = 0;
 		this.pendingMuxing = Promise.resolve();

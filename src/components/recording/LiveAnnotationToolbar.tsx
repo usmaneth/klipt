@@ -64,26 +64,26 @@ export function LiveAnnotationToolbar({
 	const posRef = useRef({ x: 0, y: 0 });
 	const [pos, setPos] = useState({ x: 0, y: 0 });
 
+	const handleDragMove = useCallback((e: MouseEvent) => {
+		const newX = e.clientX - dragStartRef.current.x;
+		const newY = e.clientY - dragStartRef.current.y;
+		posRef.current = { x: newX, y: newY };
+		setPos({ x: newX, y: newY });
+	}, []);
+
+	const handleDragEnd = useCallback(() => {
+		setIsDragging(false);
+		window.removeEventListener("mousemove", handleDragMove);
+		window.removeEventListener("mouseup", handleDragEnd);
+	}, [handleDragMove]);
+
 	const handleDragStart = useCallback((e: React.MouseEvent) => {
 		if ((e.target as HTMLElement).closest("button, input")) return;
 		setIsDragging(true);
 		dragStartRef.current = { x: e.clientX - posRef.current.x, y: e.clientY - posRef.current.y };
-	}, []);
-
-	const handleDragMove = useCallback(
-		(e: React.MouseEvent) => {
-			if (!isDragging) return;
-			const newX = e.clientX - dragStartRef.current.x;
-			const newY = e.clientY - dragStartRef.current.y;
-			posRef.current = { x: newX, y: newY };
-			setPos({ x: newX, y: newY });
-		},
-		[isDragging],
-	);
-
-	const handleDragEnd = useCallback(() => {
-		setIsDragging(false);
-	}, []);
+		window.addEventListener("mousemove", handleDragMove);
+		window.addEventListener("mouseup", handleDragEnd);
+	}, [handleDragMove, handleDragEnd]);
 
 	return (
 		<AnimatePresence>
@@ -100,9 +100,6 @@ export function LiveAnnotationToolbar({
 						cursor: isDragging ? "grabbing" : "grab",
 					}}
 					onMouseDown={handleDragStart}
-					onMouseMove={handleDragMove}
-					onMouseUp={handleDragEnd}
-					onMouseLeave={handleDragEnd}
 				>
 					<div className="flex items-center gap-1 px-2 py-1.5 bg-black/80 backdrop-blur-xl rounded-full border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
 						{/* Tool buttons */}

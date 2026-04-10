@@ -12,6 +12,7 @@ export function useAudioLevelMeter(options: AudioLevelMeterOptions) {
 	const analyserRef = useRef<AnalyserNode | null>(null);
 	const streamRef = useRef<MediaStream | null>(null);
 	const animationFrameRef = useRef<number | null>(null);
+	const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
 	useEffect(() => {
 		const cleanup = () => {
@@ -22,6 +23,10 @@ export function useAudioLevelMeter(options: AudioLevelMeterOptions) {
 			if (streamRef.current) {
 				streamRef.current.getTracks().forEach((track) => track.stop());
 				streamRef.current = null;
+			}
+			if (sourceRef.current) {
+				sourceRef.current.disconnect();
+				sourceRef.current = null;
 			}
 			if (audioContextRef.current) {
 				audioContextRef.current.close().catch(() => {});
@@ -66,6 +71,7 @@ export function useAudioLevelMeter(options: AudioLevelMeterOptions) {
 
 				const source = audioContext.createMediaStreamSource(stream);
 				source.connect(analyser);
+				sourceRef.current = source;
 
 				const dataArray = new Uint8Array(analyser.frequencyBinCount);
 

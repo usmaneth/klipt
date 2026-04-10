@@ -11,21 +11,35 @@ const shapeRadius: Record<Shape, string> = {
 export default function CameraBubble() {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const [cameraSize, setCameraSize] = useState(120);
-	const [shape, setShape] = useState<Shape>("circle");
+	const [shape, setShape] = useState<Shape>(() => {
+		const params = new URLSearchParams(window.location.search);
+		return (params.get("webcamShape") as Shape) || "circle";
+	});
 	const [mirrored, setMirrored] = useState(true);
 	const [showControls, setShowControls] = useState(false);
 
 	useEffect(() => {
 		let stream: MediaStream | null = null;
+		let cancelled = false;
 
 		const startCamera = async () => {
 			try {
+				// Use the specific device ID from the URL query if available,
+				// so we don't contend with the webcam recorder's stream.
+				const params = new URLSearchParams(window.location.search);
+				const deviceId = params.get("cameraDeviceId");
+				const videoConstraints = deviceId
+					? { deviceId: { exact: deviceId }, width: 400, height: 400 }
+					: { facingMode: "user" as const, width: 400, height: 400 };
+
 				stream = await navigator.mediaDevices.getUserMedia({
-					video: { facingMode: "user", width: 400, height: 400 },
+					video: videoConstraints,
 					audio: false,
 				});
-				if (videoRef.current) {
+				if (!cancelled && videoRef.current) {
 					videoRef.current.srcObject = stream;
+				} else if (cancelled && stream) {
+					stream.getTracks().forEach((t) => t.stop());
 				}
 			} catch (err) {
 				console.error("Camera bubble: failed to get stream", err);
@@ -35,6 +49,7 @@ export default function CameraBubble() {
 		void startCamera();
 
 		return () => {
+			cancelled = true;
 			if (stream) {
 				stream.getTracks().forEach((t) => t.stop());
 			}

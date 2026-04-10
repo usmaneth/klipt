@@ -305,8 +305,12 @@ export function getSoundEffectBuffer(id: SoundEffectId): Promise<AudioBuffer> {
 	if (cached) return cached;
 
 	const synthFn = SYNTH_MAP[id];
-	// Cache the promise immediately to prevent concurrent duplicate synthesis
-	const promise = synthFn();
+	// Cache the promise immediately to prevent concurrent duplicate synthesis.
+	// Remove from cache on failure so a retry can succeed.
+	const promise = synthFn().catch((err) => {
+		bufferCache.delete(id);
+		throw err;
+	});
 	bufferCache.set(id, promise);
 	return promise;
 }

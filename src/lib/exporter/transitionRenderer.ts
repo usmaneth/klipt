@@ -55,7 +55,7 @@ function dissolve(
 	ctx.fillRect(0, 0, w, h);
 	ctx.globalCompositeOperation = "source-over";
 
-	ctx.globalAlpha = t * brightnessBoost;
+	ctx.globalAlpha = Math.min(1, t * brightnessBoost);
 	ctx.drawImage(incoming, 0, 0, w, h);
 	ctx.globalAlpha = 1;
 }

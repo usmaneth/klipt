@@ -66,10 +66,7 @@ export function useMicrophoneDevices(enabled: boolean = true) {
 			mounted = false;
 			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
 		};
-		// selectedDeviceId is safe in the dependency array: the only mutation inside the
-		// effect is the initial "default → real id" assignment, which happens once.
-		// After that the value stabilises and the effect won't re-fire.
-	}, [enabled, selectedDeviceId]);
+	}, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps -- selectedDeviceId excluded: the only internal mutation is "default → real id" on first load, which would cause a redundant getUserMedia cycle
 
 	return {
 		devices,

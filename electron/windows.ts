@@ -68,39 +68,58 @@ function getScreen() {
 	return nodeRequire("electron").screen as typeof import("electron").screen;
 }
 
-ipcMain.on("hud-overlay-hide", () => {
-	if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
-		hudOverlayWindow.minimize();
-	}
-});
+export function registerWindowsIpcHandlers(): void {
+	ipcMain.on("hud-overlay-hide", () => {
+		if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
+			hudOverlayWindow.minimize();
+		}
+	});
 
-ipcMain.handle("get-hud-overlay-capture-protection", () => {
-	const enabled = loadHudOverlayCaptureProtectionSetting();
+	ipcMain.handle("get-hud-overlay-capture-protection", () => {
+		const enabled = loadHudOverlayCaptureProtectionSetting();
 
-	return {
-		success: true,
-		enabled,
-	};
-});
+		return {
+			success: true,
+			enabled,
+		};
+	});
 
-ipcMain.handle("set-hud-overlay-capture-protection", (_event, enabled: boolean) => {
-	loadHudOverlayCaptureProtectionSetting();
-	hudOverlayHiddenFromCapture = Boolean(enabled);
-	persistHudOverlayCaptureProtectionSetting(hudOverlayHiddenFromCapture);
+	ipcMain.handle("set-hud-overlay-capture-protection", (_event, enabled: boolean) => {
+		loadHudOverlayCaptureProtectionSetting();
+		hudOverlayHiddenFromCapture = Boolean(enabled);
+		persistHudOverlayCaptureProtectionSetting(hudOverlayHiddenFromCapture);
 
-	if (
-		isHudOverlayCaptureProtectionSupported() &&
-		hudOverlayWindow &&
-		!hudOverlayWindow.isDestroyed()
-	) {
-		hudOverlayWindow.setContentProtection(hudOverlayHiddenFromCapture);
-	}
+		if (
+			isHudOverlayCaptureProtectionSupported() &&
+			hudOverlayWindow &&
+			!hudOverlayWindow.isDestroyed()
+		) {
+			hudOverlayWindow.setContentProtection(hudOverlayHiddenFromCapture);
+		}
 
-	return {
-		success: true,
-		enabled: hudOverlayHiddenFromCapture,
-	};
-});
+		return {
+			success: true,
+			enabled: hudOverlayHiddenFromCapture,
+		};
+	});
+
+	ipcMain.handle("open-camera-bubble", (_, size?: number, webcamShape?: string) => {
+		createCameraBubbleWindow(size ?? 150, webcamShape);
+		return { success: true };
+	});
+
+	ipcMain.handle("close-camera-bubble", () => {
+		closeCameraBubbleWindow();
+		return { success: true };
+	});
+
+	ipcMain.handle("resize-camera-bubble", (_, size: number) => {
+		if (cameraBubbleWindow && !cameraBubbleWindow.isDestroyed()) {
+			cameraBubbleWindow.setSize(size, size);
+		}
+		return { success: true };
+	});
+}
 
 export function createHomeWindow(): BrowserWindow {
 	const primaryDisplay = getScreen().getPrimaryDisplay();
@@ -242,7 +261,7 @@ export function getCameraBubbleWindow(): BrowserWindow | null {
 	return cameraBubbleWindow;
 }
 
-export function createCameraBubbleWindow(size = 150): BrowserWindow {
+export function createCameraBubbleWindow(size = 150, webcamShape?: string): BrowserWindow {
 	if (cameraBubbleWindow && !cameraBubbleWindow.isDestroyed()) {
 		cameraBubbleWindow.focus();
 		return cameraBubbleWindow;
@@ -295,12 +314,13 @@ export function createCameraBubbleWindow(size = 150): BrowserWindow {
 		}
 	});
 
+	const shapeParam = webcamShape ? `&webcamShape=${encodeURIComponent(webcamShape)}` : "";
 	if (VITE_DEV_SERVER_URL) {
-		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=camera-bubble");
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=camera-bubble" + shapeParam);
 	} else {
-		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
-			query: { windowType: "camera-bubble" },
-		});
+		const query: Record<string, string> = { windowType: "camera-bubble" };
+		if (webcamShape) query.webcamShape = webcamShape;
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), { query });
 	}
 
 	return win;
@@ -312,23 +332,6 @@ export function closeCameraBubbleWindow() {
 		cameraBubbleWindow = null;
 	}
 }
-
-ipcMain.handle("open-camera-bubble", (_, size?: number) => {
-	createCameraBubbleWindow(size ?? 150);
-	return { success: true };
-});
-
-ipcMain.handle("close-camera-bubble", () => {
-	closeCameraBubbleWindow();
-	return { success: true };
-});
-
-ipcMain.handle("resize-camera-bubble", (_, size: number) => {
-	if (cameraBubbleWindow && !cameraBubbleWindow.isDestroyed()) {
-		cameraBubbleWindow.setSize(size, size);
-	}
-	return { success: true };
-});
 
 export function createEditorWindow(): BrowserWindow {
 	const isMac = process.platform === "darwin";

@@ -172,6 +172,18 @@ export function useWebcamRecorder(options: UseWebcamRecorderOptions): UseWebcamR
 			return null;
 		}
 
+		// Prevent concurrent stopAndSave calls
+		if (stopPromiseResolveRef.current) {
+			return new Promise<string | null>((resolve) => {
+				// Chain onto the existing stop — resolve when the first one finishes
+				const prevResolve = stopPromiseResolveRef.current!;
+				stopPromiseResolveRef.current = (path) => {
+					prevResolve(path);
+					resolve(path);
+				};
+			});
+		}
+
 		const mimeType = recorder.mimeType;
 
 		return new Promise<string | null>((resolve) => {
