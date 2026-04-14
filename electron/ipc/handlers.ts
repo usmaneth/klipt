@@ -2819,6 +2819,18 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("open-specific-project", async (_, filePath: string) => {
 		try {
+			const ext = path.extname(filePath).toLowerCase();
+			const videoExtensions = [".mp4", ".webm", ".mov", ".avi", ".mkv"];
+
+			if (videoExtensions.includes(ext)) {
+				// Video file — open directly in the editor
+				currentVideoPath = normalizeVideoSourcePath(filePath) ?? filePath;
+				currentProjectPath = null;
+				createEditorWindow();
+				return { success: true, path: filePath };
+			}
+
+			// Project file — parse JSON as before
 			const content = await fs.readFile(filePath, "utf-8");
 			const project = JSON.parse(content);
 			currentProjectPath = filePath;
@@ -2830,6 +2842,16 @@ export function registerIpcHandlers(
 		} catch (error) {
 			console.error("Failed to open specific project file:", error);
 			return { success: false, message: "Failed to open project file", error: String(error) };
+		}
+	});
+
+	ipcMain.handle("delete-recent-project", async (_, filePath: string) => {
+		try {
+			await fs.unlink(filePath);
+			return { success: true };
+		} catch (error) {
+			console.error("Failed to delete recent project:", error);
+			return { success: false, error: String(error) };
 		}
 	});
 

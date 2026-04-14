@@ -1,4 +1,4 @@
-import { ChevronRight, CircleDot, Film } from "lucide-react";
+import { ChevronRight, CircleDot, Film, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /* ------------------------------------------------------------------ */
@@ -136,6 +136,18 @@ export function HomeScreen() {
 			setTimeout(() => window.close(), 120);
 		} catch {
 			// Window destroyed on editor open -- expected.
+		}
+	};
+
+	const handleDeleteProject = async (e: React.MouseEvent, projectPath: string) => {
+		e.stopPropagation();
+		try {
+			const result = await window.electronAPI?.deleteRecentProject(projectPath);
+			if (result?.success) {
+				setRecentProjects((prev) => prev.filter((p) => p.path !== projectPath));
+			}
+		} catch {
+			// ignore
 		}
 	};
 
@@ -492,6 +504,20 @@ export function HomeScreen() {
 										>
 											{relativeTime(project.mtime)}
 										</span>
+										<button
+											onClick={(e) => handleDeleteProject(e, project.path)}
+											className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white/10 rounded p-0.5"
+											style={{ lineHeight: 0 }}
+											title="Remove recording"
+										>
+											<X
+												style={{
+													width: 12,
+													height: 12,
+													color: "rgba(255,255,255,0.3)",
+												}}
+											/>
+										</button>
 										<ChevronRight
 											className="transition-transform duration-200 group-hover:translate-x-[2px]"
 											style={{

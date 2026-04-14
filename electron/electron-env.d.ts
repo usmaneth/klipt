@@ -247,6 +247,10 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		deleteRecentProject: (filePath: string) => Promise<{
+			success: boolean;
+			error?: string;
+		}>;
 		denoiseAudio: (args: {
 			inputPath: string;
 			outputPath?: string;

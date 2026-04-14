@@ -278,6 +278,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openSpecificProject: (filePath: string) => {
 		return ipcRenderer.invoke("open-specific-project", filePath);
 	},
+	deleteRecentProject: (filePath: string) => {
+		return ipcRenderer.invoke("delete-recent-project", filePath);
+	},
 	denoiseAudio: (args: {
 		inputPath: string;
 		outputPath?: string;
