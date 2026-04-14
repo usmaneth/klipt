@@ -736,7 +736,9 @@ async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string
 		"-c:v",
 		"libx264",
 		"-preset",
-		"veryfast",
+		"fast",
+		"-crf",
+		"18",
 		"-pix_fmt",
 		"yuv420p",
 		"-movflags",
@@ -822,6 +824,25 @@ async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string
 	}
 
 	if (process.platform === "darwin") {
+		// Resolve the target display to capture at full Retina pixel resolution
+		const display = (() => {
+			const sourceDisplayId = Number(source?.display_id);
+			if (Number.isFinite(sourceDisplayId)) {
+				const matched = getScreen()
+					.getAllDisplays()
+					.find((d) => d.id === sourceDisplayId);
+				if (matched) return matched;
+			}
+			return getScreen().getPrimaryDisplay();
+		})();
+
+		const scaleFactor = display.scaleFactor || 1;
+		const pixelWidth = Math.floor(display.bounds.width * scaleFactor / 2) * 2;
+		const pixelHeight = Math.floor(display.bounds.height * scaleFactor / 2) * 2;
+
+		// avfoundation device index: use display_id mapping or default to first screen
+		const avfDeviceIndex = source?.display_id ? String(Number(source.display_id)) : "1";
+
 		return [
 			"-y",
 			"-f",
@@ -830,8 +851,12 @@ async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string
 			"0",
 			"-framerate",
 			"60",
+			"-video_size",
+			`${pixelWidth}x${pixelHeight}`,
+			"-pixel_format",
+			"uyvy422",
 			"-i",
-			"1:none",
+			`${avfDeviceIndex}:none`,
 			...commonOutputArgs,
 		];
 	}
