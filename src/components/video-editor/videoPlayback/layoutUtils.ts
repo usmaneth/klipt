@@ -74,7 +74,6 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 	const scale = Math.min(
 		maxDisplayWidth / croppedVideoWidth,
 		maxDisplayHeight / croppedVideoHeight,
-		1,
 	);
 
 	videoSprite.scale.set(scale);
