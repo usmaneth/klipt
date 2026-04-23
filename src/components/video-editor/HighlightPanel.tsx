@@ -122,10 +122,20 @@ export function HighlightPanel({
 								</span>
 							</div>
 
-							{/* Reason text */}
+							{/* Title (when AI-generated) + reason text */}
+							{highlight.title && (
+								<p className="text-[12px] font-semibold text-white/85 leading-tight mb-1">
+									{highlight.title}
+								</p>
+							)}
 							<p className="text-[11px] text-white/40 leading-relaxed">
 								{highlight.reason}
 							</p>
+							{highlight.source === "gemini" && (
+								<span className="inline-block mt-1.5 px-1.5 py-[1px] rounded-full bg-violet-500/15 text-violet-300/80 text-[9px] font-medium uppercase tracking-wider">
+									AI
+								</span>
+							)}
 
 							{/* Export button (visible on hover) */}
 							<div

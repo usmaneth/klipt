@@ -8,6 +8,7 @@ import {
 	FileText,
 	Film,
 	History,
+	KeyRound,
 	LayoutGrid,
 	LayoutTemplate,
 	Loader2,
@@ -21,6 +22,7 @@ import {
 	Sparkles,
 	Trash2,
 	Type,
+	Wand2,
 	X,
 } from "lucide-react";
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
@@ -28,9 +30,12 @@ import { toast } from "sonner";
 import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
 import type { HighlightCandidate } from "@/lib/ai/highlightDetector";
 import type { Chapter, SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
+import type { CaptionSettings } from "./captionStyle";
+import { ApiKeysPanel } from "./ApiKeysPanel";
 import { CommentsPanel } from "./CommentsPanel";
 import { MotionTemplatePanel } from "./MotionTemplatePanel";
 import { HighlightPanel } from "./HighlightPanel";
+import { ShortsStudioPanel } from "./ShortsStudioPanel";
 
 // ── AI Suggestion type ──────────────────────────────────────────────────────
 
@@ -54,7 +59,9 @@ export type WorkspacePanel =
 	| "notes"
 	| "comments"
 	| "highlights"
-	| "templates";
+	| "templates"
+	| "shorts"
+	| "apiKeys";
 
 export interface WorkspaceNote {
 	id: string;
@@ -140,6 +147,14 @@ interface CreativeWorkspaceProps {
 	onEditChapterTitle?: (index: number, newTitle: string) => void;
 	onDeleteChapter?: (index: number) => void;
 	onSeekToChapter?: (timeMs: number) => void;
+	// ── Shorts Studio ──────────────────────────────────────────────────
+	shortsTranscriptText?: string;
+	shortsTranscriptWords?: Array<{ text: string; start: number; end: number }>;
+	shortsCaptionSettings?: CaptionSettings;
+	onApplyShortsCaptionSettings?: (next: CaptionSettings) => void;
+	onEnableShortsReframe?: () => void;
+	isShortsReframing?: boolean;
+	shortsReframeReady?: boolean;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -156,6 +171,8 @@ const PANELS: { id: WorkspacePanel; icon: typeof LayoutGrid; label: string }[] =
 	{ id: "comments", icon: MessageCircle, label: "Comments" },
 	{ id: "highlights", icon: Film, label: "Highlights" },
 	{ id: "templates", icon: LayoutTemplate, label: "Templates" },
+	{ id: "shorts", icon: Wand2, label: "Shorts Studio" },
+	{ id: "apiKeys", icon: KeyRound, label: "AI Keys" },
 ];
 
 const ASSET_SUB_TABS: { id: AssetSubTab; label: string }[] = [
@@ -259,6 +276,13 @@ export function CreativeWorkspace({
 	onEditChapterTitle,
 	onDeleteChapter,
 	onSeekToChapter,
+	shortsTranscriptText,
+	shortsTranscriptWords,
+	shortsCaptionSettings,
+	onApplyShortsCaptionSettings,
+	onEnableShortsReframe,
+	isShortsReframing,
+	shortsReframeReady,
 }: CreativeWorkspaceProps) {
 	const [noteInput, setNoteInput] = useState("");
 	const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
@@ -1227,6 +1251,21 @@ export function CreativeWorkspace({
 		/>
 	);
 
+	const renderShorts = () => (
+		<ShortsStudioPanel
+			transcriptText={shortsTranscriptText ?? ""}
+			transcriptWords={shortsTranscriptWords ?? []}
+			chapters={chapters ?? []}
+			captionSettings={shortsCaptionSettings as CaptionSettings}
+			onApplyCaptionSettings={onApplyShortsCaptionSettings ?? (() => {})}
+			onEnableShortsReframe={onEnableShortsReframe}
+			isReframing={isShortsReframing}
+			shortsReframeReady={shortsReframeReady}
+		/>
+	);
+
+	const renderApiKeys = () => <ApiKeysPanel />;
+
 	const panelContentMap: Record<WorkspacePanel, () => React.ReactNode> = {
 		clips: renderClips,
 		history: renderHistory,
@@ -1237,6 +1276,8 @@ export function CreativeWorkspace({
 		comments: renderComments,
 		highlights: renderHighlights,
 		templates: renderTemplates,
+		shorts: renderShorts,
+		apiKeys: renderApiKeys,
 	};
 
 	const activePanelConfig = activePanel

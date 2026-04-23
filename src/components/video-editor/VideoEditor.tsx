@@ -42,7 +42,9 @@ import {
 import { canFastExport } from "@/lib/exporter/fastExport";
 import { matchesShortcut } from "@/lib/shortcuts";
 import { detectChapters } from "@/lib/ai/chapterDetector";
+import { detectFacesInFrames, mergeFaceDetections, type DetectedFace } from "@/lib/ai/faceDetector";
 import { type HighlightCandidate, detectHighlights } from "@/lib/ai/highlightDetector";
+import { type ReframeCropSpec, buildShortsReframe } from "@/lib/ai/shortsReframe";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { CommandPalette } from "./CommandPalette";
@@ -235,6 +237,8 @@ export default function VideoEditor() {
 	const [isDetectingHighlights, setIsDetectingHighlights] = useState(false);
 	const [chapters, setChapters] = useState<Chapter[]>([]);
 	const [isDetectingChapters, setIsDetectingChapters] = useState(false);
+	const [shortsReframeSpec, setShortsReframeSpec] = useState<ReframeCropSpec | null>(null);
+	const [isBuildingShortsReframe, setIsBuildingShortsReframe] = useState(false);
 	const [captionCues, setCaptionCues] = useState<CaptionCue[]>([]);
 	const [captionSettings, setCaptionSettings] = useState<CaptionSettings>(DEFAULT_CAPTION_SETTINGS);
 	const [isTranscribingCaptions, setIsTranscribingCaptions] = useState(false);
@@ -2270,12 +2274,13 @@ export default function VideoEditor() {
 
 		const totalDurationMs = Math.max(0, Math.round(duration * 1000));
 
-		// Run detection (synchronous but we wrap for UX feedback)
 		try {
-			const results = detectHighlights(totalDurationMs, words);
+			const results = await detectHighlights(totalDurationMs, words);
 			setHighlights(results);
 			if (results.length > 0) {
-				toast.success(`Found ${results.length} highlight${results.length !== 1 ? "s" : ""}`);
+				const geminiCount = results.filter((r) => r.source === "gemini").length;
+				const suffix = geminiCount > 0 ? " (AI-ranked)" : "";
+				toast.success(`Found ${results.length} highlight${results.length !== 1 ? "s" : ""}${suffix}`);
 			} else {
 				toast("No highlights detected — video may be too short or lack speech variety");
 			}
@@ -2303,10 +2308,12 @@ export default function VideoEditor() {
 				endMs: cue.endMs,
 				text: cue.text,
 			}));
-			const results = detectChapters(cueData);
+			const results = await detectChapters(cueData);
 			setChapters(results);
 			if (results.length > 0) {
-				toast.success(`Found ${results.length} chapter${results.length !== 1 ? "s" : ""}`);
+				const aiCount = results.filter((r) => r.source === "gemini").length;
+				const suffix = aiCount > 0 ? " (AI-generated)" : "";
+				toast.success(`Found ${results.length} chapter${results.length !== 1 ? "s" : ""}${suffix}`);
 			} else {
 				toast("No chapters detected — video may be too short or lack topic variety");
 			}
@@ -2328,6 +2335,67 @@ export default function VideoEditor() {
 		setChapters((prev) => prev.filter((_, i) => i !== index));
 		toast("Chapter removed");
 	}, []);
+
+	const handleBuildShortsReframe = useCallback(async () => {
+		if (!videoPath) {
+			toast.error("Load a video first");
+			return;
+		}
+		setIsBuildingShortsReframe(true);
+		try {
+			const sourcePath = fromFileUrl(videoPath);
+			const framesRes = await window.electronAPI.extractFramesForFaceDetection(
+				sourcePath,
+				{ intervalMs: 1500, maxFrames: 40 },
+			);
+			if (!framesRes?.success || !framesRes.frames) {
+				throw new Error(framesRes?.error || "Frame extraction failed");
+			}
+
+			const framePaths = framesRes.frames.map((f) => ({
+				timeMs: f.timeMs,
+				path: `file://${f.path}`,
+			}));
+			const faces = await detectFacesInFrames(framePaths);
+			if (framesRes.frames.length > 0) {
+				const frameDir = framesRes.frames[0]!.path
+					.split(/[/\\]/)
+					.slice(0, -1)
+					.join("/");
+				window.electronAPI.cleanupFaceDetectionFrames?.(frameDir).catch(() => {});
+			}
+
+			// Use raw detections for per-frame crop — mergeFaceDetections is
+			// useful for region summaries but we want a dense keyframe path.
+			const densePath: DetectedFace[] = faces.length > 0
+				? faces
+				: mergeFaceDetections(faces).flatMap((m) => [
+						{ timeMs: m.startMs, x: m.x, y: m.y, width: m.width, height: m.height },
+						{ timeMs: m.endMs, x: m.x, y: m.y, width: m.width, height: m.height },
+					]);
+
+			const video = videoPlaybackRef.current?.video;
+			const sw = video?.videoWidth ?? 1920;
+			const sh = video?.videoHeight ?? 1080;
+			const spec = buildShortsReframe(sw, sh, densePath, {
+				aspect: "9:16",
+				outWidth: 1080,
+				smoothing: 0.6,
+			});
+
+			setShortsReframeSpec(spec);
+			toast.success(
+				spec.subjectFound
+					? "9:16 reframe ready (subject-tracked)"
+					: "9:16 reframe ready (center-cropped — no face detected)",
+			);
+		} catch (err) {
+			console.error("[VideoEditor] Shorts reframe failed:", err);
+			toast.error(err instanceof Error ? err.message : "Shorts reframe failed");
+		} finally {
+			setIsBuildingShortsReframe(false);
+		}
+	}, [videoPath]);
 
 	const handleExportHighlightClip = useCallback(
 		(highlight: HighlightCandidate) => {
@@ -4017,6 +4085,19 @@ export default function VideoEditor() {
 					onEditChapterTitle={handleEditChapterTitle}
 					onDeleteChapter={handleDeleteChapter}
 					onSeekToChapter={(timeMs: number) => handleJumpToTime(timeMs)}
+					shortsTranscriptText={captionCues.map((c) => c.text).join(" ")}
+					shortsTranscriptWords={captionCues.flatMap((c) =>
+						(c.words ?? []).map((w) => ({
+							text: w.text,
+							start: w.startMs / 1000,
+							end: w.endMs / 1000,
+						})),
+					)}
+					shortsCaptionSettings={captionSettings}
+					onApplyShortsCaptionSettings={setCaptionSettings}
+					onEnableShortsReframe={handleBuildShortsReframe}
+					isShortsReframing={isBuildingShortsReframe}
+					shortsReframeReady={!!shortsReframeSpec}
 				/>
 				<div className="flex-1 flex flex-col relative overflow-hidden">
 					{/* Ambient orbs (z-0) */}

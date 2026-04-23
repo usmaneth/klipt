@@ -1,18 +1,37 @@
-// Highlight detection — find the most engaging segments in a long-form video
-// based on transcription data alone (speech density, keywords, questions, pauses).
+// Highlight / "viral moment" detection — find the most engaging segments in a
+// long-form video. Two backends are available:
+//
+//   1. Gemini-powered backend (when a Gemini API key is configured): asks the
+//      model to rank candidate clips from the transcript using the same kind of
+//      reasoning OpenShorts uses (hook strength, emotional payoff, self-contained
+//      context, audience-relevant keywords).
+//   2. Heuristic backend: speech density + keyword hits + question patterns +
+//      silence snapping. Used as fallback and remains the default when the user
+//      has no Gemini key.
+
+import { generateJson, isGeminiConfigured } from "./geminiClient";
 
 export interface HighlightCandidate {
 	id: string;
 	startMs: number;
 	endMs: number;
 	score: number; // 0-100
-	reason: string; // "High audio energy", "Dense speech", etc.
+	reason: string; // "Dense speech", "Hook + Q&A", etc.
+	title?: string; // short caption-ready title when available
+	source?: "heuristic" | "gemini";
 }
 
 export interface HighlightOptions {
 	minDurationMs?: number;
 	maxDurationMs?: number;
 	maxHighlights?: number;
+	/**
+	 * Prefer Gemini when a key is configured. Defaults to true.
+	 * Set false to force the heuristic backend.
+	 */
+	useGemini?: boolean;
+	/** Optional abort signal for the Gemini request. */
+	signal?: AbortSignal;
 }
 
 // Words that signal engaging / important moments
@@ -66,7 +85,29 @@ interface ScoredWindow {
 }
 
 /**
- * Detect highlight candidates from transcription data.
+ * Public entry point. Picks the best backend (Gemini if configured + allowed)
+ * and falls back to the heuristic algorithm on any failure.
+ */
+export async function detectHighlights(
+	totalDurationMs: number,
+	transcriptionWords: TranscriptionWord[],
+	options?: HighlightOptions,
+): Promise<HighlightCandidate[]> {
+	const wantGemini = options?.useGemini !== false && isGeminiConfigured();
+	if (wantGemini) {
+		try {
+			const gemini = await detectHighlightsGemini(totalDurationMs, transcriptionWords, options);
+			if (gemini.length > 0) return gemini;
+		} catch (err) {
+			console.warn("[highlightDetector] Gemini backend failed, falling back:", err);
+		}
+	}
+	return detectHighlightsHeuristic(totalDurationMs, transcriptionWords, options);
+}
+
+/**
+ * Synchronous heuristic-only detection. Useful for tests, offline mode, and
+ * as the deterministic fallback.
  *
  * Algorithm:
  * 1. Slide a window (minDuration–maxDuration, step 5s) across the transcript
@@ -74,7 +115,7 @@ interface ScoredWindow {
  * 3. Snap boundaries to nearby silence gaps
  * 4. Take top N non-overlapping windows
  */
-export function detectHighlights(
+export function detectHighlightsHeuristic(
 	totalDurationMs: number,
 	transcriptionWords: TranscriptionWord[],
 	options?: HighlightOptions,
@@ -148,6 +189,7 @@ export function detectHighlights(
 				endMs: win.endMs,
 				score: Math.round(win.score),
 				reason: win.reasons.join(", "),
+				source: "heuristic",
 			});
 		} else {
 			selected.push({
@@ -156,6 +198,7 @@ export function detectHighlights(
 				endMs: snappedEnd,
 				score: Math.round(win.score),
 				reason: win.reasons.join(", "),
+				source: "heuristic",
 			});
 		}
 	}
@@ -163,6 +206,106 @@ export function detectHighlights(
 	// Sort by time for display
 	selected.sort((a, b) => a.startMs - b.startMs);
 	return selected;
+}
+
+// ── Gemini backend ───────────────────────────────────────────────────────────
+
+interface GeminiClip {
+	start_sec: number;
+	end_sec: number;
+	score: number; // 0-100
+	title: string;
+	reason: string;
+}
+
+async function detectHighlightsGemini(
+	totalDurationMs: number,
+	words: TranscriptionWord[],
+	options?: HighlightOptions,
+): Promise<HighlightCandidate[]> {
+	if (words.length === 0 || totalDurationMs <= 0) return [];
+
+	const minDur = (options?.minDurationMs ?? 15_000) / 1000;
+	const maxDur = (options?.maxDurationMs ?? 60_000) / 1000;
+	const maxClips = options?.maxHighlights ?? 10;
+
+	// Compress transcript into ~5s segments to keep the prompt tractable.
+	const segments = groupWordsIntoSegments(words, 5);
+	const transcriptBlock = segments
+		.map((s) => `[${s.start.toFixed(1)}-${s.end.toFixed(1)}s] ${s.text}`)
+		.join("\n");
+
+	const prompt = `You are a viral short-form video editor. Read the transcript below and extract the MOST engaging clips that work as standalone TikTok/Reels/Shorts.
+
+Rules:
+- Each clip must be ${minDur.toFixed(0)}–${maxDur.toFixed(0)} seconds long.
+- Return at most ${maxClips} clips.
+- Prefer segments with a strong hook in the first 3 seconds, clear payoff, self-contained context (no dangling references), and emotional or informational density.
+- Timestamps must align to the [start-end] brackets in the transcript — do not invent times.
+- Score each clip 0-100 for viral potential.
+- Title each clip in 6 words or fewer, punchy, no clickbait emojis.
+
+Transcript:
+${transcriptBlock}
+
+Respond with JSON: { "clips": [{ "start_sec": number, "end_sec": number, "score": number, "title": string, "reason": string }] }`;
+
+	const parsed = await generateJson<{ clips: GeminiClip[] }>(prompt, {
+		temperature: 0.5,
+		maxOutputTokens: 2048,
+		abortSignal: options?.signal,
+	});
+
+	const clips = Array.isArray(parsed?.clips) ? parsed.clips : [];
+	return clips
+		.map((c, i): HighlightCandidate | null => {
+			const startMs = Math.max(0, Math.round(c.start_sec * 1000));
+			const endMs = Math.min(totalDurationMs, Math.round(c.end_sec * 1000));
+			if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+			if (endMs - startMs < Math.min(5_000, minDur * 1000 * 0.5)) return null;
+			return {
+				id: `highlight-gemini-${i}`,
+				startMs,
+				endMs,
+				score: Math.max(0, Math.min(100, Math.round(c.score ?? 50))),
+				reason: c.reason?.slice(0, 160) ?? "Gemini-selected",
+				title: c.title?.slice(0, 80),
+				source: "gemini",
+			};
+		})
+		.filter((c): c is HighlightCandidate => c !== null)
+		.sort((a, b) => a.startMs - b.startMs);
+}
+
+function groupWordsIntoSegments(
+	words: TranscriptionWord[],
+	windowSec: number,
+): Array<{ start: number; end: number; text: string }> {
+	if (words.length === 0) return [];
+	const segments: Array<{ start: number; end: number; text: string }> = [];
+	let bucketStart = words[0]!.start;
+	let bucketWords: TranscriptionWord[] = [];
+
+	for (const w of words) {
+		if (w.start - bucketStart >= windowSec && bucketWords.length > 0) {
+			segments.push({
+				start: bucketStart,
+				end: bucketWords[bucketWords.length - 1]!.end,
+				text: bucketWords.map((x) => x.text).join(" "),
+			});
+			bucketStart = w.start;
+			bucketWords = [];
+		}
+		bucketWords.push(w);
+	}
+	if (bucketWords.length > 0) {
+		segments.push({
+			start: bucketStart,
+			end: bucketWords[bucketWords.length - 1]!.end,
+			text: bucketWords.map((x) => x.text).join(" "),
+		});
+	}
+	return segments;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import type { UploadPlugin } from "./pluginTypes";
+import { UPLOAD_POST_PLUGINS } from "./uploadPostPlugins";
 
 // ── S3 Plugin ───────────────────────────────────────────────────────────────
 
@@ -100,4 +101,9 @@ export const localCopyPlugin: UploadPlugin = {
 
 // ── Register All Built-in Plugins ───────────────────────────────────────────
 
-export const BUILTIN_PLUGINS: UploadPlugin[] = [s3Plugin, httpPlugin, localCopyPlugin];
+export const BUILTIN_PLUGINS: UploadPlugin[] = [
+	s3Plugin,
+	httpPlugin,
+	localCopyPlugin,
+	...UPLOAD_POST_PLUGINS,
+];

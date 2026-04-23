@@ -1,17 +1,29 @@
-// Chapter detection — auto-generate chapter markers from transcript cues
-// using topic shift detection, keyword triggers, silence gaps, and TF-IDF title generation.
+// Chapter detection — auto-generate chapter markers from transcript cues.
+//
+// Two backends, same output shape:
+//   1. Gemini (when configured): asks the model for semantic chapter
+//      boundaries + titles — much closer to what YouTube Studio and OpenShorts
+//      produce for long-form videos.
+//   2. Heuristic: topic-shift detection via Jaccard windowing, keyword
+//      triggers, silence gaps, and TF-IDF title generation. Always works
+//      offline and remains the deterministic fallback.
+
+import { generateJson, isGeminiConfigured } from "./geminiClient";
 
 export interface Chapter {
 	startMs: number;
 	endMs: number;
 	title: string;
 	confidence: number; // 0-1
+	source?: "heuristic" | "gemini";
 }
 
 interface ChapterOptions {
 	minDurationMs?: number;
 	maxChapters?: number;
 	silenceGaps?: Array<{ startMs: number; endMs: number }>;
+	useGemini?: boolean;
+	signal?: AbortSignal;
 }
 
 interface Cue {
@@ -70,7 +82,27 @@ const STOP_WORDS = new Set([
 ]);
 
 /**
- * Detect chapter boundaries from caption cues.
+ * Public entry point. Prefers Gemini when configured, falls back to the
+ * heuristic backend on any failure.
+ */
+export async function detectChapters(
+	cues: Cue[],
+	options?: ChapterOptions,
+): Promise<Chapter[]> {
+	const wantGemini = options?.useGemini !== false && isGeminiConfigured();
+	if (wantGemini) {
+		try {
+			const gemini = await detectChaptersGemini(cues, options);
+			if (gemini.length > 0) return gemini;
+		} catch (err) {
+			console.warn("[chapterDetector] Gemini backend failed, falling back:", err);
+		}
+	}
+	return detectChaptersHeuristic(cues, options);
+}
+
+/**
+ * Synchronous heuristic-only detection.
  *
  * Algorithm:
  * 1. Group cues into sliding windows and compute topic shift scores
@@ -79,7 +111,7 @@ const STOP_WORDS = new Set([
  * 3. Select top boundaries that respect minimum duration constraints.
  * 4. Generate chapter titles using TF-IDF-style scoring.
  */
-export function detectChapters(
+export function detectChaptersHeuristic(
 	cues: Cue[],
 	options?: ChapterOptions,
 ): Chapter[] {
@@ -239,8 +271,84 @@ export function detectChapters(
 			endMs: seg.endMs,
 			title,
 			confidence: Math.round(confidence * 100) / 100,
+			source: "heuristic",
 		};
 	});
+
+	return chapters;
+}
+
+// ── Gemini backend ───────────────────────────────────────────────────────────
+
+interface GeminiChapter {
+	start_sec: number;
+	title: string;
+}
+
+async function detectChaptersGemini(cues: Cue[], options?: ChapterOptions): Promise<Chapter[]> {
+	if (cues.length === 0) return [];
+
+	const totalStart = cues[0]!.startMs;
+	const totalEnd = cues[cues.length - 1]!.endMs;
+	const totalDuration = totalEnd - totalStart;
+	const minDur = options?.minDurationMs ?? 30_000;
+	const maxChapters = options?.maxChapters ?? 12;
+
+	if (totalDuration < minDur * 2) return [];
+
+	// Sample up to ~180 cues to stay inside the context window comfortably.
+	const MAX_CUES = 180;
+	const stride = Math.max(1, Math.floor(cues.length / MAX_CUES));
+	const sampled = cues.filter((_, i) => i % stride === 0);
+	const transcriptBlock = sampled
+		.map((c) => `[${(c.startMs / 1000).toFixed(1)}s] ${c.text}`)
+		.join("\n");
+
+	const prompt = `You are generating YouTube-style chapter markers for a long-form video transcript.
+
+Requirements:
+- Provide at most ${maxChapters} chapters.
+- Each chapter must last at least ${Math.round(minDur / 1000)} seconds.
+- The first chapter MUST start at 0 seconds.
+- Titles are 3–6 words, informative (not clickbait), and unique.
+- Start seconds must strictly increase and align with content shifts in the transcript.
+
+Transcript (sampled):
+${transcriptBlock}
+
+Respond with JSON: { "chapters": [{ "start_sec": number, "title": string }] }`;
+
+	const parsed = await generateJson<{ chapters: GeminiChapter[] }>(prompt, {
+		temperature: 0.3,
+		maxOutputTokens: 1500,
+		abortSignal: options?.signal,
+	});
+
+	const raw = Array.isArray(parsed?.chapters) ? parsed.chapters : [];
+	if (raw.length === 0) return [];
+
+	// Normalize: clamp times, force first to 0, strictly increasing, min gap.
+	const cleaned: Array<{ startMs: number; title: string }> = [];
+	for (const ch of raw) {
+		if (!ch?.title || typeof ch.start_sec !== "number") continue;
+		const startMs = Math.max(0, Math.round(ch.start_sec * 1000));
+		if (cleaned.length === 0 && startMs > 0) {
+			cleaned.push({ startMs: 0, title: ch.title.slice(0, 80) });
+			continue;
+		}
+		if (cleaned.length > 0 && startMs - cleaned[cleaned.length - 1]!.startMs < minDur) continue;
+		cleaned.push({ startMs, title: ch.title.slice(0, 80) });
+	}
+	if (cleaned.length === 0) return [];
+	if (cleaned[0]!.startMs !== 0) cleaned[0] = { ...cleaned[0]!, startMs: 0 };
+
+	const chapters: Chapter[] = cleaned.map((ch, i) => ({
+		startMs: ch.startMs + totalStart,
+		endMs: i + 1 < cleaned.length ? cleaned[i + 1]!.startMs + totalStart : totalEnd,
+		title: ch.title,
+		confidence: 0.95,
+		source: "gemini",
+	}));
 
 	return chapters;
 }
