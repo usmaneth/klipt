@@ -4,11 +4,11 @@ import { toast } from "sonner";
 import type { Chapter } from "@/lib/ai/chapterDetector";
 import { isGeminiConfigured } from "@/lib/ai/geminiClient";
 import {
-	type MetadataOptions,
-	type VideoMetadata,
 	formatChapterBlock,
 	generateVideoMetadata,
 	isMetadataGeneratorAvailable,
+	type MetadataOptions,
+	type VideoMetadata,
 } from "@/lib/ai/metadataGenerator";
 import { SHORTS_CAPTION_PRESETS, type ShortsCaptionPreset } from "@/lib/ai/shortsCaptionPresets";
 import type { CaptionSettings } from "./captionStyle";
@@ -261,7 +261,15 @@ export function ShortsStudioPanel({
 	);
 }
 
-function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+function Section({
+	icon,
+	title,
+	children,
+}: {
+	icon: ReactNode;
+	title: string;
+	children: ReactNode;
+}) {
 	return (
 		<div className="flex flex-col gap-2 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3">
 			<div className="flex items-center gap-1.5 text-[11px] font-medium text-white/60">

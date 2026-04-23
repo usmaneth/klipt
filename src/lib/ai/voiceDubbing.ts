@@ -76,7 +76,11 @@ export const DUBBING_LANGUAGES = Object.entries(DUBBING_VOICES).map(([code, { la
  * Ordered list of TTS providers. The renderer selects one per dubbing job.
  * ElevenLabs is only usable when the user has configured an API key.
  */
-export const DUBBING_PROVIDERS: Array<{ id: DubbingProviderId; label: string; requiresKey: boolean }> = [
+export const DUBBING_PROVIDERS: Array<{
+	id: DubbingProviderId;
+	label: string;
+	requiresKey: boolean;
+}> = [
 	{ id: "edge-tts", label: "Edge TTS (free, 40+ languages)", requiresKey: false },
 	{ id: "elevenlabs", label: "ElevenLabs (multilingual, highest quality)", requiresKey: true },
 ];

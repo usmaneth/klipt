@@ -13,7 +13,8 @@ export interface ApiKeyEntry {
 export const API_PROVIDERS: Record<ApiProviderId, ApiKeyEntry> = {
 	gemini: {
 		label: "Google Gemini",
-		description: "Powers AI viral-moment detection, chapter detection, titles, descriptions, and thumbnail ranking.",
+		description:
+			"Powers AI viral-moment detection, chapter detection, titles, descriptions, and thumbnail ranking.",
 		docsUrl: "https://aistudio.google.com/apikey",
 	},
 	elevenlabs: {
@@ -23,7 +24,8 @@ export const API_PROVIDERS: Record<ApiProviderId, ApiKeyEntry> = {
 	},
 	deepl: {
 		label: "DeepL",
-		description: "Premium translation for dubbing and subtitles. Falls back to MyMemory when absent.",
+		description:
+			"Premium translation for dubbing and subtitles. Falls back to MyMemory when absent.",
 		docsUrl: "https://www.deepl.com/your-account/keys",
 	},
 	uploadPost: {
@@ -38,6 +40,7 @@ const STORAGE_KEY = "klipt-api-keys";
 type KeyMap = Partial<Record<ApiProviderId, string>>;
 
 function readStore(): KeyMap {
+	if (typeof localStorage === "undefined") return {};
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		if (!raw) return {};
@@ -50,7 +53,12 @@ function readStore(): KeyMap {
 }
 
 function writeStore(map: KeyMap): void {
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+	if (typeof localStorage === "undefined") return;
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+	} catch {
+		/* ignore quota/security errors */
+	}
 }
 
 export function getApiKey(provider: ApiProviderId): string | undefined {

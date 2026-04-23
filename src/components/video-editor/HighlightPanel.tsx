@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { Film, Loader2, Scissors, Sparkles, Download } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Download, Film, Loader2, Scissors, Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { HighlightCandidate } from "@/lib/ai/highlightDetector";
 
@@ -85,8 +85,8 @@ export function HighlightPanel({
 			<div className="flex-1 overflow-y-auto flex flex-col gap-2">
 				{highlights.length === 0 && !isDetecting && hasTranscription && (
 					<p className="text-[11px] text-white/30 text-center py-4">
-						Click &quot;Find Highlights&quot; to detect engaging segments for
-						TikTok, Reels, or Shorts.
+						Click &quot;Find Highlights&quot; to detect engaging segments for TikTok, Reels, or
+						Shorts.
 					</p>
 				)}
 
@@ -128,9 +128,7 @@ export function HighlightPanel({
 									{highlight.title}
 								</p>
 							)}
-							<p className="text-[11px] text-white/40 leading-relaxed">
-								{highlight.reason}
-							</p>
+							<p className="text-[11px] text-white/40 leading-relaxed">{highlight.reason}</p>
 							{highlight.source === "gemini" && (
 								<span className="inline-block mt-1.5 px-1.5 py-[1px] rounded-full bg-violet-500/15 text-violet-300/80 text-[9px] font-medium uppercase tracking-wider">
 									AI

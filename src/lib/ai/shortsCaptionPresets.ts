@@ -22,7 +22,8 @@ export const SHORTS_CAPTION_PRESETS: ShortsCaptionPreset[] = [
 	{
 		id: "viral-yellow",
 		label: "Viral Yellow",
-		description: "Big bold white text with a yellow bold-pop on the active word. Classic MrBeast energy.",
+		description:
+			"Big bold white text with a yellow bold-pop on the active word. Classic MrBeast energy.",
 		preview: { text: "This changes everything", activeWord: "everything" },
 		apply: {
 			enabled: true,
@@ -42,7 +43,8 @@ export const SHORTS_CAPTION_PRESETS: ShortsCaptionPreset[] = [
 	{
 		id: "hormozi-green",
 		label: "Hormozi Green",
-		description: "Chunky green-on-white highlight for hooks and quotes. Works great on talking-head shorts.",
+		description:
+			"Chunky green-on-white highlight for hooks and quotes. Works great on talking-head shorts.",
 		preview: { text: "The secret is simple", activeWord: "secret" },
 		apply: {
 			enabled: true,
@@ -82,7 +84,8 @@ export const SHORTS_CAPTION_PRESETS: ShortsCaptionPreset[] = [
 	{
 		id: "glow-blue",
 		label: "Glow Blue",
-		description: "Soft glowing cyan on the active word, muted inactive text. Good for tech/AI shorts.",
+		description:
+			"Soft glowing cyan on the active word, muted inactive text. Good for tech/AI shorts.",
 		preview: { text: "AI just did something wild", activeWord: "wild" },
 		apply: {
 			enabled: true,

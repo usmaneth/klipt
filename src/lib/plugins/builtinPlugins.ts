@@ -9,7 +9,12 @@ export const s3Plugin: UploadPlugin = {
 	icon: "Cloud",
 	description: "Upload to S3, Cloudflare R2, MinIO, or any S3-compatible storage",
 	configSchema: {
-		endpoint: { type: "text", label: "Endpoint URL", placeholder: "https://s3.amazonaws.com", required: true },
+		endpoint: {
+			type: "text",
+			label: "Endpoint URL",
+			placeholder: "https://s3.amazonaws.com",
+			required: true,
+		},
 		bucket: { type: "text", label: "Bucket", placeholder: "my-bucket", required: true },
 		accessKeyId: { type: "text", label: "Access Key ID", required: true },
 		secretAccessKey: { type: "password", label: "Secret Access Key", required: true },
@@ -25,17 +30,14 @@ export const s3Plugin: UploadPlugin = {
 		},
 	},
 	async upload(filePath, config, onProgress) {
-		const result = await window.electronAPI.uploadToS3(
-			filePath,
-			{
-				endpoint: config.endpoint,
-				bucket: config.bucket,
-				accessKeyId: config.accessKeyId,
-				secretAccessKey: config.secretAccessKey,
-				region: config.region || "us-east-1",
-				pathStyle: config.pathStyle === "true",
-			},
-		);
+		const result = await window.electronAPI.uploadToS3(filePath, {
+			endpoint: config.endpoint,
+			bucket: config.bucket,
+			accessKeyId: config.accessKeyId,
+			secretAccessKey: config.secretAccessKey,
+			region: config.region || "us-east-1",
+			pathStyle: config.pathStyle === "true",
+		});
 		onProgress?.(100);
 		if (!result.success || !result.url) throw new Error(result.error || "Upload failed");
 		return { url: result.url };
@@ -61,7 +63,12 @@ export const httpPlugin: UploadPlugin = {
 	icon: "Globe",
 	description: "Upload via HTTP POST/PUT to any URL",
 	configSchema: {
-		url: { type: "text", label: "Upload URL", placeholder: "https://api.example.com/upload", required: true },
+		url: {
+			type: "text",
+			label: "Upload URL",
+			placeholder: "https://api.example.com/upload",
+			required: true,
+		},
 		method: {
 			type: "select",
 			label: "Method",
@@ -73,7 +80,12 @@ export const httpPlugin: UploadPlugin = {
 		},
 		authHeader: { type: "text", label: "Auth Header Name", placeholder: "Authorization" },
 		authValue: { type: "password", label: "Auth Header Value", placeholder: "Bearer token..." },
-		responseUrlField: { type: "text", label: "Response URL field", placeholder: "url", defaultValue: "url" },
+		responseUrlField: {
+			type: "text",
+			label: "Response URL field",
+			placeholder: "url",
+			defaultValue: "url",
+		},
 	},
 	async upload(_filePath, _config, onProgress) {
 		// HTTP upload would be handled by IPC in production
@@ -90,7 +102,12 @@ export const localCopyPlugin: UploadPlugin = {
 	icon: "FolderOutput",
 	description: "Copy the file to a local or network-mounted directory",
 	configSchema: {
-		destinationDir: { type: "text", label: "Destination Directory", placeholder: "/path/to/shared/folder", required: true },
+		destinationDir: {
+			type: "text",
+			label: "Destination Directory",
+			placeholder: "/path/to/shared/folder",
+			required: true,
+		},
 	},
 	async upload(_filePath, _config, onProgress) {
 		// Local copy would be handled by IPC

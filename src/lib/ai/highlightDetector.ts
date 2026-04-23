@@ -170,9 +170,7 @@ export function detectHighlightsHeuristic(
 		if (selected.length >= maxHighlights) break;
 
 		// Check overlap with already selected
-		const overlaps = selected.some(
-			(s) => win.startMs < s.endMs && win.endMs > s.startMs,
-		);
+		const overlaps = selected.some((s) => win.startMs < s.endMs && win.endMs > s.startMs);
 		if (overlaps) continue;
 
 		// Snap start to nearest silence gap

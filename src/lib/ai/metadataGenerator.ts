@@ -44,22 +44,28 @@ export async function generateVideoMetadata(options: MetadataOptions): Promise<V
 
 	// Cap transcript length so we don't blow up the prompt on multi-hour videos.
 	const MAX_CHARS = 12_000;
-	const trimmed = transcriptText.length > MAX_CHARS
-		? `${transcriptText.slice(0, MAX_CHARS)}\n[truncated...]`
-		: transcriptText;
+	const trimmed =
+		transcriptText.length > MAX_CHARS
+			? `${transcriptText.slice(0, MAX_CHARS)}\n[truncated...]`
+			: transcriptText;
 
 	const toneGuidance: Record<NonNullable<MetadataOptions["platform"]>, string> = {
-		youtube: "Long-form. Title max 70 chars, SEO-driven. Description 3-4 short paragraphs, ends with 5-10 hashtags.",
-		shorts: "Vertical short. Title max 50 chars, punchy hook. Description under 200 chars, 5 hashtags.",
-		tiktok: "TikTok-native. Title max 60 chars, uses hook words (POV:, Why, How). Description under 250 chars, 8 hashtags including trending.",
-		instagram: "Reels-style. Title/caption max 60 chars, emotional hook. Description under 400 chars, 10 hashtags mixing broad + niche.",
+		youtube:
+			"Long-form. Title max 70 chars, SEO-driven. Description 3-4 short paragraphs, ends with 5-10 hashtags.",
+		shorts:
+			"Vertical short. Title max 50 chars, punchy hook. Description under 200 chars, 5 hashtags.",
+		tiktok:
+			"TikTok-native. Title max 60 chars, uses hook words (POV:, Why, How). Description under 250 chars, 8 hashtags including trending.",
+		instagram:
+			"Reels-style. Title/caption max 60 chars, emotional hook. Description under 400 chars, 10 hashtags mixing broad + niche.",
 	};
 
-	const chapterBlock = options.chapters && options.chapters.length > 0
-		? `\n\nDetected chapters (timestamps in seconds):\n${options.chapters
-				.map((c) => `- ${(c.startMs / 1000).toFixed(0)}s: ${c.title}`)
-				.join("\n")}`
-		: "";
+	const chapterBlock =
+		options.chapters && options.chapters.length > 0
+			? `\n\nDetected chapters (timestamps in seconds):\n${options.chapters
+					.map((c) => `- ${(c.startMs / 1000).toFixed(0)}s: ${c.title}`)
+					.join("\n")}`
+			: "";
 
 	const hintBlock = options.topicHint ? `\nTopic hint: ${options.topicHint}` : "";
 
@@ -103,7 +109,10 @@ Respond with JSON:
 	return {
 		title: (parsed.title ?? "").trim(),
 		titleVariants: Array.isArray(parsed.title_variants)
-			? parsed.title_variants.map((t) => t.trim()).filter(Boolean).slice(0, 5)
+			? parsed.title_variants
+					.map((t) => t.trim())
+					.filter(Boolean)
+					.slice(0, 5)
 			: [],
 		description: (parsed.description ?? "").trim(),
 		hashtags: Array.isArray(parsed.hashtags)
@@ -124,9 +133,10 @@ export function formatChapterBlock(chapters: Chapter[]): string {
 		const h = Math.floor(totalSec / 3600);
 		const m = Math.floor((totalSec % 3600) / 60);
 		const s = totalSec % 60;
-		const stamp = h > 0
-			? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-			: `${m}:${String(s).padStart(2, "0")}`;
+		const stamp =
+			h > 0
+				? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+				: `${m}:${String(s).padStart(2, "0")}`;
 		return `${stamp} ${c.title}`;
 	});
 	return lines.join("\n");

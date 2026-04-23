@@ -12,6 +12,7 @@ import type {
 	TrimRegion,
 	ZoomRegion,
 } from "@/components/video-editor/types";
+import { type ReframeCropSpec, sampleCropRect } from "@/lib/ai/shortsReframe";
 import { AudioProcessor } from "./audioEncoder";
 import { buildExportCaptionPages, renderCaptions } from "./captionRenderer";
 import { FrameRenderer } from "./frameRenderer";
@@ -53,6 +54,15 @@ interface VideoExporterConfig extends ExportConfig {
 	webcamState?: WebcamState;
 	captionCues?: CaptionCue[];
 	captionSettings?: CaptionSettings;
+	/**
+	 * When provided, the final composite is reframed per-frame to the spec's
+	 * output aspect (e.g., 9:16) using subject-tracking crop keyframes. The
+	 * encoder/muxer are configured at `spec.outWidth × spec.outHeight` while
+	 * the intermediate renderer continues to operate at `width × height`.
+	 */
+	shortsReframeSpec?: ReframeCropSpec;
+	/** If true and `shortsReframeSpec` is active, render a blurred, letterboxed background behind the focused crop. */
+	shortsBlurBackground?: boolean;
 	onProgress?: (progress: ExportProgress) => void;
 }
 
@@ -63,8 +73,14 @@ async function seekVideo(video: HTMLVideoElement, timeSeconds: number): Promise<
 			return;
 		}
 		const timeout = setTimeout(() => reject(new Error("Seek timed out")), 5000);
-		video.onerror = () => { clearTimeout(timeout); reject(new Error("Video error during seek")); };
-		video.onseeked = () => { clearTimeout(timeout); resolve(); };
+		video.onerror = () => {
+			clearTimeout(timeout);
+			reject(new Error("Video error during seek"));
+		};
+		video.onseeked = () => {
+			clearTimeout(timeout);
+			resolve();
+		};
 		video.currentTime = timeSeconds;
 	});
 }
@@ -76,6 +92,8 @@ export class VideoExporter {
 	private encoder: VideoEncoder | null = null;
 	private muxer: VideoMuxer | null = null;
 	private audioProcessor: AudioProcessor | null = null;
+	private reframeCanvas: HTMLCanvasElement | null = null;
+	private reframeCtx: CanvasRenderingContext2D | null = null;
 	private cancelled = false;
 	private encodeQueue = 0;
 	// Increased queue size for better throughput with hardware encoding
@@ -90,6 +108,15 @@ export class VideoExporter {
 
 	constructor(config: VideoExporterConfig) {
 		this.config = config;
+	}
+
+	/** Encoder-side output width. Differs from config.width only in Shorts Mode. */
+	private get outputWidth(): number {
+		return this.config.shortsReframeSpec?.outWidth ?? this.config.width;
+	}
+	/** Encoder-side output height. Differs from config.height only in Shorts Mode. */
+	private get outputHeight(): number {
+		return this.config.shortsReframeSpec?.outHeight ?? this.config.height;
 	}
 
 	async export(): Promise<ExportResult> {
@@ -267,12 +294,16 @@ export class VideoExporter {
 						// Check if we're inside any transition window
 						const activeTransition = sortedTransitions.find((tr) => {
 							const halfDur = tr.durationMs / 2;
-							return sourceTimestampMs >= tr.atMs - halfDur && sourceTimestampMs <= tr.atMs + halfDur;
+							return (
+								sourceTimestampMs >= tr.atMs - halfDur && sourceTimestampMs <= tr.atMs + halfDur
+							);
 						});
 
 						if (activeTransition && compositeCtx && lastFrameMs >= 0) {
 							const halfDur = activeTransition.durationMs / 2;
-							const progress = (sourceTimestampMs - (activeTransition.atMs - halfDur)) / activeTransition.durationMs;
+							const progress =
+								(sourceTimestampMs - (activeTransition.atMs - halfDur)) /
+								activeTransition.durationMs;
 
 							// Copy current (incoming) frame to temp canvas BEFORE blending
 							const tempCanvas = new OffscreenCanvas(this.config.width, this.config.height);
@@ -411,9 +442,60 @@ export class VideoExporter {
 	}
 
 	private async encodeRenderedFrame(timestamp: number, frameDuration: number, frameIndex: number) {
-		const canvas = this.renderer!.getCanvas();
+		const composite = this.renderer!.getCanvas();
+		let frameSource: CanvasImageSource = composite;
 
-		const exportFrame = new VideoFrame(canvas, {
+		// Shorts Mode: reframe composite to target aspect (e.g., 9:16) using the
+		// pre-computed subject-tracking crop keyframes, then encode that.
+		const spec = this.config.shortsReframeSpec;
+		if (spec) {
+			if (!this.reframeCanvas || !this.reframeCtx) {
+				this.reframeCanvas = document.createElement("canvas");
+				this.reframeCanvas.width = spec.outWidth;
+				this.reframeCanvas.height = spec.outHeight;
+				this.reframeCtx = this.reframeCanvas.getContext("2d");
+			}
+			if (this.reframeCtx) {
+				// The composite canvas size defines the "source" for reframing;
+				// keyframes stored in normalized 0-1 coordinates so any source
+				// dimensions project correctly.
+				const srcSpec: ReframeCropSpec = {
+					...spec,
+					sourceWidth: composite.width,
+					sourceHeight: composite.height,
+				};
+				const timeMs = timestamp / 1000;
+				const { sx, sy, sw, sh } = sampleCropRect(srcSpec, timeMs);
+
+				this.reframeCtx.clearRect(0, 0, spec.outWidth, spec.outHeight);
+				if (this.config.shortsBlurBackground) {
+					this.reframeCtx.save();
+					this.reframeCtx.filter = "blur(40px) brightness(0.55)";
+					const scale =
+						Math.max(spec.outWidth / composite.width, spec.outHeight / composite.height) * 1.2;
+					const bgW = composite.width * scale;
+					const bgH = composite.height * scale;
+					this.reframeCtx.drawImage(
+						composite,
+						(spec.outWidth - bgW) / 2,
+						(spec.outHeight - bgH) / 2,
+						bgW,
+						bgH,
+					);
+					this.reframeCtx.restore();
+
+					const focusW = spec.outWidth;
+					const focusH = Math.round((focusW * sh) / sw);
+					const focusY = Math.round((spec.outHeight - focusH) / 2);
+					this.reframeCtx.drawImage(composite, sx, sy, sw, sh, 0, focusY, focusW, focusH);
+				} else {
+					this.reframeCtx.drawImage(composite, sx, sy, sw, sh, 0, 0, spec.outWidth, spec.outHeight);
+				}
+				frameSource = this.reframeCanvas;
+			}
+		}
+
+		const exportFrame = new VideoFrame(frameSource, {
 			timestamp,
 			duration: frameDuration,
 		});
@@ -453,9 +535,9 @@ export class VideoExporter {
 	}
 
 	private async initializeEncoder(): Promise<void> {
-		if (this.config.width < 16 || this.config.height < 16) {
+		if (this.outputWidth < 16 || this.outputHeight < 16) {
 			throw new Error(
-				`Export resolution too small — minimum 16x16 pixels (got ${this.config.width}x${this.config.height})`,
+				`Export resolution too small — minimum 16x16 pixels (got ${this.outputWidth}x${this.outputHeight})`,
 			);
 		}
 
@@ -522,8 +604,8 @@ export class VideoExporter {
 							const metadata: EncodedVideoChunkMetadata = {
 								decoderConfig: {
 									codec: resolvedCodec ?? (this.config.codec || "avc1.640033"),
-									codedWidth: this.config.width,
-									codedHeight: this.config.height,
+									codedWidth: this.outputWidth,
+									codedHeight: this.outputHeight,
 									description: this.videoDescription,
 									colorSpace,
 								},
@@ -542,7 +624,7 @@ export class VideoExporter {
 			},
 			error: (error) => {
 				console.error(
-					`[VideoExporter] Encoder error (codec: ${resolvedCodec}, ${this.config.width}x${this.config.height}):`,
+					`[VideoExporter] Encoder error (codec: ${resolvedCodec}, ${this.outputWidth}x${this.outputHeight}):`,
 					error,
 				);
 				// Stop export — encoding failed
@@ -551,8 +633,8 @@ export class VideoExporter {
 		});
 
 		const baseConfig: Omit<VideoEncoderConfig, "codec" | "hardwareAcceleration"> = {
-			width: this.config.width,
-			height: this.config.height,
+			width: this.outputWidth,
+			height: this.outputHeight,
 			bitrate: this.config.bitrate,
 			framerate: this.config.frameRate,
 			latencyMode: "quality",
@@ -587,13 +669,13 @@ export class VideoExporter {
 			}
 
 			console.warn(
-				`[VideoExporter] Codec ${candidateCodec} not supported (${this.config.width}x${this.config.height}), trying next...`,
+				`[VideoExporter] Codec ${candidateCodec} not supported (${this.outputWidth}x${this.outputHeight}), trying next...`,
 			);
 		}
 
 		throw new Error(
 			`Video encoding not supported on this system. ` +
-				`Tried codecs: ${CODEC_FALLBACK_LIST.join(", ")} at ${this.config.width}x${this.config.height}. ` +
+				`Tried codecs: ${CODEC_FALLBACK_LIST.join(", ")} at ${this.outputWidth}x${this.outputHeight}. ` +
 				`Your browser or hardware may not support H.264 encoding at this resolution. ` +
 				`Try exporting at a lower quality setting.`,
 		);

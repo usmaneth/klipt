@@ -35,7 +35,11 @@ async function uploadViaUploadPost(
 	if (!fileRes?.success || !fileRes.data) {
 		throw new Error(`Could not read file for upload: ${filePath}`);
 	}
-	const bytes = fileRes.data instanceof Uint8Array ? fileRes.data : new Uint8Array(fileRes.data);
+	// Copy into a fresh ArrayBuffer — Node Buffers serialized through Electron
+	// IPC can be backed by SharedArrayBuffer which isn't a valid BlobPart.
+	const source = fileRes.data instanceof Uint8Array ? fileRes.data : new Uint8Array(fileRes.data);
+	const buffer = new ArrayBuffer(source.byteLength);
+	new Uint8Array(buffer).set(source);
 
 	// Pull filename from path for multipart.
 	const fileName = filePath.split(/[/\\]/).pop() ?? "klipt-upload.mp4";
@@ -49,7 +53,7 @@ async function uploadViaUploadPost(
 	if (config.hashtags) form.append("hashtags", config.hashtags);
 	// TikTok / Reels specific privacy flag, safe to include for all.
 	if (config.privacy) form.append("privacy", config.privacy);
-	form.append("video", new Blob([bytes as unknown as BlobPart], { type: mime }), fileName);
+	form.append("video", new Blob([buffer], { type: mime }), fileName);
 
 	onProgress?.(5);
 
@@ -76,7 +80,9 @@ async function uploadViaUploadPost(
 	return { url };
 }
 
-async function testUploadPost(config: Record<string, string>): Promise<{ success: boolean; error?: string }> {
+async function testUploadPost(
+	config: Record<string, string>,
+): Promise<{ success: boolean; error?: string }> {
 	const apiKey = config.apiKey?.trim();
 	if (!apiKey) return { success: false, error: "API key missing" };
 
@@ -128,7 +134,8 @@ export const tiktokPlugin: UploadPlugin = {
 	icon: "Music2",
 	description: "Publish a vertical short directly to TikTok using your Upload-Post account.",
 	configSchema: commonSchema,
-	upload: (filePath, config, onProgress) => uploadViaUploadPost("tiktok", filePath, config, onProgress),
+	upload: (filePath, config, onProgress) =>
+		uploadViaUploadPost("tiktok", filePath, config, onProgress),
 	testConnection: testUploadPost,
 };
 
@@ -138,7 +145,8 @@ export const instagramReelsPlugin: UploadPlugin = {
 	icon: "Instagram",
 	description: "Publish a vertical reel to Instagram using your Upload-Post account.",
 	configSchema: commonSchema,
-	upload: (filePath, config, onProgress) => uploadViaUploadPost("instagram", filePath, config, onProgress),
+	upload: (filePath, config, onProgress) =>
+		uploadViaUploadPost("instagram", filePath, config, onProgress),
 	testConnection: testUploadPost,
 };
 
@@ -148,7 +156,8 @@ export const youtubeShortsPlugin: UploadPlugin = {
 	icon: "Youtube",
 	description: "Publish a vertical short to YouTube using your Upload-Post account.",
 	configSchema: commonSchema,
-	upload: (filePath, config, onProgress) => uploadViaUploadPost("youtube", filePath, config, onProgress),
+	upload: (filePath, config, onProgress) =>
+		uploadViaUploadPost("youtube", filePath, config, onProgress),
 	testConnection: testUploadPost,
 };
 

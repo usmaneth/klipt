@@ -96,7 +96,12 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
 		width: 1280,
 		height: 720,
 		overlays: [
-			{ type: "gradient", colors: ["rgba(34,197,94,0.4)", "rgba(0,0,0,0.8)"], angle: 180, opacity: 1 },
+			{
+				type: "gradient",
+				colors: ["rgba(34,197,94,0.4)", "rgba(0,0,0,0.8)"],
+				angle: 180,
+				opacity: 1,
+			},
 		],
 		textLayers: [
 			{
@@ -142,7 +147,12 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
 		width: 1280,
 		height: 720,
 		overlays: [
-			{ type: "gradient", colors: ["rgba(224,0,15,0.3)", "rgba(0,0,0,0.85)"], angle: 180, opacity: 1 },
+			{
+				type: "gradient",
+				colors: ["rgba(224,0,15,0.3)", "rgba(0,0,0,0.85)"],
+				angle: 180,
+				opacity: 1,
+			},
 		],
 		textLayers: [
 			{
@@ -161,9 +171,7 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
 				textAlign: "center",
 			},
 		],
-		emojiLayers: [
-			{ emoji: "😱", x: 85, y: 65, fontSize: 100, rotation: 10 },
-		],
+		emojiLayers: [{ emoji: "😱", x: 85, y: 65, fontSize: 100, rotation: 10 }],
 	},
 	{
 		id: "red-alert",
@@ -264,7 +272,12 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
 		width: 1280,
 		height: 720,
 		overlays: [
-			{ type: "gradient", colors: ["rgba(147,51,234,0.4)", "rgba(0,0,0,0.85)"], angle: 135, opacity: 1 },
+			{
+				type: "gradient",
+				colors: ["rgba(147,51,234,0.4)", "rgba(0,0,0,0.85)"],
+				angle: 135,
+				opacity: 1,
+			},
 		],
 		textLayers: [
 			{
@@ -341,9 +354,7 @@ export const THUMBNAIL_TEMPLATES: ThumbnailTemplate[] = [
 				textAlign: "center",
 			},
 		],
-		emojiLayers: [
-			{ emoji: "➡️", x: 50, y: 50, fontSize: 60, rotation: 0 },
-		],
+		emojiLayers: [{ emoji: "➡️", x: 50, y: 50, fontSize: 60, rotation: 0 }],
 	},
 ];
 
@@ -366,10 +377,10 @@ function drawOverlay(
 		const cx = w / 2;
 		const cy = h / 2;
 		const len = Math.max(w, h);
-		const x0 = cx - Math.cos(angle) * len / 2;
-		const y0 = cy - Math.sin(angle) * len / 2;
-		const x1 = cx + Math.cos(angle) * len / 2;
-		const y1 = cy + Math.sin(angle) * len / 2;
+		const x0 = cx - (Math.cos(angle) * len) / 2;
+		const y0 = cy - (Math.sin(angle) * len) / 2;
+		const x1 = cx + (Math.cos(angle) * len) / 2;
+		const y1 = cy + (Math.sin(angle) * len) / 2;
 		const grad = ctx.createLinearGradient(x0, y0, x1, y1);
 		overlay.colors.forEach((c, i) => {
 			grad.addColorStop(i / (overlay.colors!.length - 1), c);

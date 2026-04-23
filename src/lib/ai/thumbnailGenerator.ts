@@ -1,4 +1,4 @@
-import { generateContent, generateJson, isGeminiConfigured, parseJsonReply } from "./geminiClient";
+import { generateContent, isGeminiConfigured, parseJsonReply } from "./geminiClient";
 
 export interface ThumbnailCandidate {
 	frameTime: number;
@@ -306,7 +306,3 @@ Respond with JSON: { "rankings": [{ "index": number, "score": number, "caption":
 		return candidates;
 	}
 }
-
-/** Parse a Gemini reply — re-exported so the UI can use its own prompts. */
-export { generateJson };
-

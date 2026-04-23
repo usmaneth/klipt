@@ -186,7 +186,10 @@ export function buildShortsReframe(
  * Given a crop spec and a time, return the crop rectangle (in source pixels)
  * to sample for that frame. Linearly interpolates between keyframes.
  */
-export function sampleCropRect(spec: ReframeCropSpec, timeMs: number): {
+export function sampleCropRect(
+	spec: ReframeCropSpec,
+	timeMs: number,
+): {
 	sx: number;
 	sy: number;
 	sw: number;
@@ -245,7 +248,8 @@ export function renderReframedFrame(
 		// focused crop centered on top. Keeps sides filled on talking-head shots.
 		ctx.save();
 		ctx.filter = "blur(40px) brightness(0.55)";
-		const scale = Math.max(spec.outWidth / spec.sourceWidth, spec.outHeight / spec.sourceHeight) * 1.2;
+		const scale =
+			Math.max(spec.outWidth / spec.sourceWidth, spec.outHeight / spec.sourceHeight) * 1.2;
 		const bgW = spec.sourceWidth * scale;
 		const bgH = spec.sourceHeight * scale;
 		ctx.drawImage(source, (spec.outWidth - bgW) / 2, (spec.outHeight - bgH) / 2, bgW, bgH);

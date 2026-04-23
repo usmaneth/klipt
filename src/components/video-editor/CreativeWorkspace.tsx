@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	ArrowRight,
 	ArrowRightLeft,
@@ -27,15 +27,15 @@ import {
 } from "lucide-react";
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
 import type { HighlightCandidate } from "@/lib/ai/highlightDetector";
-import type { Chapter, SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
-import type { CaptionSettings } from "./captionStyle";
+import { previewSoundEffect } from "@/lib/audio/soundEffectSynth";
 import { ApiKeysPanel } from "./ApiKeysPanel";
 import { CommentsPanel } from "./CommentsPanel";
-import { MotionTemplatePanel } from "./MotionTemplatePanel";
+import type { CaptionSettings } from "./captionStyle";
 import { HighlightPanel } from "./HighlightPanel";
+import { MotionTemplatePanel } from "./MotionTemplatePanel";
 import { ShortsStudioPanel } from "./ShortsStudioPanel";
+import type { Chapter, SoundEffectId, TimelineComment, TransitionType, TrimRegion } from "./types";
 
 // ── AI Suggestion type ──────────────────────────────────────────────────────
 
@@ -140,7 +140,11 @@ interface CreativeWorkspaceProps {
 	onDetectHighlights: () => void;
 	onExportHighlightClip: (highlight: HighlightCandidate) => void;
 	onExportAllHighlights: (highlights: HighlightCandidate[]) => void;
-	onAddMotionTemplate?: (templateId: string, values: Record<string, string>, durationMs: number) => void;
+	onAddMotionTemplate?: (
+		templateId: string,
+		values: Record<string, string>,
+		durationMs: number,
+	) => void;
 	chapters?: Chapter[];
 	isDetectingChapters?: boolean;
 	onDetectChapters?: () => void;
@@ -183,10 +187,26 @@ const ASSET_SUB_TABS: { id: AssetSubTab; label: string }[] = [
 ];
 
 const STICKER_EMOJIS = [
-	"\u{1F525}", "\u{2B50}", "\u{1F446}", "\u{1F447}", "\u{2764}\u{FE0F}", "\u{1F602}",
-	"\u{1F3AF}", "\u{1F4AF}", "\u{1F680}", "\u{2705}", "\u{274C}", "\u{1F3B5}",
-	"\u{1F514}", "\u{1F440}", "\u{1F4A1}", "\u{26A1}", "\u{1F3C6}", "\u{1F389}",
-	"\u{1F44B}", "\u{1F4AA}",
+	"\u{1F525}",
+	"\u{2B50}",
+	"\u{1F446}",
+	"\u{1F447}",
+	"\u{2764}\u{FE0F}",
+	"\u{1F602}",
+	"\u{1F3AF}",
+	"\u{1F4AF}",
+	"\u{1F680}",
+	"\u{2705}",
+	"\u{274C}",
+	"\u{1F3B5}",
+	"\u{1F514}",
+	"\u{1F440}",
+	"\u{1F4A1}",
+	"\u{26A1}",
+	"\u{1F3C6}",
+	"\u{1F389}",
+	"\u{1F44B}",
+	"\u{1F4AA}",
 ];
 
 const SOUND_EFFECTS = [
@@ -325,19 +345,36 @@ export function CreativeWorkspace({
 				}
 				const tenorJson = await tenorRes.json();
 				// Map Tenor results to GiphyClipResult shape
-				const mapped: GiphyClipResult[] = (tenorJson.results ?? []).map((item: { id: string; title?: string; media_formats?: Record<string, { url?: string; dims?: number[] }> }) => {
-					const gifUrl = item.media_formats?.gif?.url ?? item.media_formats?.tinygif?.url ?? "";
-					const mp4Url = item.media_formats?.mp4?.url ?? item.media_formats?.tinymp4?.url ?? "";
-					const dims = item.media_formats?.gif?.dims ?? item.media_formats?.tinygif?.dims ?? [200, 200];
-					return {
-						id: String(item.id),
-						title: item.title ?? "",
-						images: {
-							fixed_width: { url: gifUrl, mp4: mp4Url || undefined, width: String(dims[0] ?? 200), height: String(dims[1] ?? 200) },
-							original: { url: gifUrl, mp4: mp4Url || undefined, width: String(dims[0] ?? 200), height: String(dims[1] ?? 200) },
-						},
-					};
-				});
+				const mapped: GiphyClipResult[] = (tenorJson.results ?? []).map(
+					(item: {
+						id: string;
+						title?: string;
+						media_formats?: Record<string, { url?: string; dims?: number[] }>;
+					}) => {
+						const gifUrl = item.media_formats?.gif?.url ?? item.media_formats?.tinygif?.url ?? "";
+						const mp4Url = item.media_formats?.mp4?.url ?? item.media_formats?.tinymp4?.url ?? "";
+						const dims = item.media_formats?.gif?.dims ??
+							item.media_formats?.tinygif?.dims ?? [200, 200];
+						return {
+							id: String(item.id),
+							title: item.title ?? "",
+							images: {
+								fixed_width: {
+									url: gifUrl,
+									mp4: mp4Url || undefined,
+									width: String(dims[0] ?? 200),
+									height: String(dims[1] ?? 200),
+								},
+								original: {
+									url: gifUrl,
+									mp4: mp4Url || undefined,
+									width: String(dims[0] ?? 200),
+									height: String(dims[1] ?? 200),
+								},
+							},
+						};
+					},
+				);
 				setGiphyResults(mapped);
 			} catch {
 				setGiphyResults([]);
@@ -351,7 +388,12 @@ export function CreativeWorkspace({
 
 	// Initial trending load when Clips sub-tab is active
 	useEffect(() => {
-		if (activePanel === "assets" && assetSubTab === "clips" && giphyResults.length === 0 && !giphyQuery) {
+		if (
+			activePanel === "assets" &&
+			assetSubTab === "clips" &&
+			giphyResults.length === 0 &&
+			!giphyQuery
+		) {
 			fetchGiphy("");
 		}
 	}, [activePanel, assetSubTab, fetchGiphy, giphyResults.length, giphyQuery]);
@@ -367,13 +409,27 @@ export function CreativeWorkspace({
 		};
 	}, [giphyQuery, fetchGiphy]);
 
-	const handleGiphyClipClick = useCallback((clip: GiphyClipResult) => {
-		const thumbnailUrl = clip.images.fixed_width.url;
-		const mp4Url = clip.images.fixed_width.mp4 ?? clip.images.original.mp4 ?? "";
+	const handleGiphyClipClick = useCallback(
+		(clip: GiphyClipResult) => {
+			const thumbnailUrl = clip.images.fixed_width.url;
+			const mp4Url = clip.images.fixed_width.mp4 ?? clip.images.original.mp4 ?? "";
 
-		// If a video is loaded, add directly to timeline as an overlay
-		if (onRestoreClipToTimeline && hasVideo) {
-			const scratchClip: ScratchPadClip = {
+			// If a video is loaded, add directly to timeline as an overlay
+			if (onRestoreClipToTimeline && hasVideo) {
+				const scratchClip: ScratchPadClip = {
+					id: `giphy-${clip.id}-${Date.now()}`,
+					label: clip.title || "Giphy Clip",
+					sourceTimeMs: 0,
+					durationMs: 5000,
+					thumbnailUrl,
+					mp4Url,
+				};
+				onRestoreClipToTimeline(scratchClip);
+				return;
+			}
+
+			// Fallback: add to scratch pad
+			const newClip: ScratchPadClip = {
 				id: `giphy-${clip.id}-${Date.now()}`,
 				label: clip.title || "Giphy Clip",
 				sourceTimeMs: 0,
@@ -381,38 +437,33 @@ export function CreativeWorkspace({
 				thumbnailUrl,
 				mp4Url,
 			};
-			onRestoreClipToTimeline(scratchClip);
-			return;
-		}
-
-		// Fallback: add to scratch pad
-		const newClip: ScratchPadClip = {
-			id: `giphy-${clip.id}-${Date.now()}`,
-			label: clip.title || "Giphy Clip",
-			sourceTimeMs: 0,
-			durationMs: 5000,
-			thumbnailUrl,
-			mp4Url,
-		};
-		onScratchPadClipsChange([...scratchPadClips, newClip]);
-		toast.success("Clip added to scratch pad");
-	}, [scratchPadClips, onScratchPadClipsChange, onRestoreClipToTimeline, hasVideo]);
+			onScratchPadClipsChange([...scratchPadClips, newClip]);
+			toast.success("Clip added to scratch pad");
+		},
+		[scratchPadClips, onScratchPadClipsChange, onRestoreClipToTimeline, hasVideo],
+	);
 
 	// ── Scratch pad actions ─────────────────────────────────────────────────
 
-	const handleRemoveScratchPadClip = useCallback((id: string) => {
-		onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
-	}, [scratchPadClips, onScratchPadClipsChange]);
+	const handleRemoveScratchPadClip = useCallback(
+		(id: string) => {
+			onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
+		},
+		[scratchPadClips, onScratchPadClipsChange],
+	);
 
-	const handleRestoreScratchPadClip = useCallback((id: string) => {
-		const clip = scratchPadClips.find((c) => c.id === id);
-		if (!clip) return;
+	const handleRestoreScratchPadClip = useCallback(
+		(id: string) => {
+			const clip = scratchPadClips.find((c) => c.id === id);
+			if (!clip) return;
 
-		if (onRestoreClipToTimeline) {
-			onRestoreClipToTimeline(clip);
-		}
-		onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
-	}, [scratchPadClips, onScratchPadClipsChange, onRestoreClipToTimeline]);
+			if (onRestoreClipToTimeline) {
+				onRestoreClipToTimeline(clip);
+			}
+			onScratchPadClipsChange(scratchPadClips.filter((c) => c.id !== id));
+		},
+		[scratchPadClips, onScratchPadClipsChange, onRestoreClipToTimeline],
+	);
 
 	// ── Core workspace callbacks ────────────────────────────────────────────
 
@@ -508,9 +559,7 @@ export function CreativeWorkspace({
 							}}
 							className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer"
 						>
-							<span className="text-[11px] text-white/60 truncate max-w-[180px]">
-								{label}
-							</span>
+							<span className="text-[11px] text-white/60 truncate max-w-[180px]">{label}</span>
 							<span className="text-[10px] text-white/25 flex-shrink-0 ml-2">
 								{relativeTime(originalIndex, snapshots.length)}
 							</span>
@@ -614,9 +663,7 @@ export function CreativeWorkspace({
 												className="flex-1 bg-black/40 border border-emerald-500/30 rounded px-2 py-0.5 text-[11px] text-white/80 outline-none focus:border-emerald-500/60"
 											/>
 										) : (
-											<span className="text-[11px] text-white/70 flex-1 truncate">
-												{ch.title}
-											</span>
+											<span className="text-[11px] text-white/70 flex-1 truncate">{ch.title}</span>
 										)}
 										<span
 											className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${badge.color}`}
@@ -633,9 +680,7 @@ export function CreativeWorkspace({
 											{formatMs(ch.startMs)}
 										</button>
 										<span className="text-[10px] text-white/20">-</span>
-										<span className="text-[10px] text-white/30">
-											{formatMs(ch.endMs)}
-										</span>
+										<span className="text-[10px] text-white/30">{formatMs(ch.endMs)}</span>
 										<div className="flex-1" />
 										<button
 											type="button"
@@ -776,26 +821,14 @@ export function CreativeWorkspace({
 					>
 						<div className="flex items-center gap-2">
 							{s.type === "chapter" ? (
-									<BookOpen
-										className="w-3 h-3 flex-shrink-0"
-										style={{ color: typeColor[s.type] }}
-									/>
-								) : s.type === "title" ? (
-									<Type
-										className="w-3 h-3 flex-shrink-0"
-										style={{ color: typeColor[s.type] }}
-									/>
-								) : s.type === "summary" ? (
-									<FileText
-										className="w-3 h-3 flex-shrink-0"
-										style={{ color: typeColor[s.type] }}
-									/>
-								) : (
-									<Sparkles
-										className="w-3 h-3 flex-shrink-0"
-										style={{ color: typeColor[s.type] }}
-									/>
-								)}
+								<BookOpen className="w-3 h-3 flex-shrink-0" style={{ color: typeColor[s.type] }} />
+							) : s.type === "title" ? (
+								<Type className="w-3 h-3 flex-shrink-0" style={{ color: typeColor[s.type] }} />
+							) : s.type === "summary" ? (
+								<FileText className="w-3 h-3 flex-shrink-0" style={{ color: typeColor[s.type] }} />
+							) : (
+								<Sparkles className="w-3 h-3 flex-shrink-0" style={{ color: typeColor[s.type] }} />
+							)}
 							<span className="text-[11px] text-white/70">{s.label}</span>
 						</div>
 						{s.type === "title" || s.type === "summary" ? (
@@ -805,7 +838,9 @@ export function CreativeWorkspace({
 								) : (
 									<span className="text-xs text-white/60 line-clamp-3">{s.label}</span>
 								)}
-								<span className="text-[9px] text-white/25 italic">Click Accept to copy to clipboard</span>
+								<span className="text-[9px] text-white/25 italic">
+									Click Accept to copy to clipboard
+								</span>
 							</div>
 						) : (
 							<span className="text-[10px] text-white/30 ml-5">
@@ -885,9 +920,7 @@ export function CreativeWorkspace({
 			</div>
 
 			{/* Loading */}
-			{giphyLoading && (
-				<p className="text-[10px] text-white/30 text-center py-3">Loading...</p>
-			)}
+			{giphyLoading && <p className="text-[10px] text-white/30 text-center py-3">Loading...</p>}
 
 			{/* Results grid */}
 			{!giphyLoading && (
@@ -1061,7 +1094,8 @@ export function CreativeWorkspace({
 			<div className="flex-1 overflow-y-auto flex flex-col gap-2">
 				{scratchPadClips.length === 0 && (
 					<p className="text-[11px] text-white/30 text-center py-4">
-						No clips in scratch pad yet. Add clips from the Asset Library or cut clips from the timeline.
+						No clips in scratch pad yet. Add clips from the Asset Library or cut clips from the
+						timeline.
 					</p>
 				)}
 				{scratchPadClips.map((clip, idx) => {
@@ -1082,7 +1116,7 @@ export function CreativeWorkspace({
 											loop
 											playsInline
 											className="w-full h-full object-cover"
-											onMouseEnter={(e) => (e.currentTarget).play()}
+											onMouseEnter={(e) => e.currentTarget.play()}
 											onMouseLeave={(e) => {
 												const vid = e.currentTarget;
 												vid.pause();
@@ -1100,12 +1134,8 @@ export function CreativeWorkspace({
 							)}
 							<div className="flex items-center justify-between">
 								<div className="flex flex-col min-w-0">
-									<span className="text-[11px] text-white/60 truncate">
-										{clip.label}
-									</span>
-									<span className="text-[10px] text-white/25">
-										{formatMs(clip.durationMs)}
-									</span>
+									<span className="text-[11px] text-white/60 truncate">{clip.label}</span>
+									<span className="text-[10px] text-white/25">{formatMs(clip.durationMs)}</span>
 								</div>
 								<div className="flex gap-1 flex-shrink-0">
 									<button
@@ -1160,12 +1190,8 @@ export function CreativeWorkspace({
 							style={{ backgroundColor: note.color }}
 						/>
 						<div className="flex-1 min-w-0">
-							<span className="text-[10px] text-white/30 block">
-								{formatMs(note.timeMs)}
-							</span>
-							<span className="text-[11px] text-white/60 break-words">
-								{note.text}
-							</span>
+							<span className="text-[10px] text-white/30 block">{formatMs(note.timeMs)}</span>
+							<span className="text-[11px] text-white/60 break-words">{note.text}</span>
 						</div>
 						<button
 							type="button"
@@ -1280,9 +1306,7 @@ export function CreativeWorkspace({
 		apiKeys: renderApiKeys,
 	};
 
-	const activePanelConfig = activePanel
-		? PANELS.find((p) => p.id === activePanel)
-		: null;
+	const activePanelConfig = activePanel ? PANELS.find((p) => p.id === activePanel) : null;
 
 	return (
 		<div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-start h-[80vh] flex-shrink-0 z-50 pointer-events-none">
@@ -1314,9 +1338,7 @@ export function CreativeWorkspace({
 							}`}
 						>
 							{isActive && (
-								<div
-									className="absolute left-1 top-1/2 -translate-y-1/2 w-[4px] h-[16px] rounded-full bg-[#E0000F] shadow-[0_0_12px_rgba(224,0,15,0.9)]"
-								/>
+								<div className="absolute left-1 top-1/2 -translate-y-1/2 w-[4px] h-[16px] rounded-full bg-[#E0000F] shadow-[0_0_12px_rgba(224,0,15,0.9)]" />
 							)}
 							<Icon className="w-4 h-4" />
 						</button>
@@ -1389,8 +1411,7 @@ function describeSnapshot(snap: EditorHistorySnapshot): string {
 	if (snap.zoomRegions.length > 0) parts.push(`${snap.zoomRegions.length} zoom`);
 	if (snap.trimRegions.length > 0) parts.push(`${snap.trimRegions.length} trim`);
 	if (snap.speedRegions.length > 0) parts.push(`${snap.speedRegions.length} speed`);
-	if (snap.annotationRegions.length > 0)
-		parts.push(`${snap.annotationRegions.length} annotation`);
+	if (snap.annotationRegions.length > 0) parts.push(`${snap.annotationRegions.length} annotation`);
 	if (snap.audioRegions.length > 0) parts.push(`${snap.audioRegions.length} audio`);
 	return parts.length > 0 ? parts.join(", ") : "Initial state";
 }

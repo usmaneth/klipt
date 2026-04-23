@@ -25,6 +25,10 @@ import { useI18n } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import type { AppLocale } from "@/i18n/config";
 import { SUPPORTED_LOCALES } from "@/i18n/config";
+import { detectChapters } from "@/lib/ai/chapterDetector";
+import { type DetectedFace, detectFacesInFrames, mergeFaceDetections } from "@/lib/ai/faceDetector";
+import { detectHighlights, type HighlightCandidate } from "@/lib/ai/highlightDetector";
+import { buildShortsReframe, type ReframeCropSpec } from "@/lib/ai/shortsReframe";
 import { getAssetPath } from "@/lib/assetPath";
 import { SFX_DURATIONS } from "@/lib/audio/soundEffectSynth";
 import {
@@ -41,12 +45,9 @@ import {
 } from "@/lib/exporter";
 import { canFastExport } from "@/lib/exporter/fastExport";
 import { matchesShortcut } from "@/lib/shortcuts";
-import { detectChapters } from "@/lib/ai/chapterDetector";
-import { detectFacesInFrames, mergeFaceDetections, type DetectedFace } from "@/lib/ai/faceDetector";
-import { type HighlightCandidate, detectHighlights } from "@/lib/ai/highlightDetector";
-import { type ReframeCropSpec, buildShortsReframe } from "@/lib/ai/shortsReframe";
 import { DEFAULT_WALLPAPER_RELATIVE_PATH } from "@/lib/wallpapers";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
+import { type ClickEvent, ClickHighlightOverlay } from "./ClickHighlightOverlay";
 import { CommandPalette } from "./CommandPalette";
 import {
 	type AISuggestion,
@@ -79,7 +80,9 @@ import {
 import {
 	type AnnotationRegion,
 	type AudioRegion,
+	type AutoStopDuration,
 	type Chapter,
+	type ClickHighlightSize,
 	type ColorCorrectionProfile,
 	type CropRegion,
 	type CursorStyle,
@@ -88,13 +91,11 @@ import {
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
+	DEFAULT_CLICK_HIGHLIGHT_SETTINGS,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
-	DEFAULT_ZOOM_DEPTH,
-	type AutoStopDuration,
-	type ClickHighlightSize,
-	DEFAULT_CLICK_HIGHLIGHT_SETTINGS,
 	DEFAULT_RECORDING_TIMER_SETTINGS,
+	DEFAULT_ZOOM_DEPTH,
 	type FaceBlurRegion,
 	type FaceBlurStyle,
 	type FigureData,
@@ -110,7 +111,6 @@ import {
 	type ZoomFocus,
 	type ZoomRegion,
 } from "./types";
-import { ClickHighlightOverlay, type ClickEvent } from "./ClickHighlightOverlay";
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import {
 	buildLoopedCursorTelemetry,
@@ -252,7 +252,9 @@ export default function VideoEditor() {
 	const [captionTranslationProgress, setCaptionTranslationProgress] = useState<number | null>(null);
 
 	// Scene detection state
-	const [sceneMarkers, setSceneMarkers] = useState<Array<{ timeMs: number; confidence: number }>>([]);
+	const [sceneMarkers, setSceneMarkers] = useState<Array<{ timeMs: number; confidence: number }>>(
+		[],
+	);
 	const [isDetectingScenes, setIsDetectingScenes] = useState(false);
 
 	// Dubbing state
@@ -834,7 +836,11 @@ export default function VideoEditor() {
 				if (result.success && result.path) {
 					const sourcePath = fromFileUrl(result.path);
 					const videoUrl = toFileUrl(sourcePath);
-					console.log("[VideoEditor] Loading video:", { rawPath: result.path, sourcePath, videoUrl });
+					console.log("[VideoEditor] Loading video:", {
+						rawPath: result.path,
+						sourcePath,
+						videoUrl,
+					});
 					setVideoSourcePath(sourcePath);
 					setVideoPath(videoUrl);
 					setCurrentProjectPath(null);
@@ -1482,22 +1488,15 @@ export default function VideoEditor() {
 				const endMs = group.endMs + ZOOM_PADDING_MS;
 
 				// Skip if overlapping existing zoom regions
-				const hasOverlap = existingSpans.some(
-					(span) => endMs > span.start && startMs < span.end,
-				);
+				const hasOverlap = existingSpans.some((span) => endMs > span.start && startMs < span.end);
 				if (hasOverlap) continue;
 
-				const avgCx =
-					group.samples.reduce((s, p) => s + p.cx, 0) / group.samples.length;
-				const avgCy =
-					group.samples.reduce((s, p) => s + p.cy, 0) / group.samples.length;
+				const avgCx = group.samples.reduce((s, p) => s + p.cx, 0) / group.samples.length;
+				const avgCy = group.samples.reduce((s, p) => s + p.cy, 0) / group.samples.length;
 
 				const focus: ZoomFocus = { cx: avgCx, cy: avgCy };
 
-				handleZoomSuggested(
-					{ start: startMs, end: endMs },
-					focus,
-				);
+				handleZoomSuggested({ start: startMs, end: endMs }, focus);
 
 				existingSpans.push({ start: startMs, end: endMs });
 				addedCount++;
@@ -1505,13 +1504,10 @@ export default function VideoEditor() {
 
 			if (addedCount === 0) {
 				toast.info("No usable face regions found.", {
-					description:
-						"Detected regions overlap existing zooms or are too short.",
+					description: "Detected regions overlap existing zooms or are too short.",
 				});
 			} else {
-				toast.success(
-					`Added ${addedCount} face-tracked zoom${addedCount === 1 ? "" : "s"}`,
-				);
+				toast.success(`Added ${addedCount} face-tracked zoom${addedCount === 1 ? "" : "s"}`);
 			}
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : String(err);
@@ -1567,7 +1563,9 @@ export default function VideoEditor() {
 			});
 
 			setTrimRegions((prev) => [...prev, ...newTrimRegions]);
-			toast.success(`Added ${newTrimRegions.length} trim region${newTrimRegions.length === 1 ? "" : "s"} for detected silences`);
+			toast.success(
+				`Added ${newTrimRegions.length} trim region${newTrimRegions.length === 1 ? "" : "s"} for detected silences`,
+			);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			toast.error(`Silence detection failed: ${message}`);
@@ -2253,7 +2251,7 @@ export default function VideoEditor() {
 	}, [videoPath]);
 
 	// ── Highlight detection ─────────────────────────────────────────────────
-	const handleDetectHighlights = useCallback(() => {
+	const handleDetectHighlights = useCallback(async () => {
 		if (captionCues.length === 0) {
 			toast.error("Generate captions first to detect highlights");
 			return;
@@ -2280,7 +2278,9 @@ export default function VideoEditor() {
 			if (results.length > 0) {
 				const geminiCount = results.filter((r) => r.source === "gemini").length;
 				const suffix = geminiCount > 0 ? " (AI-ranked)" : "";
-				toast.success(`Found ${results.length} highlight${results.length !== 1 ? "s" : ""}${suffix}`);
+				toast.success(
+					`Found ${results.length} highlight${results.length !== 1 ? "s" : ""}${suffix}`,
+				);
 			} else {
 				toast("No highlights detected — video may be too short or lack speech variety");
 			}
@@ -2293,7 +2293,7 @@ export default function VideoEditor() {
 	}, [captionCues, duration]);
 
 	// ── Chapter detection ──────────────────────────────────────────────────
-	const handleDetectChapters = useCallback(() => {
+	const handleDetectChapters = useCallback(async () => {
 		if (captionCues.length === 0) {
 			toast.error("Generate captions first to detect chapters");
 			return;
@@ -2326,9 +2326,7 @@ export default function VideoEditor() {
 	}, [captionCues]);
 
 	const handleEditChapterTitle = useCallback((index: number, newTitle: string) => {
-		setChapters((prev) =>
-			prev.map((ch, i) => (i === index ? { ...ch, title: newTitle } : ch)),
-		);
+		setChapters((prev) => prev.map((ch, i) => (i === index ? { ...ch, title: newTitle } : ch)));
 	}, []);
 
 	const handleDeleteChapter = useCallback((index: number) => {
@@ -2344,10 +2342,10 @@ export default function VideoEditor() {
 		setIsBuildingShortsReframe(true);
 		try {
 			const sourcePath = fromFileUrl(videoPath);
-			const framesRes = await window.electronAPI.extractFramesForFaceDetection(
-				sourcePath,
-				{ intervalMs: 1500, maxFrames: 40 },
-			);
+			const framesRes = await window.electronAPI.extractFramesForFaceDetection(sourcePath, {
+				intervalMs: 1500,
+				maxFrames: 40,
+			});
 			if (!framesRes?.success || !framesRes.frames) {
 				throw new Error(framesRes?.error || "Frame extraction failed");
 			}
@@ -2358,21 +2356,19 @@ export default function VideoEditor() {
 			}));
 			const faces = await detectFacesInFrames(framePaths);
 			if (framesRes.frames.length > 0) {
-				const frameDir = framesRes.frames[0]!.path
-					.split(/[/\\]/)
-					.slice(0, -1)
-					.join("/");
-				window.electronAPI.cleanupFaceDetectionFrames?.(frameDir).catch(() => {});
+				const frameDir = framesRes.frames[0]!.path.split(/[/\\]/).slice(0, -1).join("/");
+				void window.electronAPI.cleanupFaceDetectionFrames?.(frameDir).catch(() => undefined);
 			}
 
 			// Use raw detections for per-frame crop — mergeFaceDetections is
 			// useful for region summaries but we want a dense keyframe path.
-			const densePath: DetectedFace[] = faces.length > 0
-				? faces
-				: mergeFaceDetections(faces).flatMap((m) => [
-						{ timeMs: m.startMs, x: m.x, y: m.y, width: m.width, height: m.height },
-						{ timeMs: m.endMs, x: m.x, y: m.y, width: m.width, height: m.height },
-					]);
+			const densePath: DetectedFace[] =
+				faces.length > 0
+					? faces
+					: mergeFaceDetections(faces).flatMap((m) => [
+							{ timeMs: m.startMs, x: m.x, y: m.y, width: m.width, height: m.height },
+							{ timeMs: m.endMs, x: m.x, y: m.y, width: m.width, height: m.height },
+						]);
 
 			const video = videoPlaybackRef.current?.video;
 			const sw = video?.videoWidth ?? 1920;
@@ -2420,7 +2416,9 @@ export default function VideoEditor() {
 			}
 
 			setTrimRegions((prev) => [...prev, ...newRegions]);
-			toast.success(`Created trim regions for highlight clip (${Math.round((highlight.endMs - highlight.startMs) / 1000)}s)`);
+			toast.success(
+				`Created trim regions for highlight clip (${Math.round((highlight.endMs - highlight.startMs) / 1000)}s)`,
+			);
 
 			// Seek to the highlight start
 			const video = videoPlaybackRef.current?.video;
@@ -2431,15 +2429,14 @@ export default function VideoEditor() {
 		[duration],
 	);
 
-	const handleExportAllHighlights = useCallback(
-		(highlightList: HighlightCandidate[]) => {
-			if (highlightList.length === 0) return;
-			// For "export all" we notify the user to export individually
-			// since multiple non-contiguous clips would need separate exports
-			toast(`${highlightList.length} highlights found — export each clip individually for best results`);
-		},
-		[],
-	);
+	const handleExportAllHighlights = useCallback((highlightList: HighlightCandidate[]) => {
+		if (highlightList.length === 0) return;
+		// For "export all" we notify the user to export individually
+		// since multiple non-contiguous clips would need separate exports
+		toast(
+			`${highlightList.length} highlights found — export each clip individually for best results`,
+		);
+	}, []);
 
 	const handleAddMotionTemplate = useCallback(
 		(templateId: string, _values: Record<string, string>, durationMs: number) => {
@@ -2462,7 +2459,9 @@ export default function VideoEditor() {
 			if (result.scenes.length === 0) {
 				toast.info("No scene changes detected");
 			} else {
-				toast.success(`Detected ${result.scenes.length} scene change${result.scenes.length === 1 ? "" : "s"}`);
+				toast.success(
+					`Detected ${result.scenes.length} scene change${result.scenes.length === 1 ? "" : "s"}`,
+				);
 			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
@@ -2472,38 +2471,39 @@ export default function VideoEditor() {
 		}
 	}, [videoPath]);
 
-	const handleAcceptSuggestion = useCallback(
-		(suggestion: AISuggestion) => {
-			if (suggestion.type === "silence" || suggestion.type === "filler") {
-				// Create a trim region to cut this segment
-				const id = `trim-${nextTrimIdRef.current++}`;
-				const newRegion: TrimRegion = {
-					id,
-					startMs: suggestion.startMs,
-					endMs: suggestion.endMs,
-				};
-				setTrimRegions((prev) => [...prev, newRegion]);
-				setSelectedTrimId(id);
-			} else if (suggestion.type === "best-moment") {
-				// Create a zoom region to highlight the best moment
-				const id = `zoom-${nextZoomIdRef.current++}`;
-				const newRegion: ZoomRegion = {
-					id,
-					startMs: suggestion.startMs,
-					endMs: suggestion.endMs,
-					depth: 2,
-					focus: { cx: 0.5, cy: 0.5 },
-				};
-				setZoomRegions((prev) => [...prev, newRegion]);
-				setSelectedZoomId(id);
-				// Also seek to the start
-				const video = videoPlaybackRef.current?.video;
-				if (video) {
-					video.currentTime = suggestion.startMs / 1000;
-				}
-			} else if (suggestion.type === "title" || suggestion.type === "summary") {
-				// Copy the text to clipboard
-				navigator.clipboard.writeText(suggestion.label).then(() => {
+	const handleAcceptSuggestion = useCallback((suggestion: AISuggestion) => {
+		if (suggestion.type === "silence" || suggestion.type === "filler") {
+			// Create a trim region to cut this segment
+			const id = `trim-${nextTrimIdRef.current++}`;
+			const newRegion: TrimRegion = {
+				id,
+				startMs: suggestion.startMs,
+				endMs: suggestion.endMs,
+			};
+			setTrimRegions((prev) => [...prev, newRegion]);
+			setSelectedTrimId(id);
+		} else if (suggestion.type === "best-moment") {
+			// Create a zoom region to highlight the best moment
+			const id = `zoom-${nextZoomIdRef.current++}`;
+			const newRegion: ZoomRegion = {
+				id,
+				startMs: suggestion.startMs,
+				endMs: suggestion.endMs,
+				depth: 2,
+				focus: { cx: 0.5, cy: 0.5 },
+			};
+			setZoomRegions((prev) => [...prev, newRegion]);
+			setSelectedZoomId(id);
+			// Also seek to the start
+			const video = videoPlaybackRef.current?.video;
+			if (video) {
+				video.currentTime = suggestion.startMs / 1000;
+			}
+		} else if (suggestion.type === "title" || suggestion.type === "summary") {
+			// Copy the text to clipboard
+			navigator.clipboard
+				.writeText(suggestion.label)
+				.then(() => {
 					toast.success(
 						suggestion.type === "title"
 							? "Title copied to clipboard"
@@ -2513,40 +2513,40 @@ export default function VideoEditor() {
 				.catch(() => {
 					toast.error("Failed to copy to clipboard");
 				});
-			} else if (suggestion.type === "chapter") {
-				// Create a text annotation on the timeline showing the chapter title
-				const id = `annotation-${nextAnnotationIdRef.current++}`;
-				const zIndex = nextAnnotationZIndexRef.current++;
-				// Extract chapter title from label (format: "Chapter N: Title")
-				const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
-				const chapterTitle = titleMatch?.[1] ?? suggestion.label;
-				const newRegion: AnnotationRegion = {
-					id,
-					startMs: suggestion.startMs,
-					endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
-					type: "text",
-					content: chapterTitle,
-					position: { x: 50, y: 10 },
-					size: { width: 60, height: 12 },
-					style: {
-						...DEFAULT_ANNOTATION_STYLE,
-						fontSize: 48,
-						fontWeight: "bold",
-						color: "#ffffff",
-						backgroundColor: "rgba(0, 0, 0, 0.6)",
-					},
-					zIndex,
-				};
-				setAnnotationRegions((prev) => [...prev, newRegion]);
-				setSelectedAnnotationId(id);
-				setSelectedZoomId(null);
-				setSelectedTrimId(null);
-				// Seek to the chapter start
-				const video = videoPlaybackRef.current?.video;
-				if (video) {
-					video.currentTime = suggestion.startMs / 1000;
-				}
+		} else if (suggestion.type === "chapter") {
+			// Create a text annotation on the timeline showing the chapter title
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			const zIndex = nextAnnotationZIndexRef.current++;
+			// Extract chapter title from label (format: "Chapter N: Title")
+			const titleMatch = suggestion.label.match(/^Chapter \d+:\s*(.+)$/);
+			const chapterTitle = titleMatch?.[1] ?? suggestion.label;
+			const newRegion: AnnotationRegion = {
+				id,
+				startMs: suggestion.startMs,
+				endMs: Math.min(suggestion.startMs + 5000, suggestion.endMs),
+				type: "text",
+				content: chapterTitle,
+				position: { x: 50, y: 10 },
+				size: { width: 60, height: 12 },
+				style: {
+					...DEFAULT_ANNOTATION_STYLE,
+					fontSize: 48,
+					fontWeight: "bold",
+					color: "#ffffff",
+					backgroundColor: "rgba(0, 0, 0, 0.6)",
+				},
+				zIndex,
+			};
+			setAnnotationRegions((prev) => [...prev, newRegion]);
+			setSelectedAnnotationId(id);
+			setSelectedZoomId(null);
+			setSelectedTrimId(null);
+			// Seek to the chapter start
+			const video = videoPlaybackRef.current?.video;
+			if (video) {
+				video.currentTime = suggestion.startMs / 1000;
 			}
+		}
 		// Remove the suggestion after accepting
 		setAiSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
 	}, []);
@@ -3482,6 +3482,8 @@ export default function VideoEditor() {
 								? (translatedCaptionCues ?? captionCues)
 								: undefined,
 						captionSettings: captionSettings.enabled ? captionSettings : undefined,
+						shortsReframeSpec: shortsReframeSpec ?? undefined,
+						shortsBlurBackground: shortsReframeSpec ? !shortsReframeSpec.subjectFound : undefined,
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
@@ -4019,10 +4021,24 @@ export default function VideoEditor() {
 			<div className="flex items-center justify-center h-screen" style={{ background: "#121214" }}>
 				<div className="flex flex-col items-center gap-4 max-w-md text-center px-6">
 					<div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
-						<svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+						<svg
+							className="w-6 h-6 text-red-400"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+							/>
+						</svg>
 					</div>
 					<div className="text-red-400 text-sm">{error}</div>
-					<p className="text-white/40 text-xs">Make sure the video file exists and is a supported format (MP4, WebM, MOV).</p>
+					<p className="text-white/40 text-xs">
+						Make sure the video file exists and is a supported format (MP4, WebM, MOV).
+					</p>
 					<button
 						type="button"
 						onClick={handleLoadProject}

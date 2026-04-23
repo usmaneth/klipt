@@ -37,16 +37,18 @@ export function ApiKeysPanel() {
 			</div>
 
 			<p className="text-[11px] text-white/40 leading-relaxed">
-				Keys are stored locally on your machine only. They are never sent to klipt
-				servers. All AI features keep working without keys — they just fall back to
-				on-device or free providers.
+				Keys are stored locally on your machine only. They are never sent to klipt servers. All AI
+				features keep working without keys — they just fall back to on-device or free providers.
 			</p>
 
 			{(Object.keys(API_PROVIDERS) as ApiProviderId[]).map((id) => {
 				const meta = API_PROVIDERS[id];
 				const value = values[id] ?? "";
 				return (
-					<div key={id} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col gap-2">
+					<div
+						key={id}
+						className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col gap-2"
+					>
 						<div className="flex items-center justify-between gap-2">
 							<span className="text-[12px] font-semibold text-white/80">{meta.label}</span>
 							<a

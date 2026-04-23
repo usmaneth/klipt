@@ -63,32 +63,154 @@ const KEYWORD_TRIGGERS = [
 
 // Common stop words to exclude from title generation
 const STOP_WORDS = new Set([
-	"the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-	"have", "has", "had", "do", "does", "did", "will", "would", "could",
-	"should", "may", "might", "shall", "can", "need", "dare", "ought",
-	"used", "to", "of", "in", "for", "on", "with", "at", "by", "from",
-	"as", "into", "through", "during", "before", "after", "above", "below",
-	"between", "out", "off", "over", "under", "again", "further", "then",
-	"once", "here", "there", "when", "where", "why", "how", "all", "both",
-	"each", "few", "more", "most", "other", "some", "such", "no", "nor",
-	"not", "only", "own", "same", "so", "than", "too", "very", "just",
-	"don't", "should", "now", "and", "but", "or", "if", "while", "that",
-	"this", "it", "its", "i", "you", "he", "she", "we", "they", "me",
-	"him", "her", "us", "them", "my", "your", "his", "our", "their",
-	"what", "which", "who", "whom", "these", "those", "am", "about",
-	"up", "like", "also", "really", "actually", "going", "gonna", "thing",
-	"things", "get", "got", "know", "think", "say", "said", "make",
-	"right", "well", "okay", "oh", "um", "uh", "yeah", "yes", "no",
+	"the",
+	"a",
+	"an",
+	"is",
+	"are",
+	"was",
+	"were",
+	"be",
+	"been",
+	"being",
+	"have",
+	"has",
+	"had",
+	"do",
+	"does",
+	"did",
+	"will",
+	"would",
+	"could",
+	"should",
+	"may",
+	"might",
+	"shall",
+	"can",
+	"need",
+	"dare",
+	"ought",
+	"used",
+	"to",
+	"of",
+	"in",
+	"for",
+	"on",
+	"with",
+	"at",
+	"by",
+	"from",
+	"as",
+	"into",
+	"through",
+	"during",
+	"before",
+	"after",
+	"above",
+	"below",
+	"between",
+	"out",
+	"off",
+	"over",
+	"under",
+	"again",
+	"further",
+	"then",
+	"once",
+	"here",
+	"there",
+	"when",
+	"where",
+	"why",
+	"how",
+	"all",
+	"both",
+	"each",
+	"few",
+	"more",
+	"most",
+	"other",
+	"some",
+	"such",
+	"no",
+	"nor",
+	"not",
+	"only",
+	"own",
+	"same",
+	"so",
+	"than",
+	"too",
+	"very",
+	"just",
+	"don't",
+	"should",
+	"now",
+	"and",
+	"but",
+	"or",
+	"if",
+	"while",
+	"that",
+	"this",
+	"it",
+	"its",
+	"i",
+	"you",
+	"he",
+	"she",
+	"we",
+	"they",
+	"me",
+	"him",
+	"her",
+	"us",
+	"them",
+	"my",
+	"your",
+	"his",
+	"our",
+	"their",
+	"what",
+	"which",
+	"who",
+	"whom",
+	"these",
+	"those",
+	"am",
+	"about",
+	"up",
+	"like",
+	"also",
+	"really",
+	"actually",
+	"going",
+	"gonna",
+	"thing",
+	"things",
+	"get",
+	"got",
+	"know",
+	"think",
+	"say",
+	"said",
+	"make",
+	"right",
+	"well",
+	"okay",
+	"oh",
+	"um",
+	"uh",
+	"yeah",
+	"yes",
+	"no",
 ]);
 
 /**
  * Public entry point. Prefers Gemini when configured, falls back to the
  * heuristic backend on any failure.
  */
-export async function detectChapters(
-	cues: Cue[],
-	options?: ChapterOptions,
-): Promise<Chapter[]> {
+export async function detectChapters(cues: Cue[], options?: ChapterOptions): Promise<Chapter[]> {
 	const wantGemini = options?.useGemini !== false && isGeminiConfigured();
 	if (wantGemini) {
 		try {
@@ -111,10 +233,7 @@ export async function detectChapters(
  * 3. Select top boundaries that respect minimum duration constraints.
  * 4. Generate chapter titles using TF-IDF-style scoring.
  */
-export function detectChaptersHeuristic(
-	cues: Cue[],
-	options?: ChapterOptions,
-): Chapter[] {
+export function detectChaptersHeuristic(cues: Cue[], options?: ChapterOptions): Chapter[] {
 	const minDurationMs = options?.minDurationMs ?? 30_000;
 	const maxChapters = options?.maxChapters ?? 12;
 	const silenceGaps = options?.silenceGaps ?? [];
@@ -204,9 +323,10 @@ export function detectChaptersHeuristic(
 		const segCues = cues.slice(segStart, segEnd);
 
 		if (segCues.length > 0) {
-			const boundaryScore = i < selectedBoundaryIndices.length
-				? (boundaryScores.find((b) => b.cueIndex === selectedBoundaryIndices[i])?.score ?? 0)
-				: 0;
+			const boundaryScore =
+				i < selectedBoundaryIndices.length
+					? (boundaryScores.find((b) => b.cueIndex === selectedBoundaryIndices[i])?.score ?? 0)
+					: 0;
 
 			segments.push({
 				startMs: segCues[0]!.startMs,
@@ -224,9 +344,7 @@ export function detectChaptersHeuristic(
 	// ── Step 4: Generate titles using TF-IDF ─────────────────────────────
 
 	// Compute document frequencies across all segments
-	const segmentWordSets = segments.map((seg) =>
-		extractContentWords(seg.cues),
-	);
+	const segmentWordSets = segments.map((seg) => extractContentWords(seg.cues));
 	const docFreq = new Map<string, number>();
 	for (const wordSet of segmentWordSets) {
 		for (const word of wordSet) {
@@ -256,15 +374,15 @@ export function detectChaptersHeuristic(
 
 		// Take top 3-5 distinctive words for the title
 		const titleWords = scored.slice(0, 4).map((s) => s.word);
-		const title = titleWords.length > 0
-			? capitalizeTitle(titleWords.join(" "))
-			: `Chapter ${idx + 1}`;
+		const title =
+			titleWords.length > 0 ? capitalizeTitle(titleWords.join(" ")) : `Chapter ${idx + 1}`;
 
 		// Confidence based on boundary score (normalize)
 		const maxScore = boundaryScores.length > 0 ? boundaryScores[0]!.score : 1;
-		const confidence = idx === 0
-			? 0.8 // First chapter always gets decent confidence
-			: Math.min(1, Math.max(0.2, seg.boundaryScore / Math.max(0.01, maxScore)));
+		const confidence =
+			idx === 0
+				? 0.8 // First chapter always gets decent confidence
+				: Math.min(1, Math.max(0.2, seg.boundaryScore / Math.max(0.01, maxScore)));
 
 		return {
 			startMs: seg.startMs,
@@ -408,7 +526,10 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 }
 
 function hasKeywordTrigger(cues: Cue[]): boolean {
-	const text = cues.map((c) => c.text).join(" ").toLowerCase();
+	const text = cues
+		.map((c) => c.text)
+		.join(" ")
+		.toLowerCase();
 	return KEYWORD_TRIGGERS.some((trigger) => text.includes(trigger));
 }
 
@@ -419,8 +540,7 @@ function hasSilenceNear(
 ): boolean {
 	return gaps.some(
 		(gap) =>
-			Math.abs(gap.startMs - timeMs) < thresholdMs ||
-			Math.abs(gap.endMs - timeMs) < thresholdMs,
+			Math.abs(gap.startMs - timeMs) < thresholdMs || Math.abs(gap.endMs - timeMs) < thresholdMs,
 	);
 }
 

@@ -87,10 +87,7 @@ export async function generateContent(
 }
 
 /** Convenience: send a single text prompt and get text back. */
-export async function generateText(
-	prompt: string,
-	options: GenerateOptions = {},
-): Promise<string> {
+export async function generateText(prompt: string, options: GenerateOptions = {}): Promise<string> {
 	return generateContent([{ text: prompt }], options);
 }
 
