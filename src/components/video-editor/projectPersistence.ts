@@ -111,13 +111,20 @@ function encodePathSegments(pathname: string, keepWindowsDrive = false): string 
  * Convert a local file path to a URL suitable for loading in the renderer.
  * Uses the custom `klipt-media://` protocol which is handled by the main
  * process, avoiding the need for `webSecurity: false`.
+ *
+ * NOTE: `klipt-media` is registered as a "standard" scheme (see electron/main.ts),
+ * which makes Chromium parse it like http(s). Special schemes do not allow an
+ * empty host, so we MUST embed a placeholder host (`localhost`). Otherwise
+ * Chromium reinterprets `klipt-media:///Users/foo` as `klipt-media://Users/foo`
+ * (eating the first path segment as the host and lowercasing it), which leads
+ * to the protocol handler getting the wrong path.
  */
 export function toFileUrl(filePath: string): string {
 	const normalized = filePath.replace(/\\/g, "/");
 
 	// Windows drive path: C:/Users/...
 	if (/^[a-zA-Z]:\//.test(normalized)) {
-		return `klipt-media://${encodePathSegments(`/${normalized}`, true)}`;
+		return `klipt-media://localhost${encodePathSegments(`/${normalized}`, true)}`;
 	}
 
 	// UNC path: //server/share/...
@@ -128,7 +135,7 @@ export function toFileUrl(filePath: string): string {
 	}
 
 	const absolutePath = normalized.startsWith("/") ? normalized : `/${normalized}`;
-	return `klipt-media://${encodePathSegments(absolutePath)}`;
+	return `klipt-media://localhost${encodePathSegments(absolutePath)}`;
 }
 
 export function fromFileUrl(fileUrl: string): string {

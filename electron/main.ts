@@ -1,6 +1,8 @@
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { Readable } from "node:stream";
+import { fileURLToPath } from "node:url";
 import {
 	app,
 	BrowserWindow,
@@ -9,7 +11,6 @@ import {
 	ipcMain,
 	Menu,
 	nativeImage,
-	net,
 	protocol,
 	session,
 	systemPreferences,
@@ -439,14 +440,96 @@ app.on("second-instance", () => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
-	// Handle klipt-media:// by serving local files
-	protocol.handle("klipt-media", (request) => {
+	// Handle klipt-media:// by streaming local files with HTTP Range support.
+	// Range support is required for HTML5 <video> to seek and to handle MP4
+	// files where the moov atom is at the end (default for ScreenCaptureKit
+	// recordings). Without it, playback fails with MEDIA_ERR_SRC_NOT_SUPPORTED.
+	protocol.handle("klipt-media", async (request) => {
 		const url = new URL(request.url);
-		const filePath = decodeURIComponent(url.pathname);
-		// Use pathToFileURL to properly encode the path for file:// URLs
-		// (handles spaces, unicode, and special characters correctly)
-		const fileUrl = pathToFileURL(filePath).toString();
-		return net.fetch(fileUrl);
+		// `klipt-media` is a "standard" scheme, so Chromium parses it like http(s).
+		// That means an empty host gets reinterpreted: `klipt-media:///Users/foo`
+		// becomes `klipt-media://Users/foo` (host=`Users`, path=`/foo`), with the
+		// host lowercased. To recover the original filesystem path, we always
+		// rebuild it from `host + pathname`, treating any non-empty/non-localhost
+		// host as the leading path segment.
+		const rawHost = url.host;
+		const rawPath = url.pathname;
+		let filePath: string;
+		if (!rawHost || rawHost === "localhost") {
+			filePath = decodeURIComponent(rawPath);
+		} else {
+			const sep = rawPath.startsWith("/") ? "" : "/";
+			filePath = decodeURIComponent(`/${rawHost}${sep}${rawPath}`);
+		}
+		let fileSize: number;
+		try {
+			const stats = await fs.stat(filePath);
+			fileSize = stats.size;
+		} catch (err) {
+			console.error(`[klipt-media] stat failed for ${filePath}:`, err);
+			return new Response("File not found", { status: 404 });
+		}
+
+		const ext = path.extname(filePath).toLowerCase();
+		const contentType =
+			{
+				".mp4": "video/mp4",
+				".webm": "video/webm",
+				".mov": "video/quicktime",
+				".m4v": "video/mp4",
+				".mp3": "audio/mpeg",
+				".m4a": "audio/mp4",
+				".aac": "audio/aac",
+				".wav": "audio/wav",
+				".ogg": "audio/ogg",
+				".flac": "audio/flac",
+				".jpg": "image/jpeg",
+				".jpeg": "image/jpeg",
+				".png": "image/png",
+				".webp": "image/webp",
+				".gif": "image/gif",
+			}[ext] || "application/octet-stream";
+
+		const rangeHeader = request.headers.get("range");
+		if (rangeHeader) {
+			const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+			if (!match) {
+				return new Response("Invalid Range", {
+					status: 416,
+					headers: { "Content-Range": `bytes */${fileSize}` },
+				});
+			}
+			const start = match[1] ? Number.parseInt(match[1], 10) : 0;
+			const end = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
+			if (start >= fileSize || end >= fileSize || start > end) {
+				return new Response("Range Not Satisfiable", {
+					status: 416,
+					headers: { "Content-Range": `bytes */${fileSize}` },
+				});
+			}
+			const nodeStream = createReadStream(filePath, { start, end });
+			const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+			return new Response(webStream, {
+				status: 206,
+				headers: {
+					"Content-Type": contentType,
+					"Content-Length": String(end - start + 1),
+					"Content-Range": `bytes ${start}-${end}/${fileSize}`,
+					"Accept-Ranges": "bytes",
+				},
+			});
+		}
+
+		const nodeStream = createReadStream(filePath);
+		const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+		return new Response(webStream, {
+			status: 200,
+			headers: {
+				"Content-Type": contentType,
+				"Content-Length": String(fileSize),
+				"Accept-Ranges": "bytes",
+			},
+		});
 	});
 
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {

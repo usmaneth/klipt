@@ -5,11 +5,15 @@ import { fromFileUrl, normalizeProjectEditor, toFileUrl } from "./projectPersist
 describe("Audio path handling", () => {
 	describe("toFileUrl produces valid klipt-media:// URLs for audio paths", () => {
 		it("should handle Unix absolute paths", () => {
-			expect(toFileUrl("/Users/music/song.mp3")).toBe("klipt-media:///Users/music/song.mp3");
+			expect(toFileUrl("/Users/music/song.mp3")).toBe(
+				"klipt-media://localhost/Users/music/song.mp3",
+			);
 		});
 
 		it("should handle Windows drive paths", () => {
-			expect(toFileUrl("C:/Users/music/song.mp3")).toBe("klipt-media:///C:/Users/music/song.mp3");
+			expect(toFileUrl("C:/Users/music/song.mp3")).toBe(
+				"klipt-media://localhost/C:/Users/music/song.mp3",
+			);
 		});
 
 		it("should handle backslash Windows paths", () => {
