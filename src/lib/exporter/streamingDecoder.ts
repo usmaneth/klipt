@@ -1,5 +1,6 @@
 import { WebDemuxer } from "web-demuxer";
 import type { SpeedRegion, TrimRegion } from "@/components/video-editor/types";
+import { toFileUrl } from "@/lib/mediaUrl";
 
 export interface DecodedVideoInfo {
 	width: number;
@@ -99,7 +100,7 @@ export class StreamingVideoDecoder {
 		}
 
 		if (videoUrl.startsWith("/")) {
-			return `klipt-media://${encodeURI(videoUrl)}`;
+			return toFileUrl(videoUrl);
 		}
 
 		return videoUrl;

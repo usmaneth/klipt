@@ -25,6 +25,7 @@ import {
 } from "electron";
 import { transcribeAudio } from "../ai/whisperTranscriber";
 import { translateText } from "../../src/lib/ai/translationService";
+import { fromFileUrl, isFileUrl } from "../../src/lib/mediaUrl";
 import {
 	downloadVoiceCloneModel,
 	extractVoiceReference,
@@ -3811,11 +3812,8 @@ export function registerIpcHandlers(
 				const ffmpegPath = getFfmpegBinaryPath();
 
 				let resolvedInput = args.inputPath;
-				if (resolvedInput.startsWith("file://")) {
-					resolvedInput = decodeURIComponent(resolvedInput.replace(/^file:\/\//, ""));
-				}
-				if (resolvedInput.startsWith("klipt-media://")) {
-					resolvedInput = decodeURIComponent(resolvedInput.replace(/^klipt-media:\/\//, ""));
+				if (isFileUrl(resolvedInput)) {
+					resolvedInput = fromFileUrl(resolvedInput);
 				}
 
 				// Verify input exists

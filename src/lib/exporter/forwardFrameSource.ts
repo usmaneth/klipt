@@ -1,4 +1,5 @@
 import { WebDemuxer } from "web-demuxer";
+import { toFileUrl } from "@/lib/mediaUrl";
 
 export interface ForwardFrameSourceMetadata {
 	width: number;
@@ -99,7 +100,7 @@ export class ForwardFrameSource {
 		}
 
 		if (videoUrl.startsWith("/")) {
-			return `klipt-media://${encodeURI(videoUrl)}`;
+			return toFileUrl(videoUrl);
 		}
 
 		return videoUrl;

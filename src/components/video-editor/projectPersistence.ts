@@ -90,85 +90,9 @@ function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
 }
 
-function isFileUrl(value: string): boolean {
-	return /^(file|klipt-media):\/\//i.test(value);
-}
-
-function encodePathSegments(pathname: string, keepWindowsDrive = false): string {
-	return pathname
-		.split("/")
-		.map((segment, index) => {
-			if (!segment) return "";
-			if (keepWindowsDrive && index === 1 && /^[a-zA-Z]:$/.test(segment)) {
-				return segment;
-			}
-			return encodeURIComponent(segment);
-		})
-		.join("/");
-}
-
-/**
- * Convert a local file path to a URL suitable for loading in the renderer.
- * Uses the custom `klipt-media://` protocol which is handled by the main
- * process, avoiding the need for `webSecurity: false`.
- *
- * NOTE: `klipt-media` is registered as a "standard" scheme (see electron/main.ts),
- * which makes Chromium parse it like http(s). Special schemes do not allow an
- * empty host, so we MUST embed a placeholder host (`localhost`). Otherwise
- * Chromium reinterprets `klipt-media:///Users/foo` as `klipt-media://Users/foo`
- * (eating the first path segment as the host and lowercasing it), which leads
- * to the protocol handler getting the wrong path.
- */
-export function toFileUrl(filePath: string): string {
-	const normalized = filePath.replace(/\\/g, "/");
-
-	// Windows drive path: C:/Users/...
-	if (/^[a-zA-Z]:\//.test(normalized)) {
-		return `klipt-media://localhost${encodePathSegments(`/${normalized}`, true)}`;
-	}
-
-	// UNC path: //server/share/...
-	if (normalized.startsWith("//")) {
-		const [host, ...pathParts] = normalized.replace(/^\/+/, "").split("/");
-		const encodedPath = pathParts.map((part) => encodeURIComponent(part)).join("/");
-		return encodedPath ? `klipt-media://${host}/${encodedPath}` : `klipt-media://${host}/`;
-	}
-
-	const absolutePath = normalized.startsWith("/") ? normalized : `/${normalized}`;
-	return `klipt-media://localhost${encodePathSegments(absolutePath)}`;
-}
-
-export function fromFileUrl(fileUrl: string): string {
-	const value = fileUrl.trim();
-	if (!isFileUrl(value)) {
-		return fileUrl;
-	}
-
-	try {
-		const url = new URL(value);
-		const pathname = decodeURIComponent(url.pathname);
-
-		if (url.host && url.host !== "localhost") {
-			const uncPath = `//${url.host}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
-			return uncPath.replace(/\//g, "\\");
-		}
-
-		if (/^\/[A-Za-z]:/.test(pathname)) {
-			return pathname.slice(1);
-		}
-
-		return pathname;
-	} catch {
-		const rawFallbackPath = value.replace(/^(file|klipt-media):\/\//i, "");
-		let fallbackPath = rawFallbackPath;
-		try {
-			fallbackPath = decodeURIComponent(rawFallbackPath);
-		} catch {
-			// Keep raw best-effort path if percent decoding fails.
-		}
-		return fallbackPath.replace(/^\/([a-zA-Z]:)/, "$1");
-	}
-}
+// Re-exported here for backward compat with existing imports throughout the
+// renderer. New code should import directly from `@/lib/mediaUrl`.
+export { fromFileUrl, isFileUrl, toFileUrl } from "@/lib/mediaUrl";
 
 export function deriveNextId(prefix: string, ids: string[]): number {
 	const max = ids.reduce((acc, id) => {

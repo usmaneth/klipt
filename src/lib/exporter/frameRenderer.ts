@@ -30,6 +30,7 @@ import {
 } from "@/components/video-editor/videoPlayback/zoomTransform";
 import { type BgMode, removeBackground } from "@/lib/ai/backgroundRemoval";
 import { getAssetPath, getRenderableAssetUrl } from "@/lib/assetPath";
+import { toFileUrl } from "@/lib/mediaUrl";
 import { renderAnnotations } from "./annotationRenderer";
 
 interface FrameRenderConfig {
@@ -383,7 +384,7 @@ export class FrameRenderer {
 			!wallpaper.startsWith("/wallpapers/") &&
 			!wallpaper.startsWith("/app-icons/");
 
-		const wallpaperAsset = looksLikeAbsoluteFilePath ? `klipt-media://${encodeURI(wallpaper)}` : wallpaper;
+		const wallpaperAsset = looksLikeAbsoluteFilePath ? toFileUrl(wallpaper) : wallpaper;
 
 		return getRenderableAssetUrl(wallpaperAsset);
 	}

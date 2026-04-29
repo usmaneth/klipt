@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Rnd } from "react-rnd";
+import { toFileUrl } from "@/lib/mediaUrl";
 import { clamp01 } from "./videoPlayback/mathUtils";
 
 interface WebcamOverlayProps {
@@ -78,7 +79,7 @@ export function WebcamOverlay({
 
 	const borderRadius = SHAPE_BORDER_RADIUS[shape];
 
-	const videoSrc = /^(file|klipt-media):\/\//.test(videoPath) ? videoPath : `klipt-media://${videoPath}`;
+	const videoSrc = toFileUrl(videoPath);
 
 	return (
 		<Rnd

@@ -9,6 +9,7 @@
  */
 
 import type { RNNWasmModule } from "@jitsi/rnnoise-wasm";
+import { fromFileUrl, isFileUrl } from "@/lib/mediaUrl";
 
 const RNNOISE_SAMPLE_RATE = 48_000;
 const RNNOISE_FRAME_SIZE = 480; // 10 ms @ 48 kHz
@@ -182,8 +183,8 @@ async function tryFfmpegDenoise(
 
 	try {
 		let inputPath = videoUrl;
-		if (/^(file|klipt-media):\/\//.test(videoUrl)) {
-			inputPath = decodeURIComponent(videoUrl.replace(/^(file|klipt-media):\/\//, ""));
+		if (isFileUrl(videoUrl)) {
+			inputPath = fromFileUrl(videoUrl);
 		} else if (videoUrl.startsWith("blob:")) {
 			return null;
 		}
@@ -234,8 +235,8 @@ async function tryNativeDenoise(
 	try {
 		// The native binary needs a file path. Extract it from the URL.
 		let inputPath = videoUrl;
-		if (/^(file|klipt-media):\/\//.test(videoUrl)) {
-			inputPath = decodeURIComponent(videoUrl.replace(/^(file|klipt-media):\/\//, ""));
+		if (isFileUrl(videoUrl)) {
+			inputPath = fromFileUrl(videoUrl);
 		} else if (videoUrl.startsWith("blob:")) {
 			// Cannot pass blob URLs to native binary — need a real file path
 			return null;
