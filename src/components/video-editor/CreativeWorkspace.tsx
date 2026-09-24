@@ -194,8 +194,8 @@ const TRANSITIONS = [
 
 const SCRATCH_PAD_COLORS = ["#E0000F", "#FF9500", "#30D158", "#0A84FF", "#BF5AF2", "#FF375F"];
 
-const GIPHY_API_KEY = "GlVGYHkr3WSBnllca54iNt0yFbjz7L65";
-const TENOR_API_KEY = "AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ";
+const GIPHY_API_KEY = import.meta.env.VITE_GIPHY_API_KEY ?? "";
+const TENOR_API_KEY = import.meta.env.VITE_TENOR_API_KEY ?? "";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
