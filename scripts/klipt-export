@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# klipt-export - polish a raw screen recording with the klipt exporter, with no window and no GPU.
+#
+#   scripts/klipt-export --input raw.mp4 --output out.mp4 [--preset phone-demo] [--title "text"] \
+#                        [--captions captions.json] [--zooms zooms.json]
+#
+# It prints exactly ONE line of JSON on stdout and nothing else:
+#   {"ok":true,"out":"/abs/out.mp4","bytes":123,"seconds":42.1,"faststart":true}
+#   {"ok":false,"out":"","reason":"..."}                         (a check failed before the exporter started)
+#   {"ok":false,"out":"","reason":"...","log":"/tmp/klipt-export.XXXX.log"}   (the exporter started and failed)
+# The exit code is 0 only when the output file exists. See docs/headless-export.md.
+set -u
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ELECTRON="$ROOT/node_modules/electron/dist/electron"
+MAIN="$ROOT/dist-electron/headless-main.js"
+PAGE="$ROOT/dist/headless.html"
+LOG_DIR="${KLIPT_EXPORT_LOG_DIR:-${TMPDIR:-/tmp}}"
+LOG=""
+
+emit() {
+	# emit ok|fail <key=value>...  builds the one JSON line with node, so quoting is always right
+	node -e '
+		const [kind, ...pairs] = process.argv.slice(1);
+		const out = { ok: kind === "ok" };
+		for (const pair of pairs) {
+			const i = pair.indexOf("=");
+			const key = pair.slice(0, i);
+			const raw = pair.slice(i + 1);
+			out[key] = raw === "true" ? true : raw === "false" ? false : /^-?\d+(\.\d+)?$/.test(raw) && key !== "out" ? Number(raw) : raw;
+		}
+		process.stdout.write(JSON.stringify(out) + "\n");
+	' "$@"
+}
+
+fail() {
+	if [ -n "$LOG" ]; then
+		emit fail out= "reason=$1" "log=$LOG"
+	else
+		emit fail out= "reason=$1"
+	fi
+	exit 1
+}
+
+# The output path is the only option this script reads. The program checks every other option itself.
+OUT=""
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+	case "${args[$i]}" in
+		--output) OUT="${args[$((i + 1))]:-}" ;;
+		--output=*) OUT="${args[$i]#--output=}" ;;
+	esac
+done
+[ -n "$OUT" ] || fail "--output is required"
+OUT_DIR="$(cd "$(dirname "$OUT")" 2>/dev/null && pwd)" || fail "the folder of --output does not exist: $(dirname "$OUT")"
+OUT="$OUT_DIR/$(basename "$OUT")"
+
+[ -x "$ELECTRON" ] || fail "electron is not installed: run npm ci --ignore-scripts and node node_modules/electron/install.js"
+[ -f "$MAIN" ] && [ -f "$PAGE" ] || fail "the headless build is missing: run npm run build:headless"
+
+# There is no display on a server. xvfb gives the hidden window one. A real display is used when it exists.
+RUNNER=()
+if [ -z "${DISPLAY:-}" ]; then
+	command -v xvfb-run >/dev/null 2>&1 || fail "there is no display and xvfb-run is not installed"
+	RUNNER=(xvfb-run -a -s "-screen 0 1280x720x24")
+fi
+
+# The log exists only once the program runs. A failed run keeps it and names it. A good run deletes it.
+# Logs of failed runs that are older than a week are removed here.
+find "$LOG_DIR" -maxdepth 1 -name 'klipt-export.*.log' -mtime +7 -delete 2>/dev/null
+LOG="$(mktemp "$LOG_DIR/klipt-export.XXXXXX.log")" || fail "cannot create a log file in $LOG_DIR"
+
+# The SUID sandbox helper of electron needs root. This process opens only a local page that this
+# repository built, and it reads one input file, so it runs without the Chromium sandbox.
+"${RUNNER[@]}" "$ELECTRON" --no-sandbox --disable-dev-shm-usage "$MAIN" --klipt-export "$@" >"$LOG" 2>&1
+CODE=$?
+
+RESULT="$(grep -E '^\{"ok":' "$LOG" | tail -n 1)"
+if [ -z "$RESULT" ]; then
+	# The program died before it could say why. Show the last line that is not Chromium noise.
+	WHY="$(grep -vE 'OpenH264|dbus|DBus|libva|vaapi|Fontconfig|gcm|ATTENTION|dri3|InitializeSandbox|^\s*$' "$LOG" | tail -n 1 | cut -c1-300)"
+	fail "the exporter exited with code $CODE and no result${WHY:+: $WHY}"
+fi
+if [ "$CODE" -ne 0 ]; then
+	REASON="$(printf '%s' "$RESULT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).reason||"export failed"))}catch{process.stdout.write("export failed")}})')"
+	# A bad option or file fails before the exporter starts, and the reason says it all. Keep the log of a run that started.
+	if ! grep -q '\[headless\] start:' "$LOG"; then
+		rm -f "$LOG"
+		LOG=""
+	fi
+	fail "$REASON"
+fi
+[ -s "$OUT" ] || fail "the exporter reported success but $OUT is missing or empty"
+
+# The muxer writes the index at the end of the file. A copy with the index first plays in Slack at once.
+FASTSTART=false
+if command -v ffmpeg >/dev/null 2>&1; then
+	TMP="$OUT.faststart.tmp.mp4"
+	if ffmpeg -v error -y -i "$OUT" -c copy -movflags +faststart "$TMP" >>"$LOG" 2>&1 && [ -s "$TMP" ]; then
+		mv -f "$TMP" "$OUT" && FASTSTART=true
+	else
+		rm -f "$TMP"
+	fi
+fi
+
+BYTES="$(wc -c <"$OUT" | tr -d ' ')"
+SECONDS_TAKEN="$(printf '%s' "$RESULT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).seconds||0))}catch{process.stdout.write("0")}})')"
+rm -f "$LOG"
+emit ok "out=$OUT" "bytes=$BYTES" "seconds=$SECONDS_TAKEN" "faststart=$FASTSTART"

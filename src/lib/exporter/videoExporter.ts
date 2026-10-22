@@ -15,6 +15,7 @@ import type {
 import { AudioProcessor } from "./audioEncoder";
 import { buildExportCaptionPages, renderCaptions } from "./captionRenderer";
 import { FrameRenderer } from "./frameRenderer";
+import { type IntroCard, introFrameCount } from "./introCard";
 import { VideoMuxer } from "./muxer";
 import { StreamingVideoDecoder } from "./streamingDecoder";
 import { renderTransitionFrame } from "./transitionRenderer";
@@ -53,6 +54,8 @@ interface VideoExporterConfig extends ExportConfig {
 	webcamState?: WebcamState;
 	captionCues?: CaptionCue[];
 	captionSettings?: CaptionSettings;
+	/** A still card that plays before the video. It needs a video with no audio track. */
+	introCard?: IntroCard;
 	onProgress?: (progress: ExportProgress) => void;
 }
 
@@ -178,7 +181,12 @@ export class VideoExporter {
 				this.config.trimRegions,
 				this.config.speedRegions,
 			);
-			const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate);
+			const introFrames = introFrameCount(this.config.introCard?.durationMs, this.config.frameRate);
+			if (introFrames > 0 && hasAudio) {
+				// The audio would start at zero while the video starts after the card.
+				throw new Error("An intro card cannot be used with a video that has audio");
+			}
+			const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate) + introFrames;
 
 			console.log("[VideoExporter] Original duration:", videoInfo.duration, "s");
 			console.log("[VideoExporter] Effective duration:", effectiveDuration, "s");
@@ -200,6 +208,10 @@ export class VideoExporter {
 				transitionSnapshotCanvas = new OffscreenCanvas(this.config.width, this.config.height);
 			}
 
+			if (introFrames > 0 && this.config.introCard) {
+				await this.encodeIntroCard(this.config.introCard, introFrames, frameDuration);
+			}
+
 			// Stream decode and process frames — no seeking!
 			await this.streamingDecoder.decodeAll(
 				this.config.frameRate,
@@ -211,7 +223,7 @@ export class VideoExporter {
 						return;
 					}
 
-					const timestamp = frameIndex * frameDuration;
+					const timestamp = (introFrames + frameIndex) * frameDuration;
 					const sourceTimestampUs = sourceTimestampMs * 1000;
 
 					try {
@@ -305,9 +317,9 @@ export class VideoExporter {
 						lastFrameMs = sourceTimestampMs;
 					}
 
-					await this.encodeRenderedFrame(timestamp, frameDuration, frameIndex);
+					await this.encodeRenderedFrame(timestamp, frameDuration, introFrames + frameIndex);
 					frameIndex++;
-					this.reportProgress(frameIndex, totalFrames);
+					this.reportProgress(introFrames + frameIndex, totalFrames);
 				},
 			);
 
@@ -410,9 +422,25 @@ export class VideoExporter {
 		}
 	}
 
-	private async encodeRenderedFrame(timestamp: number, frameDuration: number, frameIndex: number) {
-		const canvas = this.renderer!.getCanvas();
+	/** Paint the intro card once and encode it for `frames` frames, starting at time zero. */
+	private async encodeIntroCard(card: IntroCard, frames: number, frameDuration: number) {
+		const canvas = new OffscreenCanvas(this.config.width, this.config.height);
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			throw new Error("Failed to get 2D context for the intro card");
+		}
+		await card.draw(ctx, this.config.width, this.config.height);
+		for (let index = 0; index < frames && !this.cancelled; index++) {
+			await this.encodeRenderedFrame(index * frameDuration, frameDuration, index, canvas);
+		}
+	}
 
+	private async encodeRenderedFrame(
+		timestamp: number,
+		frameDuration: number,
+		frameIndex: number,
+		canvas: HTMLCanvasElement | OffscreenCanvas = this.renderer!.getCanvas(),
+	) {
 		const exportFrame = new VideoFrame(canvas, {
 			timestamp,
 			duration: frameDuration,

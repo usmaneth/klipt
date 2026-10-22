@@ -9,9 +9,17 @@ export default defineConfig({
 		react(),
 		electron({
 			main: {
-				// Shortcut of `build.lib.entry`.
-				entry: "electron/main.ts",
+				// Shortcut of `build.lib.entry`. `headless-main` is the headless export, see docs/headless-export.md.
+				entry: {
+					main: "electron/main.ts",
+					"headless-main": "electron/headless/main.ts",
+				},
 				vite: {
+					resolve: {
+						alias: {
+							"@": path.resolve(__dirname, "src"),
+						},
+					},
 					build: {
 						rollupOptions: {
 							external: ["ffmpeg-static", "uiohook-napi", "whisper-node-addon"],
@@ -62,6 +70,10 @@ export default defineConfig({
 			},
 		},
 		rollupOptions: {
+			input: {
+				main: path.resolve(__dirname, "index.html"),
+				headless: path.resolve(__dirname, "headless.html"),
+			},
 			output: {
 				manualChunks: {
 					pixi: ["pixi.js"],

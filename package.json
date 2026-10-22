@@ -29,6 +29,8 @@
 		"build:mac": "npm run build:native-helpers && tsc && vite build && electron-builder --mac",
 		"build:win": "npm run build:wgc-capture && npm run build:cursor-monitor && tsc && vite build && electron-builder --win",
 		"build:linux": "tsc && vite build && electron-builder --linux",
+		"build:headless": "vite build",
+		"export:headless": "bash scripts/klipt-export",
 		"i18n:check": "node scripts/i18n-check.mjs",
 		"test": "vitest --run",
 		"test:watch": "vitest"
