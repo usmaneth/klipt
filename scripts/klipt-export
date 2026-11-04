@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# klipt-export - polish a raw screen recording, with no window and no GPU.
+#
+#   scripts/klipt-export --input raw.mp4 --output out.mp4 [--preset phone-demo] [--title "text"] \
+#                        [--captions captions.json] [--zooms zooms.json] [--max-mb 20]
+#
+# It is `klipt export`: the flags and the JSON line of the first headless export, on top of `klipt render`.
+#   {"ok":true,"out":"/abs/out.mp4","bytes":123,"seconds":42.1,"faststart":true,"poster":"/abs/out.poster.jpg"}
+#   {"ok":false,"out":"","reason":"..."}
+# seconds is the time the render took. The exit code is 0 only when the output file exists.
+exec "$(dirname "${BASH_SOURCE[0]}")/klipt" export "$@"

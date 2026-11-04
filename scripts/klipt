@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# klipt - record and render demo videos from a script, with no window and no prompt.
+#
+#   scripts/klipt record --source tab:9222 --out /tmp/demo --detach
+#   scripts/klipt mark   --out /tmp/demo --caption "Open the invite sheet"
+#   scripts/klipt stop   --out /tmp/demo
+#   scripts/klipt render --input /tmp/demo --preset desktop-demo
+#
+# Each command prints one JSON line. Exit code 0: ok. 1: the work failed. 2: bad usage. See docs/agent-cli.md.
+# It needs Node 22.6 or later (it runs the TypeScript source directly) and ffmpeg. npm install is not needed.
+set -u
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+NODE="${KLIPT_NODE:-node}"
+
+if ! command -v "$NODE" >/dev/null 2>&1; then
+	printf '{"ok":false,"reason":"node is not installed: klipt needs Node 22.6 or later"}\n'
+	exit 1
+fi
+VERSION="$("$NODE" -p 'process.versions.node' 2>/dev/null)"
+MAJOR="${VERSION%%.*}"
+MINOR="${VERSION#*.}"
+MINOR="${MINOR%%.*}"
+if [ "$MAJOR" -lt 22 ] || { [ "$MAJOR" -eq 22 ] && [ "$MINOR" -lt 6 ]; }; then
+	printf '{"ok":false,"reason":"klipt needs Node 22.6 or later, found %s"}\n' "$VERSION"
+	exit 1
+fi
+
+# Node 22 runs TypeScript only with this flag. Node 23.6 and later run it by default.
+FLAGS=(--no-warnings)
+if [ "$MAJOR" -lt 23 ] || { [ "$MAJOR" -eq 23 ] && [ "$MINOR" -lt 6 ]; }; then
+	FLAGS+=(--experimental-strip-types)
+fi
+
+exec "$NODE" "${FLAGS[@]}" "$ROOT/src/cli/main.ts" "$@"
