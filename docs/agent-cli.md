@@ -163,6 +163,25 @@ With `voiceover`, `klipt render` sends each caption text to the endpoint and put
 - When the endpoint is down, too slow, or a clip is bad, the render goes on without the voice. The result has
   `"voiceover": "skipped: <reason>"` and a warning. The render does not fail.
 
+### The spark voice service (`100.64.72.29:8792`)
+
+The endpoint in the examples is the narration service on spark3 (Tailscale only). It has two engines, and each one
+starts on demand and stops after 10 idle minutes, so the first line after an idle period meets a cold engine.
+
+| Engine | Model | Cold start | Speed (RTF, warm) | Notes |
+| --- | --- | --- | --- | --- |
+| `drama3` (default) | Fish Audio Drama 3, FP8 | about 6.5 min (it loads 39 GB) | 1.0 | Runs on the first idle spark. Applies `style`. |
+| `qwen3` (fallback) | Qwen3-TTS 12Hz 0.6B | about 30 s | 0.55 | Serves when drama3 is down, out of memory, or no spark has a free GPU lease. `style` has little or no effect: built-in voices (`aiden`, `ryan`) ignore it. |
+
+- Always set `warmup` to `http://100.64.72.29:8792/warmup`, so each video starts with one `POST /warmup`. It returns at
+  once and starts drama3, or qwen3 when drama3 cannot start.
+- A line that meets a cold drama3 waits for it for up to 600 s, then qwen3 serves it. For drama3 narration, `POST /warmup`
+  when the recording starts, not only at render time, and render with `--tts-timeout-s 900`.
+- The answer headers say what served each line: `X-Engine`, `X-Fallback-From` (only after a fallback), and
+  `X-Style-Applied`. When drama3 comes up in the middle of a render, the clips before it are qwen3, so one video
+  can have two engines. Warm up early to keep one voice.
+- `GET /voices` lists the voices (`narrator`, `narrator_male`, `aiden`, `ryan`). `GET /health` shows each engine's state.
+
 ## Presets and the size cap
 
 | Preset | Output | Use |
