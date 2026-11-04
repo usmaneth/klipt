@@ -18,7 +18,8 @@ import {
 	introGraph,
 	type Preset,
 	presetFor,
-	ringAlphaExpr,
+	ringExprs,
+	type TitleLayout,
 	titleLayout,
 	videoGraph,
 	wrapText,
@@ -252,7 +253,7 @@ export async function render(
 		if (tl.voiceover) {
 			const voice = await synthesize(tl.voiceover, tl.captions, work, {
 				fetch: deps.fetch,
-				timeoutMs: (opts.ttsTimeoutS ?? 60) * 1000,
+				timeoutMs: (opts.ttsTimeoutS ?? 120) * 1000,
 				duration: (file) => mediaDuration(file, run),
 			});
 			clips = voice.clips;
@@ -297,13 +298,14 @@ export async function render(
 		let ring: string | undefined;
 		if (taps.length) {
 			ring = path.join(work, "ring.png");
+			const r = ringExprs(ringSize);
 			await ff(
 				[
 					"-f",
 					"lavfi",
 					"-i",
-					`color=c=${preset.accent}:s=${ringSize}x${ringSize}:d=1,format=rgba,` +
-						`geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${ringAlphaExpr(ringSize)}'`,
+					`color=c=white:s=${ringSize}x${ringSize}:d=1,format=rgba,` +
+						`geq=r='${r.rgb}':g='${r.rgb}':b='${r.rgb}':a='${r.alpha}'`,
 					"-frames:v",
 					"1",
 					ring,
@@ -517,8 +519,8 @@ async function renderIntro(c: {
 		files.push(file);
 	}
 	for (const f of files) inputs.push("-i", f);
-	let title: { files: string[]; subFile?: string } | undefined;
-	let titleBottom: number | undefined;
+	let title: { files: string[]; subFile?: string; dy: number } | undefined;
+	let layout: TitleLayout | undefined;
 	if (tl.title) {
 		const lines = wrapText(tl.title.text, preset.title.maxChars, 3);
 		const titleFiles = lines.map((line, i) => {
@@ -531,18 +533,28 @@ async function renderIntro(c: {
 			subFile = path.join(work, "subtitle.txt");
 			fs.writeFileSync(subFile, wrapText(tl.title.subtitle, preset.title.maxChars * 2, 1)[0]);
 		}
-		title = { files: titleFiles, subFile };
-		titleBottom = titleLayout(preset, lines.length, Boolean(subFile), stills.length > 0).bottom;
+		title = { files: titleFiles, subFile, dy: 0 };
+		layout = titleLayout(preset, lines.length, Boolean(subFile), stills.length > 0);
 	}
-	const area = gridArea(preset, titleBottom);
+	const area = gridArea(preset, layout?.bottom);
 	const labelH = Math.round(preset.label.size * 1.8);
-	const rects = gridLayout(
+	let rects = gridLayout(
 		stills.length,
 		c.raw.width / c.raw.height,
 		area,
 		Math.round(preset.width * 0.025),
 		labelH,
 	);
+	if (rects.length) {
+		// Put the grid right under the title, then center the title and the grid as one block.
+		const gridTop = Math.min(...rects.map((r) => r.y));
+		const gridBottom = Math.max(...rects.map((r) => r.y + r.h)) + labelH;
+		const top = layout ? layout.y : gridTop;
+		const up = layout ? gridTop - area.y : 0;
+		const dy = Math.round(((preset.height - (gridBottom - up - top)) / 2 - top) / 2) * 2;
+		rects = rects.map((r) => ({ ...r, y: r.y - up + dy }));
+		if (title) title.dy = dy;
+	}
 	const cells = stills.map((s, i) => {
 		const labelFile = path.join(work, `label-${i}.txt`);
 		const chars = Math.max(8, Math.floor(rects[i].w / (preset.label.size * 0.55)));

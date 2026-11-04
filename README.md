@@ -85,6 +85,21 @@ npm run build:win
 npm run build:linux
 ```
 
+### Record and render from a script
+
+`scripts/klipt` records a Chrome tab (by DevTools), an Android device, an X display or a file, and renders
+a finished demo video with a title card, an overview grid, captions, tap zooms, cuts and speed-ups.
+It has no window and no prompt, and prints one JSON line per command. It needs Node 22.6+ and ffmpeg.
+
+```bash
+scripts/klipt record --source tab:127.0.0.1:9222 --tab app.slack.com --out /tmp/demo --detach
+scripts/klipt mark   --out /tmp/demo --caption "Open the invite dialog"
+scripts/klipt stop   --out /tmp/demo
+scripts/klipt render --input /tmp/demo --max-mb 20
+```
+
+See [docs/agent-cli.md](docs/agent-cli.md).
+
 ---
 
 ## Brand

@@ -170,13 +170,20 @@ export function zoomExprs(zooms: Zoom[]): { z: string; x: string; y: string } {
 
 export const RING_SECONDS = 0.7;
 
-/** geq alpha of a tap ring: a solid ring and a light fill, with soft edges. */
-export function ringAlphaExpr(size: number): string {
+/**
+ * geq expressions of a tap ring: a white ring with a dark outer edge and a light white fill.
+ * The white and the dark edge show on a light page, a dark page and a colored button.
+ */
+export function ringExprs(size: number): { rgb: string; alpha: string } {
 	const c = size / 2;
 	const d = `hypot(X+0.5-${num(c)},Y+0.5-${num(c)})`;
 	const outer = c - 1;
-	const inner = c * 0.72;
-	return `255*clip(${num(outer)}-${d},0,1)*(0.3+0.6*clip(${d}-${num(inner)},0,1))`;
+	const edge = outer - Math.max(2, size * 0.05);
+	const inner = c * 0.7;
+	return {
+		rgb: `if(gt(${d},${num(edge)}),24,255)`,
+		alpha: `255*clip(${num(outer)}-${d},0,1)*(0.3+0.65*clip(${d}-${num(inner)},0,1))`,
+	};
 }
 
 /** geq alpha of the cover: opaque outside the rounded video frame, clear inside it. */
@@ -254,7 +261,7 @@ export function videoGraph(g: BodyGraphInput): string {
 		const y = p.caption.baseY - (c.lines - 1 - c.line) * lineH;
 		after.push(
 			`drawtext=fontfile=${q(g.font)}:textfile=${q(c.file)}:fontsize=${p.caption.size}:fontcolor=white` +
-				`:box=1:boxcolor=black@0.62:boxborderw=${Math.round(p.caption.size * 0.38)}` +
+				`:box=1:boxcolor=black@0.78:boxborderw=${Math.round(p.caption.size * 0.38)}` +
 				`:x=(w-text_w)/2:y=${y}:enable=${q(`between(t,${num(c.start)},${num(c.end)})`)}`,
 		);
 	}
@@ -382,8 +389,8 @@ export function titleLayout(
 export type IntroInput = {
 	preset: Preset;
 	font: string;
-	/** One text file per title line, so each line is centered by itself. */
-	title?: { files: string[]; subFile?: string };
+	/** One text file per title line, so each line is centered by itself. dy moves the title down. */
+	title?: { files: string[]; subFile?: string; dy: number };
 	stills: Array<{ input: number; rect: Rect; labelFile: string }>;
 };
 
@@ -411,7 +418,14 @@ export function introGraph(c: IntroInput): string {
 		);
 	});
 	if (c.title) {
-		const t = titleLayout(p, c.title.files.length, Boolean(c.title.subFile), c.stills.length > 0);
+		const base = titleLayout(
+			p,
+			c.title.files.length,
+			Boolean(c.title.subFile),
+			c.stills.length > 0,
+		);
+		const dy = c.title.dy;
+		const t = { ...base, y: base.y + dy, barY: base.barY + dy, subY: base.subY + dy };
 		c.title.files.forEach((file, i) => {
 			draw.push(
 				`drawtext=fontfile=${q(c.font)}:textfile=${q(file)}:fontsize=${t.size}:fontcolor=white` +

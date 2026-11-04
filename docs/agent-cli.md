@@ -148,7 +148,8 @@ With `voiceover`, `klipt render` sends each caption text to the endpoint and put
 - A caption stays on screen until its clip ends, plus 0.3 s. When a clip runs into the next caption, the frame
   before the next caption freezes for the extra time, so the voice and the screen stay in step.
 - The video audio, when there is one, is ducked while a clip plays. The mp4 gets an AAC track.
-- When the endpoint is down or a clip is bad, the render goes on without the voice. The result has
+- Each clip has `--tts-timeout-s` (default 120) to arrive.
+- When the endpoint is down, slow past the timeout, or a clip is bad, the render goes on without the voice. The result has
   `"voiceover": "skipped: <reason>"` and a warning. The render does not fail.
 
 ## Presets and the size cap
