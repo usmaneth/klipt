@@ -113,19 +113,32 @@ describe("parseTimeline", () => {
 		expect(problems({ overview: { stills: ten } })[0]).toContain("the most is 9");
 	});
 
-	it("checks the voiceover endpoint", () => {
+	it("checks the voiceover", () => {
 		expect(
-			parseTimeline({ voiceover: { endpoint: "http://tts:8792/tts", voice: "ava" } }).voiceover,
+			parseTimeline({
+				voiceover: {
+					endpoint: "http://tts:8792/tts",
+					voice: "narrator",
+					style: "warm product demo",
+					speed: 1.1,
+					warmup: "http://tts:8792/warmup",
+				},
+			}).voiceover,
 		).toEqual({
 			endpoint: "http://tts:8792/tts",
-			voice: "ava",
-			duck: undefined,
+			voice: "narrator",
+			style: "warm product demo",
+			speed: 1.1,
+			warmup: "http://tts:8792/warmup",
 		});
 		expect(problems({ voiceover: { endpoint: "tts:8792" } })[0]).toBe(
 			"voiceover.endpoint must be an http or https URL",
 		);
 		expect(problems({ voiceover: { endpoint: "http://x", duck: 2 } })[0]).toContain(
 			"voiceover.duck must be from 0 to 1",
+		);
+		expect(problems({ voiceover: { endpoint: "http://x", speed: 9 } })[0]).toContain(
+			"voiceover.speed must be from 0.25 to 4",
 		);
 	});
 

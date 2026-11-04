@@ -38,7 +38,7 @@ const USAGE = `usage:
   klipt mark   --out DIR (--caption T | --tap X,Y | --state LABEL | --speed N | --cut on|off | --title T | --stop | --json OBJ) [--t S]
   klipt stop   --out DIR [--timeout-s 120]
   klipt render --input RAW|DIR [--timeline FILE] [--out FILE.mp4] [--preset auto|phone-demo|desktop-demo]
-               [--max-mb 20] [--title T] [--font FILE] [--tts-timeout-s 120]
+               [--max-mb 20] [--title T] [--font FILE] [--tts-timeout-s 600]
   klipt export --input RAW --output FILE.mp4 [--preset phone-demo] [--title T] [--captions FILE] [--zooms FILE]
 every command prints one JSON line. exit 0 ok, 1 failed, 2 bad usage. docs/agent-cli.md has the details.`;
 

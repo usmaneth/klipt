@@ -177,71 +177,86 @@ describe("filter graphs", () => {
 describe("synthesize", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "klipt-voice-test-"));
 	afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
-	const vo = { endpoint: "http://tts.test/tts", voice: "ava" };
+	const vo = { endpoint: "http://tts.test/tts", voice: "narrator" };
 	const captions = [
 		{ t: 1, text: "one" },
 		{ t: 3, text: "two" },
 	];
 
-	it("writes one clip per caption with its length", async () => {
-		const bodies: unknown[] = [];
-		const fakeFetch = (async (_url: string, init?: RequestInit) => {
-			bodies.push(JSON.parse(String(init?.body)));
-			return new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "audio/wav" } });
+	it("sends one request per caption in order and takes the length from X-Duration-Ms", async () => {
+		const calls: Array<{ url: string; body?: unknown }> = [];
+		const fakeFetch = (async (url: string, init?: RequestInit) => {
+			calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+			if (url.endsWith("/warmup")) return Response.json({ status: "starting" });
+			return new Response(new Uint8Array([1, 2, 3]), {
+				headers: { "content-type": "audio/wav", "x-duration-ms": "1250" },
+			});
 		}) as typeof fetch;
-		const r = await synthesize(vo, captions, dir, {
-			fetch: fakeFetch,
-			timeoutMs: 1000,
-			duration: async () => 1.25,
-		});
-		expect(r.status).toBe("ok: 2 clips, voice ava");
+		const r = await synthesize(
+			{ ...vo, style: "warm", speed: 1.1, warmup: "http://tts.test/warmup" },
+			captions,
+			dir,
+			{ fetch: fakeFetch, timeoutMs: 1000, duration: async () => 99 },
+		);
+		expect(r.status).toBe("ok: 2 clips, voice narrator");
 		expect(r.clips.map((c) => [path.basename(c.file), c.seconds])).toEqual([
 			["voice-0.wav", 1.25],
 			["voice-1.wav", 1.25],
 		]);
-		expect(bodies).toEqual([
-			{ text: "one", voice: "ava" },
-			{ text: "two", voice: "ava" },
+		expect(calls).toEqual([
+			{ url: "http://tts.test/warmup", body: undefined },
+			{
+				url: "http://tts.test/tts",
+				body: { text: "one", voice: "narrator", style: "warm", speed: 1.1 },
+			},
+			{
+				url: "http://tts.test/tts",
+				body: { text: "two", voice: "narrator", style: "warm", speed: 1.1 },
+			},
 		]);
 	});
 
-	it("reads base64 audio from a JSON answer", async () => {
+	it("reads the length with ffprobe when the header is missing, and keeps the mp3 extension", async () => {
 		const fakeFetch = (async () =>
-			Response.json({
-				audio: Buffer.from("abc").toString("base64"),
-				format: "mp3",
+			new Response(new Uint8Array([4, 5]), {
+				headers: { "content-type": "audio/mpeg" },
 			})) as typeof fetch;
 		const r = await synthesize(vo, captions.slice(0, 1), dir, {
 			fetch: fakeFetch,
 			timeoutMs: 1000,
 			duration: async () => 2,
 		});
-		expect(path.extname(r.clips[0].file)).toBe(".mp3");
-		expect(fs.readFileSync(r.clips[0].file, "utf8")).toBe("abc");
+		expect(r.clips).toEqual([{ file: path.join(dir, "voice-0.mp3"), seconds: 2 }]);
 	});
 
-	it("skips the whole voiceover when the endpoint is down or answers an error", async () => {
+	it("skips the whole voiceover when the endpoint is down, answers an error, or sends no audio", async () => {
 		const down = (async () => {
 			throw Object.assign(new TypeError("fetch failed"), {
 				cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }),
 			});
 		}) as typeof fetch;
-		const r1 = await synthesize(vo, captions, dir, {
-			fetch: down,
-			timeoutMs: 1000,
-			duration: async () => 1,
-		});
-		expect(r1).toEqual({
+		const deps = { timeoutMs: 1000, duration: async () => 1 };
+		expect(await synthesize(vo, captions, dir, { ...deps, fetch: down })).toEqual({
 			clips: [],
 			status: "skipped: http://tts.test/tts did not answer: ECONNREFUSED",
 		});
-		const error = (async () => new Response("model not loaded", { status: 503 })) as typeof fetch;
-		const r2 = await synthesize(vo, captions, dir, {
-			fetch: error,
-			timeoutMs: 1000,
-			duration: async () => 1,
+		const busy = (async () =>
+			Response.json({ detail: "no engine could serve" }, { status: 503 })) as typeof fetch;
+		expect((await synthesize(vo, captions, dir, { ...deps, fetch: busy })).status).toBe(
+			"skipped: http://tts.test/tts answered HTTP 503: no engine could serve",
+		);
+		let n = 0;
+		const second = (async () =>
+			n++ === 0
+				? new Response(new Uint8Array([1]), {
+						headers: { "content-type": "audio/wav", "x-duration-ms": "900" },
+					})
+				: Response.json({ ok: true })) as typeof fetch;
+		const r = await synthesize(vo, captions, dir, { ...deps, fetch: second });
+		expect(r).toEqual({
+			clips: [],
+			status: "skipped: http://tts.test/tts answered application/json, not audio",
 		});
-		expect(r2.status).toBe("skipped: http://tts.test/tts answered HTTP 503: model not loaded");
 	});
 
 	it("skips when there is nothing to speak", async () => {
@@ -448,15 +463,15 @@ describe.skipIf(!ffmpegReady)("render with ffmpeg", () => {
 					{ t: 1, text: "First" },
 					{ t: 2, text: "Second" },
 				],
-				voiceover: { endpoint: `http://127.0.0.1:${port}/tts`, voice: "ava" },
+				voiceover: { endpoint: `http://127.0.0.1:${port}/tts`, voice: "narrator" },
 			}),
 		);
 		const r = await render({ input: clip, timeline, out: path.join(dir, "vo.mp4"), maxMb: 20 });
 		expect(r.reason).toBe("");
-		expect(r.voiceover).toBe("ok: 2 clips, voice ava");
+		expect(r.voiceover).toBe("ok: 2 clips, voice narrator");
 		expect(requests).toEqual([
-			{ text: "First", voice: "ava" },
-			{ text: "Second", voice: "ava" },
+			{ text: "First", voice: "narrator" },
+			{ text: "Second", voice: "narrator" },
 		]);
 		const info = probeFile(r.mp4);
 		expect(info?.hasAudio).toBe(true);

@@ -11,7 +11,17 @@ export type Zoom = { t: number; x: number; y: number; scale: number; dur: number
 export type Tap = { t: number; x: number; y: number };
 export type Cut = { from: number; to: number };
 export type Speed = { from: number; to: number; factor: number };
-export type Voiceover = { endpoint: string; voice?: string; duck?: number };
+export type Voiceover = {
+	endpoint: string;
+	voice?: string;
+	/** An acting direction for the TTS, for example "warm, upbeat product demo narrator". */
+	style?: string;
+	speed?: number;
+	/** Video audio gain while a clip plays. */
+	duck?: number;
+	/** A URL to POST once before the first line, to start a cold TTS engine. */
+	warmup?: string;
+};
 
 export type Timeline = {
 	version: 1;
@@ -37,6 +47,7 @@ export const LIMITS = {
 	titleSeconds: [1, 10] as const,
 	captionDur: [0.5, 15] as const,
 	duck: [0, 1] as const,
+	voiceSpeed: [0.25, 4] as const,
 };
 
 /** Tap zoom: the zoom starts a little before the tap, so the tap happens inside the zoom. */
@@ -254,15 +265,37 @@ export function parseTimeline(input: unknown): Timeline {
 	}
 
 	if (root.voiceover !== undefined) {
-		const o = c.object(root.voiceover, "voiceover", ["endpoint", "voice", "duck"]);
+		const o = c.object(root.voiceover, "voiceover", [
+			"endpoint",
+			"voice",
+			"style",
+			"speed",
+			"duck",
+			"warmup",
+		]);
 		if (o) {
-			const endpoint = c.text(o.endpoint, "voiceover.endpoint", 2048);
-			if (endpoint && !/^https?:\/\//.test(endpoint))
-				c.fail("voiceover.endpoint", "must be an http or https URL");
+			const url = (value: unknown, where: string) => {
+				const text = c.text(value, where, 2048);
+				if (text && !/^https?:\/\//.test(text))
+					return c.fail(where, "must be an http or https URL");
+				return text;
+			};
+			const endpoint = url(o.endpoint, "voiceover.endpoint");
+			const warmup = o.warmup === undefined ? undefined : url(o.warmup, "voiceover.warmup");
 			const voice = o.voice === undefined ? undefined : c.text(o.voice, "voiceover.voice", 200);
+			const style = o.style === undefined ? undefined : c.text(o.style, "voiceover.style", 300);
+			const speed =
+				o.speed === undefined ? undefined : c.number(o.speed, "voiceover.speed", LIMITS.voiceSpeed);
 			const duck =
 				o.duck === undefined ? undefined : c.number(o.duck, "voiceover.duck", LIMITS.duck);
-			if (endpoint && /^https?:\/\//.test(endpoint)) tl.voiceover = { endpoint, voice, duck };
+			if (endpoint) {
+				tl.voiceover = { endpoint };
+				if (voice) tl.voiceover.voice = voice;
+				if (style) tl.voiceover.style = style;
+				if (speed !== undefined) tl.voiceover.speed = speed;
+				if (duck !== undefined) tl.voiceover.duck = duck;
+				if (warmup) tl.voiceover.warmup = warmup;
+			}
 		}
 	}
 

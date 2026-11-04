@@ -253,7 +253,7 @@ export async function render(
 		if (tl.voiceover) {
 			const voice = await synthesize(tl.voiceover, tl.captions, work, {
 				fetch: deps.fetch,
-				timeoutMs: (opts.ttsTimeoutS ?? 120) * 1000,
+				timeoutMs: (opts.ttsTimeoutS ?? 600) * 1000,
 				duration: (file) => mediaDuration(file, run),
 			});
 			clips = voice.clips;

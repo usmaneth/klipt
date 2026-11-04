@@ -125,7 +125,7 @@ All times are seconds in **raw.mp4**. An unknown key or a bad value is an error 
   "zooms": [{ "t": 6.0, "x": 0.5, "y": 0.7, "scale": 1.8, "dur": 2.0 }],
   "cuts": [{ "from": 8.0, "to": 14.0 }],
   "speed": [{ "from": 15.0, "to": 25.0, "factor": 4 }],
-  "voiceover": { "endpoint": "http://tts-host:8792/tts", "voice": "ava", "duck": 0.25 }
+  "voiceover": { "endpoint": "http://100.64.72.29:8792/tts", "voice": "narrator" }
 }
 ```
 
@@ -137,19 +137,30 @@ All times are seconds in **raw.mp4**. An unknown key or a bad value is an error 
 | `taps` | `t`, `x`, `y` in 0..1. Each tap draws a ring for 0.7 s and zooms in (1.6x for 1.6 s, starting 0.3 s before). A burst of taps makes one zoom. |
 | `zooms` | `t`, `x`, `y`, `scale` (1.05 to 3, default 1.6), `dur` (0.3 to 10 s, default 1.6). The zoom eases in and out. |
 | `cuts`, `speed` | `from` < `to`. `factor` is 1.25 to 16. Ranges must not overlap. A caption inside a cut is dropped. |
-| `voiceover` | `endpoint` (http or https), optional `voice` and `duck` (the video audio gain while the voice speaks, default 0.25). |
+| `voiceover` | `endpoint` (http or https), optional `voice`, `style` (300 characters), `speed` (0.25 to 4), `duck` (0 to 1), `warmup` (a URL). |
 
 ### Voiceover
 
 With `voiceover`, `klipt render` sends each caption text to the endpoint and puts each clip at its caption time.
 
-- The request is `POST <endpoint>` with `{"text": "...", "voice": "..."}`. The answer is audio bytes
-  (`audio/wav`, `audio/mpeg`, ...), or JSON with `audio` (base64, with `format`) or `url`.
+```json
+"voiceover": {
+  "endpoint": "http://100.64.72.29:8792/tts",
+  "voice": "narrator",
+  "style": "warm, upbeat product demo narrator",
+  "warmup": "http://100.64.72.29:8792/warmup"
+}
+```
+
+- The request is `POST <endpoint>` with `{"text", "voice"?, "style"?, "speed"?}`, one caption at a time.
+  The answer is audio bytes (`audio/wav` or `audio/mpeg`). The `X-Duration-Ms` header gives the clip length;
+  without it, ffprobe reads the clip. An error status with `{"detail": ...}` skips the voiceover.
+- `warmup`, when it is set, gets one `POST` before the first line, so a cold engine starts early.
+- Each line has `--tts-timeout-s` (default 600, enough for a cold engine) to arrive.
 - A caption stays on screen until its clip ends, plus 0.3 s. When a clip runs into the next caption, the frame
   before the next caption freezes for the extra time, so the voice and the screen stay in step.
-- The video audio, when there is one, is ducked while a clip plays. The mp4 gets an AAC track.
-- Each clip has `--tts-timeout-s` (default 120) to arrive.
-- When the endpoint is down, slow past the timeout, or a clip is bad, the render goes on without the voice. The result has
+- The video audio, when there is one, is ducked to `duck` (default 0.25) while a clip plays. The mp4 gets an AAC track.
+- When the endpoint is down, too slow, or a clip is bad, the render goes on without the voice. The result has
   `"voiceover": "skipped: <reason>"` and a warning. The render does not fail.
 
 ## Presets and the size cap
